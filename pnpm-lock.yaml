@@ -65,6 +65,44 @@ importers:
       rollup: ^2.15.0
       rollup-plugin-terser: ^6.1.0
       typescript: ^3.9.5
+  packages/mongo:
+    dependencies:
+      '@muast/ast': 'link:../ast'
+    devDependencies:
+      '@babel/core': 7.10.2
+      '@babel/plugin-proposal-object-rest-spread': 7.10.1_@babel+core@7.10.2
+      '@babel/plugin-transform-typescript': 7.10.1_@babel+core@7.10.2
+      '@babel/preset-env': 7.10.2_@babel+core@7.10.2
+      '@rollup/plugin-babel': 5.0.3_@babel+core@7.10.2+rollup@2.15.0
+      '@rollup/plugin-node-resolve': 8.0.1_rollup@2.15.0
+      '@typescript-eslint/eslint-plugin': 3.2.0_eslint@7.2.0+typescript@3.9.5
+      codecov: 3.7.0
+      eslint: 7.2.0
+      eslint-config-airbnb-base: 14.2.0_de95e1aa46988508c408ca16decdb537
+      eslint-config-airbnb-typescript: 8.0.2_fd91c7b2c6d63d7891a00bfea9aeaa8f
+      eslint-plugin-import: 2.21.2_eslint@7.2.0
+      rollup: 2.15.0
+      rollup-plugin-terser: 6.1.0_rollup@2.15.0
+      ts-node: 8.10.2_typescript@3.9.5
+      typescript: 3.9.5
+    specifiers:
+      '@babel/core': ^7.10.2
+      '@babel/plugin-proposal-object-rest-spread': ^7.10.1
+      '@babel/plugin-transform-typescript': ^7.10.1
+      '@babel/preset-env': ^7.10.2
+      '@muast/ast': ^0.0.1
+      '@rollup/plugin-babel': ^5.0.3
+      '@rollup/plugin-node-resolve': ^8.0.1
+      '@typescript-eslint/eslint-plugin': ^3.2.0
+      codecov: ^3.7.0
+      eslint: ^7.2.0
+      eslint-config-airbnb-base: ^14.2.0
+      eslint-config-airbnb-typescript: ^8.0.2
+      eslint-plugin-import: ^2.21.2
+      rollup: ^2.15.0
+      rollup-plugin-terser: ^6.1.0
+      ts-node: ^8.10.2
+      typescript: ^3.9.5
 lockfileVersion: 5.1
 packages:
   /@babel/code-frame/7.10.1:
@@ -1197,6 +1235,10 @@ packages:
       node: '>=8'
     resolution:
       integrity: sha512-9VGjrMsG1vePxcSweQsN20KY/c4zN0h9fLjqAbwbPfahM3t+NL+M9HC8xeXG2I8pX5NoamTGNuomEUFI7fcUjA==
+  /arg/4.1.3:
+    dev: true
+    resolution:
+      integrity: sha512-58S9QDqG0Xx27YwPSt9fJxivjYl432YCwfDMfZ+71RAqUrZef7LrKQZ3LHLOwCS4FLNBplP533Zx895SeOCHvA==
   /argparse/1.0.10:
     dependencies:
       sprintf-js: 1.0.3
@@ -1435,6 +1477,12 @@ packages:
       node: '>= 0.4'
     resolution:
       integrity: sha512-3MqfYKj2lLzdMSf8ZIZE/V+Zuy+BgD6f164e8K2w7dgnpKArBDerGYpM46IYYcjnkdPNMjPk9A6VFB8+3SKlXQ==
+  /diff/4.0.2:
+    dev: true
+    engines:
+      node: '>=0.3.1'
+    resolution:
+      integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==
   /doctrine/1.5.0:
     dependencies:
       esutils: 2.0.3
@@ -2152,6 +2200,10 @@ packages:
     hasBin: true
     resolution:
       integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==
+  /make-error/1.3.6:
+    dev: true
+    resolution:
+      integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==
   /merge-stream/2.0.0:
     dev: true
     resolution:
@@ -2820,6 +2872,22 @@ packages:
       node: '>=4'
     resolution:
       integrity: sha1-3F5pjL0HkmW8c+A3doGk5Og/YW4=
+  /ts-node/8.10.2_typescript@3.9.5:
+    dependencies:
+      arg: 4.1.3
+      diff: 4.0.2
+      make-error: 1.3.6
+      source-map-support: 0.5.19
+      typescript: 3.9.5
+      yn: 3.1.1
+    dev: true
+    engines:
+      node: '>=6.0.0'
+    hasBin: true
+    peerDependencies:
+      typescript: '>=2.7'
+    resolution:
+      integrity: sha512-ISJJGgkIpDdBhWVu3jufsWpK3Rzo7bdiIXJjQc0ynKxVOVcg2oIrf2H2cejminGrptVc6q6/uynAHNCuWGbpVA==
   /tsconfig-paths/3.9.0:
     dependencies:
       '@types/json5': 0.0.29
@@ -2951,3 +3019,9 @@ packages:
       node: '>=4'
     resolution:
       integrity: sha512-/lg70HAjtkUgWPVZhZcm+T4hkL8Zbtp1nFNOn3lRrxnlv50SRBv7cR7RqR+GMsd3hUXy9hWBo4CHTbFTcOYwig==
+  /yn/3.1.1:
+    dev: true
+    engines:
+      node: '>=6'
+    resolution:
+      integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==

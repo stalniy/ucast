@@ -1,33 +1,50 @@
 export class Condition {
-  protected _bool(name, conditions) {
-    return new BoolCondition(name, [this].concat(conditions));
-  }
+  public readonly operator: string;
 
-  and(...conditions) {
-    return this._bool('and', conditions);
-  }
-
-  or(...conditions) {
-    return this._bool('or', conditions);
+  constructor(operator: string) {
+    this.operator = operator;
   }
 }
 
-export class BoolCondition extends Condition {
-  public readonly name: string;
+interface CompoundConditionOptions {
+  maxItems?: number
+}
+
+export class CompoundCondition extends Condition {
   public readonly conditions: Condition[];
 
-  constructor(name, conditions) {
-    super();
-    this.name = name;
+  constructor(operator: string, conditions: Condition[], options?: CompoundConditionOptions) {
+    super(operator);
+
+    if (!Array.isArray(conditions)) {
+      throw new Error(`"${operator}" operator expects to receive an array of conditions`);
+    }
+
+    if (options && options.maxItems && conditions.length > options.maxItems) {
+      throw new Error(`"${operator}" operator accepts only ${options.maxItems} condition(s)`);
+    }
+
     this.conditions = conditions;
   }
 
-  protected _bool(name, conditions) {
-    if (name === this.name) {
+  merge(conditions: Condition | Condition[]) {
+    if (Array.isArray(conditions)) {
       this.conditions.push(...conditions);
-      return this;
+    } else {
+      this.conditions.push(conditions);
     }
 
-    return super._bool(name, conditions);
+    return this;
+  }
+}
+
+export class FieldCondition<T = unknown> extends Condition {
+  public readonly field: string;
+  public readonly value: T;
+
+  constructor(operator: string, field: string, value: T) {
+    super(operator);
+    this.field = field;
+    this.value = value;
   }
 }

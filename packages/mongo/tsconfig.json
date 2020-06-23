@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig",
+  "include": [
+    "src/*",
+    "spec/*"
+  ],
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "dist/types",
+    "declaration": false,
+    "emitDeclarationOnly": false,
+  }
+}

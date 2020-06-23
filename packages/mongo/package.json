@@ -1,10 +1,10 @@
 {
-  "name": "@muast/ast",
+  "name": "@muast/mongo",
   "version": "0.0.1",
   "description": "git@github.com:stalniy/muast.git",
-  "main": "src/index.ts",
+  "main": "index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "ts-node src/index.ts"
   },
   "repository": {
     "type": "git",
@@ -40,6 +40,10 @@
     "eslint-plugin-import": "^2.21.2",
     "rollup": "^2.15.0",
     "rollup-plugin-terser": "^6.1.0",
+    "ts-node": "^8.10.2",
     "typescript": "^3.9.5"
+  },
+  "dependencies": {
+    "@muast/ast": "^0.0.1"
   }
 }
