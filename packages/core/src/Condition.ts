@@ -3,8 +3,8 @@ export interface Condition {
 }
 
 export class CompoundCondition implements Condition {
-  public readonly conditions: Condition[];
-  public readonly operator: string;
+  public readonly conditions!: Condition[];
+  public readonly operator!: string;
 
   constructor(operator: string, conditions: Condition[]) {
     this.operator = operator;
@@ -29,9 +29,9 @@ export class CompoundCondition implements Condition {
 
 export const ITSELF = '__itself__';
 export class FieldCondition<T = unknown> implements Condition {
-  public readonly operator: string;
-  public readonly field: string | typeof ITSELF;
-  public readonly value: T;
+  public readonly operator!: string;
+  public readonly field!: string | typeof ITSELF;
+  public readonly value!: T;
 
   constructor(operator: string, field: string | typeof ITSELF, value: T) {
     this.operator = operator;

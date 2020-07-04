@@ -2,10 +2,14 @@
   "name": "@ucast/core",
   "version": "0.0.1",
   "description": "git@github.com:stalniy/ucast.git",
-  "main": "src/index.ts",
+  "main": "dist/umd/index.js",
+  "module": "dist/es5m/index.js",
+  "es2015": "dist/es6/index.js",
+  "typings": "dist/types/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "test": "mocha -r ts-node/register spec/*",
+    "build.types": "tsc",
+    "build": "rollup -c ../../rollup.config.js -n ucast.core",
+    "test": "mocha -r babel-register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=html"
   },
   "repository": {
@@ -29,6 +33,7 @@
   "homepage": "https://github.com/stalniy/ucast#readme",
   "devDependencies": {
     "@babel/core": "^7.10.2",
+    "@babel/plugin-proposal-class-properties": "^7.10.4",
     "@babel/plugin-proposal-object-rest-spread": "^7.10.1",
     "@babel/plugin-transform-typescript": "^7.10.1",
     "@babel/preset-env": "^7.10.2",
@@ -37,6 +42,7 @@
     "@types/chai": "^4.2.11",
     "@types/mocha": "^7.0.2",
     "@typescript-eslint/eslint-plugin": "^3.2.0",
+    "babel-register": "^6.26.0",
     "chai": "^4.2.0",
     "codecov": "^3.7.0",
     "eslint": "^7.2.0",
