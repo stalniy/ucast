@@ -1,26 +1,34 @@
 export interface Condition {
   readonly operator: string;
+  readonly value: unknown;
 }
 
-export class CompoundCondition implements Condition {
-  public readonly conditions!: Condition[];
+export class ValueCondition<T> implements Condition {
+  public readonly operator!: string;
+  public readonly value!: T;
+
+  constructor(operator: string, value: T) {
+    this.operator = operator;
+    this.value = value;
+  }
+}
+
+export class CompoundCondition extends ValueCondition<Condition[]> {
   public readonly operator!: string;
 
   constructor(operator: string, conditions: Condition[]) {
-    this.operator = operator;
-
     if (!Array.isArray(conditions)) {
       throw new Error(`"${operator}" operator expects to receive an array of conditions`);
     }
 
-    this.conditions = conditions;
+    super(operator, conditions)
   }
 
   add(conditions: Condition | Condition[]) {
     if (Array.isArray(conditions)) {
-      this.conditions.push(...conditions);
+      this.value.push(...conditions);
     } else {
-      this.conditions.push(conditions);
+      this.value.push(conditions);
     }
 
     return this;

@@ -8,8 +8,9 @@
   "typings": "dist/types/index.d.ts",
   "scripts": {
     "build.types": "tsc",
+    "prebuild": "rm -rf dist/* && npm run build.types",
     "build": "rollup -c ../../rollup.config.js -n ucast.core",
-    "test": "mocha -r babel-register spec/*",
+    "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=html"
   },
   "repository": {
@@ -40,10 +41,12 @@
     "@rollup/plugin-babel": "^5.0.3",
     "@rollup/plugin-node-resolve": "^8.0.1",
     "@types/chai": "^4.2.11",
+    "@types/chai-spies": "^1.0.1",
     "@types/mocha": "^7.0.2",
     "@typescript-eslint/eslint-plugin": "^3.2.0",
     "babel-register": "^6.26.0",
     "chai": "^4.2.0",
+    "chai-spies": "^1.0.0",
     "codecov": "^3.7.0",
     "eslint": "^7.2.0",
     "eslint-config-airbnb-base": "^14.2.0",

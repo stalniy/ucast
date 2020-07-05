@@ -1,20 +1,20 @@
 {
-  "name": "ucast",
+  "name": "@ucast/js",
   "version": "0.0.1",
-  "private": true,
   "description": "git@github.com:stalniy/ucast.git",
-  "main": "index.js",
+  "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build.types": "tsc",
+    "prebuild": "rm -rf dist/* && npm run build.types",
+    "build": "rollup -c ../../rollup.config.js -n ucast.core",
+    "test": "mocha -r ts-node/register spec/*",
+    "coverage": "nyc -n src npm run test && nyc report --reporter=html"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/stalniy/ucast.git"
   },
   "keywords": [
-    "where",
-    "sql",
-    "mongo",
     "conditions",
     "query",
     "builder",
@@ -51,5 +51,13 @@
     "rollup-plugin-terser": "^6.1.0",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.5"
-  }
+  },
+  "dependencies": {
+    "@ucast/core": "^0.0.1"
+  },
+  "files": [
+    "dist",
+    "NOTICE",
+    "*.d.ts"
+  ]
 }

@@ -15,9 +15,9 @@ describe('AST', () => {
       node.add(fieldNode);
       node.add(fieldNodes);
 
-      expect(node.conditions).to.contain(fieldNode);
-      expect(node.conditions).to.contain(fieldNodes[0]);
-      expect(node.conditions).to.contain(fieldNodes[1]);
+      expect(node.value).to.contain(fieldNode);
+      expect(node.value).to.contain(fieldNodes[0]);
+      expect(node.value).to.contain(fieldNodes[1]);
     })
   })
 

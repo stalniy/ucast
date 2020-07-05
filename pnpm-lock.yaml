@@ -9,9 +9,11 @@ importers:
       '@rollup/plugin-babel': 5.0.3_@babel+core@7.10.2+rollup@2.15.0
       '@rollup/plugin-node-resolve': 8.0.1_rollup@2.15.0
       '@types/chai': 4.2.11
+      '@types/chai-spies': 1.0.1
       '@types/mocha': 7.0.2
       '@typescript-eslint/eslint-plugin': 3.2.0_eslint@7.2.0+typescript@3.9.5
       chai: 4.2.0
+      chai-spies: 1.0.0_chai@4.2.0
       codecov: 3.7.0
       eslint: 7.2.0
       eslint-config-airbnb-base: 14.2.0_de95e1aa46988508c408ca16decdb537
@@ -32,9 +34,11 @@ importers:
       '@rollup/plugin-babel': ^5.0.3
       '@rollup/plugin-node-resolve': ^8.0.1
       '@types/chai': ^4.2.11
+      '@types/chai-spies': ^1.0.1
       '@types/mocha': ^7.0.2
       '@typescript-eslint/eslint-plugin': ^3.2.0
       chai: ^4.2.0
+      chai-spies: ^1.0.0
       codecov: ^3.7.0
       eslint: ^7.2.0
       eslint-config-airbnb-base: ^14.2.0
@@ -56,10 +60,12 @@ importers:
       '@rollup/plugin-babel': 5.0.4_@babel+core@7.10.4+rollup@2.18.2
       '@rollup/plugin-node-resolve': 8.1.0_rollup@2.18.2
       '@types/chai': 4.2.11
+      '@types/chai-spies': 1.0.1
       '@types/mocha': 7.0.2
       '@typescript-eslint/eslint-plugin': 3.5.0_eslint@7.3.1+typescript@3.9.6
       babel-register: 6.26.0
       chai: 4.2.0
+      chai-spies: 1.0.0_chai@4.2.0
       codecov: 3.7.0
       eslint: 7.3.1
       eslint-config-airbnb-base: 14.2.0_18481130a4b8bfb4a71c490c454795e7
@@ -80,10 +86,12 @@ importers:
       '@rollup/plugin-babel': ^5.0.3
       '@rollup/plugin-node-resolve': ^8.0.1
       '@types/chai': ^4.2.11
+      '@types/chai-spies': ^1.0.1
       '@types/mocha': ^7.0.2
       '@typescript-eslint/eslint-plugin': ^3.2.0
       babel-register: ^6.26.0
       chai: ^4.2.0
+      chai-spies: ^1.0.0
       codecov: ^3.7.0
       eslint: ^7.2.0
       eslint-config-airbnb-base: ^14.2.0
@@ -107,9 +115,11 @@ importers:
       '@rollup/plugin-babel': 5.0.3_@babel+core@7.10.2+rollup@2.15.0
       '@rollup/plugin-node-resolve': 8.0.1_rollup@2.15.0
       '@types/chai': 4.2.11
+      '@types/chai-spies': 1.0.1
       '@types/mocha': 7.0.2
       '@typescript-eslint/eslint-plugin': 3.2.0_eslint@7.2.0+typescript@3.9.5
       chai: 4.2.0
+      chai-spies: 1.0.0_chai@4.2.0
       codecov: 3.7.0
       eslint: 7.2.0
       eslint-config-airbnb-base: 14.2.0_de95e1aa46988508c408ca16decdb537
@@ -130,10 +140,12 @@ importers:
       '@rollup/plugin-babel': ^5.0.3
       '@rollup/plugin-node-resolve': ^8.0.1
       '@types/chai': ^4.2.11
+      '@types/chai-spies': ^1.0.1
       '@types/mocha': ^7.0.2
       '@typescript-eslint/eslint-plugin': ^3.2.0
       '@ucast/core': ^0.0.1
       chai: ^4.2.0
+      chai-spies: ^1.0.0
       codecov: ^3.7.0
       eslint: ^7.2.0
       eslint-config-airbnb-base: ^14.2.0
@@ -157,9 +169,11 @@ importers:
       '@rollup/plugin-babel': 5.0.3_@babel+core@7.10.2+rollup@2.15.0
       '@rollup/plugin-node-resolve': 8.0.1_rollup@2.15.0
       '@types/chai': 4.2.11
+      '@types/chai-spies': 1.0.1
       '@types/mocha': 7.0.2
       '@typescript-eslint/eslint-plugin': 3.2.0_eslint@7.2.0+typescript@3.9.5
       chai: 4.2.0
+      chai-spies: 1.0.0_chai@4.2.0
       codecov: 3.7.0
       eslint: 7.2.0
       eslint-config-airbnb-base: 14.2.0_de95e1aa46988508c408ca16decdb537
@@ -180,10 +194,12 @@ importers:
       '@rollup/plugin-babel': ^5.0.3
       '@rollup/plugin-node-resolve': ^8.0.1
       '@types/chai': ^4.2.11
+      '@types/chai-spies': ^1.0.1
       '@types/mocha': ^7.0.2
       '@typescript-eslint/eslint-plugin': ^3.2.0
       '@ucast/core': ^0.0.1
       chai: ^4.2.0
+      chai-spies: ^1.0.0
       codecov: ^3.7.0
       eslint: ^7.2.0
       eslint-config-airbnb-base: ^14.2.0
@@ -210,9 +226,11 @@ importers:
       '@rollup/plugin-babel': 5.0.3_@babel+core@7.10.2+rollup@2.15.0
       '@rollup/plugin-node-resolve': 8.0.1_rollup@2.15.0
       '@types/chai': 4.2.11
+      '@types/chai-spies': 1.0.1
       '@types/mocha': 7.0.2
       '@typescript-eslint/eslint-plugin': 3.2.0_eslint@7.2.0+typescript@3.9.5
       chai: 4.2.0
+      chai-spies: 1.0.0_chai@4.2.0
       codecov: 3.7.0
       eslint: 7.2.0
       eslint-config-airbnb-base: 14.2.0_de95e1aa46988508c408ca16decdb537
@@ -233,12 +251,14 @@ importers:
       '@rollup/plugin-babel': ^5.0.3
       '@rollup/plugin-node-resolve': ^8.0.1
       '@types/chai': ^4.2.11
+      '@types/chai-spies': ^1.0.1
       '@types/mocha': ^7.0.2
       '@typescript-eslint/eslint-plugin': ^3.2.0
       '@ucast/core': ^0.0.1
       '@ucast/js': ^0.0.1
       '@ucast/mongo': ^0.0.1
       chai: ^4.2.0
+      chai-spies: ^1.0.0
       codecov: ^3.7.0
       eslint: ^7.2.0
       eslint-config-airbnb-base: ^14.2.0
@@ -2229,6 +2249,12 @@ packages:
       node: '>= 6'
     resolution:
       integrity: sha512-RbzJvlNzmRq5c3O09UipeuXno4tA1FE6ikOjxZK0tuxVv3412l64l5t1W5pj4+rJq9vpkm/kwiR07aZXnsKPxw==
+  /@types/chai-spies/1.0.1:
+    dependencies:
+      '@types/chai': 4.2.11
+    dev: true
+    resolution:
+      integrity: sha512-vvlTzisMpzmPZaKDd0pFybCJB5bzx398JEdPsVD9Rwq4a7dcGSUDlNG2PAVhsanRBPl4hezqnlaFtL1/YwBGgw==
   /@types/chai/4.2.11:
     dev: true
     resolution:
@@ -2872,6 +2898,16 @@ packages:
     dev: true
     resolution:
       integrity: sha512-0+ODNoOjtWD5eS9aaIpf4K0gQqZfILNY4WSNuYzeT1sXni+lMrrVjc0odEobJt6wrODofDZUX8XYi/5y7+xl8g==
+  /chai-spies/1.0.0_chai@4.2.0:
+    dependencies:
+      chai: 4.2.0
+    dev: true
+    engines:
+      node: '>= 4.0.0'
+    peerDependencies:
+      chai: '*'
+    resolution:
+      integrity: sha512-elF2ZUczBsFoP07qCfMO/zeggs8pqCf3fZGyK5+2X4AndS8jycZYID91ztD9oQ7d/0tnS963dPkd0frQEThDsg==
   /chai/4.2.0:
     dependencies:
       assertion-error: 1.1.0

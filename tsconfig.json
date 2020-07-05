@@ -5,6 +5,7 @@
     "strict": true,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "noErrorTruncation": true
+    "noErrorTruncation": true,
+    "esModuleInterop": true
   }
 }
