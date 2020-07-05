@@ -2,11 +2,14 @@
   "name": "@ucast/js",
   "version": "0.0.1",
   "description": "git@github.com:stalniy/ucast.git",
-  "main": "src/index.ts",
+  "main": "dist/umd/index.js",
+  "module": "dist/es5m/index.js",
+  "es2015": "dist/es6/index.js",
+  "typings": "dist/types/index.d.ts",
   "scripts": {
     "build.types": "tsc",
     "prebuild": "rm -rf dist/* && npm run build.types",
-    "build": "rollup -c ../../rollup.config.js -n ucast.core",
+    "build": "rollup -c ../../rollup.config.js -n ucast.js -g @ucast/core:ucast.core",
     "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=html"
   },

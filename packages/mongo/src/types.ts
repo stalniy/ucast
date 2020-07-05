@@ -1,8 +1,11 @@
-import { Condition } from '@muast/ast';
+export interface MongoQueryTopLevelOperators<Value> {
+  $and?: MongoQuery<Value>[],
+  $or?: MongoQuery<Value>[],
+  $nor?: MongoQuery<Value>[],
+  $where?: (this: Value) => boolean
+}
 
-type RegExpOptions<T> = { $regex: T, $options?: string };
-
-export type MongoQueryOperators<Value = any> = {
+export interface MongoQueryFieldOperators<Value = any> {
   $eq?: Value,
   $ne?: Value,
   $lt?: string | number | Date,
@@ -13,17 +16,18 @@ export type MongoQueryOperators<Value = any> = {
   $nin?: Value[],
   $all?: Value[],
   $size?: number,
-  $regex?: RegExp | RegExpOptions<string> | RegExpOptions<RegExp>,
-  $elemMatch?: MongoQueryOperators<Value> | Record<string, MongoQueryOperators<Value>>,
+  $regex?: RegExp | string,
+  $options?: 'i' | 'g' | 'm' | 'u',
+  $elemMatch?: MongoQuery<Value>,
   $exists?: boolean,
-  $and?: MongoQuery[],
-  $or?: MongoQuery[],
-  $not?: MongoQuery,
-  $nor?: MongoQuery[],
+  $not?: Omit<MongoQueryFieldOperators<Value>, '$not'>,
 };
 
-export type MongoQuery<T = Record<PropertyKey, any>> = T extends Record<PropertyKey, any>
-  ? { [k in keyof T]: MongoQueryOperators<T[k]> }
-  : MongoQueryOperators<T>
+export type MongoQueryOperators<Value = any> = MongoQueryFieldOperators<Value> & MongoQueryTopLevelOperators<Value>;
 
-export type Comparable = number | string | Date;
+type ItemOf<T, AdditionalArrayTypes = never> = T extends any[] ? T[number] | AdditionalArrayTypes : T;
+export type MongoQuery<T = Record<PropertyKey, any>> = T extends Record<PropertyKey, any>
+  ? {
+      [K in keyof T]?: null | Partial<ItemOf<T[K], T[K] | []>> | MongoQueryFieldOperators<ItemOf<T[K]>>
+    } & MongoQueryTopLevelOperators<T>
+  : MongoQueryOperators<T>;
