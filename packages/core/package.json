@@ -2,6 +2,7 @@
   "name": "@ucast/core",
   "version": "0.0.1",
   "description": "git@github.com:stalniy/ucast.git",
+  "sideEffects": false,
   "main": "dist/umd/index.js",
   "module": "dist/es5m/index.js",
   "es2015": "dist/es6/index.js",

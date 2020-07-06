@@ -32,9 +32,12 @@ export type JsOperator<N extends Condition, Value = any> = (
   context: InterpretationContext<JsOperator<N, Value>> & JsInterpretationOptions
 ) => boolean;
 
-export function createJsInterpreter<T extends JsOperator<any>>(
+export function createJsInterpreter<
+  T extends JsOperator<any>,
+  O extends Partial<JsInterpretationOptions>
+>(
   operators: Record<string, T>,
-  options: Partial<JsInterpretationOptions> = {}
+  options: O = {} as O
 ) {
   return createInterpreter(operators, {
     ...options,
