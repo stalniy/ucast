@@ -6,19 +6,6 @@ describe('AST', () => {
     it('throws exception if receives non array', () => {
       expect(() => new CompoundCondition('and', null as unknown as Condition[])).to.throw(Error);
     })
-
-    it('can add child conditions', () => {
-      const node = new CompoundCondition('and', []);
-      const fieldNode = new FieldCondition('eq', 'title', 'test');
-      const fieldNodes = [new FieldCondition('eq', 'name', ''), new FieldCondition('lt', 'age', 12)];
-
-      node.add(fieldNode);
-      node.add(fieldNodes);
-
-      expect(node.value).to.contain(fieldNode);
-      expect(node.value).to.contain(fieldNodes[0]);
-      expect(node.value).to.contain(fieldNodes[1]);
-    })
   })
 
   describe('FieldCondition', () => {

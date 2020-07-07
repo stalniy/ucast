@@ -25,9 +25,16 @@ export interface MongoQueryFieldOperators<Value = any> {
 
 export type MongoQueryOperators<Value = any> = MongoQueryFieldOperators<Value> & MongoQueryTopLevelOperators<Value>;
 
+interface CustomOperators {
+  toplevel?: {}
+  field?: {}
+}
+
 type ItemOf<T, AdditionalArrayTypes = never> = T extends any[] ? T[number] | AdditionalArrayTypes : T;
-export type MongoQuery<T = Record<PropertyKey, any>> = T extends Record<PropertyKey, any>
-  ? {
-      [K in keyof T]?: null | Partial<ItemOf<T[K], T[K] | []>> | MongoQueryFieldOperators<ItemOf<T[K]>>
-    } & MongoQueryTopLevelOperators<T>
-  : MongoQueryOperators<T>;
+
+export type MongoQuery<T = Record<PropertyKey, any>, O extends CustomOperators = CustomOperators> =
+  T extends Record<PropertyKey, any>
+    ? {
+        [K in keyof T]?: null | Partial<ItemOf<T[K], T[K] | []>> | MongoQueryFieldOperators<ItemOf<T[K]>> | O['field']
+      } & MongoQueryTopLevelOperators<T> & O['toplevel']
+    : MongoQueryOperators<T> & O['field'] & O['toplevel'];

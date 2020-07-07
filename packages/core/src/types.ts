@@ -14,8 +14,8 @@ export interface CompoundInstruction<T = unknown, C extends {} = {}> extends Par
   type: 'compound',
 }
 
-export interface ValueInstruction<T = unknown, C extends {} = {}> extends ParsingInstruction<T, C> {
-  type: 'value',
+export interface DocumentInstruction<T = unknown, C extends {} = {}> extends ParsingInstruction<T, C> {
+  type: 'document',
 }
 
 export interface FieldParsingContext {

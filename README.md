@@ -1,5 +1,8 @@
 # UCAST - Universal Conditions AST
 
+![build](https://github.com/stalniy/ucast/workflows/CI/badge.svg)
+[![CASL codecov](https://codecov.io/gh/stalniy/ucast/branch/master/graph/badge.svg)](https://codecov.io/gh/stalniy/ucast)
+
 `ucast` is a low level library that helps to create awesome things! It aims to be a universal way to represent a set of conditions that can be transferred between APIs and databases.
 
 ## Terms
@@ -8,7 +11,7 @@ To get introduction about what is parser, interpreter, conditions AST and transl
 
 ## What can I do with it?
 
-1. You can translate an HTTP request query string into SQL, Mongo, Casandra or anything you can imagine.
+1. You can translate an HTTP request query string into SQL, Mongo, ElasticSearch or anything you can imagine.
 2. You can execute MongoDB query in javascript runtime
 3. You can create an expressive query builder for SQL
 

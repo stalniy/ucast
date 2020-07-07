@@ -1,5 +1,8 @@
 # Universal Conditions AST
 
+[![@ucast/core NPM version](https://badge.fury.io/js/%40ucast%2Fcore.svg)](https://badge.fury.io/js/%40ucast%2Fcore)
+[![](https://img.shields.io/npm/dm/%40ucast%2Fcore.svg)](https://www.npmjs.com/package/%40ucast%2Fcore)
+
 This package contains classes and functions that helps to create parsers, conditions AST, interpreters and translators.
 
 ## Installation
@@ -24,7 +27,7 @@ Abstract Syntax Tree of any condition. What is condition? `x > 4` is a condition
 
 There are 2 types of conditions:
 
-* **ValueCondition**. Any condition that does not depend on field (e.g., in Mongo Query it's `$where` operator and in SQL it's `EXISTS`)
+* **DocumentCondition**. Any condition that does not depend on field (e.g., in Mongo Query it's `$where` operator and in SQL it's `EXISTS`). In other words, operates on document or row level.
 * **FieldCondition**. Depends on a field and its value. For example, in condition `x > 4`, `x` is a field, `4` is a value and `>` is operator
 * **CompoundCondition**. Combines other conditions using logical operations like "and", "or", "not".
 

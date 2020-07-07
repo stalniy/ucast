@@ -1,10 +1,29 @@
-import { CompoundCondition, FieldCondition, NamedInstruction, CompoundInstruction, FieldInstruction, ValueInstruction, Comparable, ITSELF, FieldParsingContext } from '@ucast/core';
-import { tryToSimplifyCompoundCondition } from './MongoQueryParser';
+import {
+  CompoundCondition,
+  FieldCondition,
+  NamedInstruction,
+  CompoundInstruction,
+  FieldInstruction,
+  DocumentInstruction,
+  Comparable,
+  ITSELF,
+  NULL_CONDITION,
+  FieldParsingContext
+} from '@ucast/core';
+import { tryToSimplifyCompoundCondition, hasOperators } from './utils';
 import { MongoQuery } from './types';
 
 function ensureIsArray(instruction: NamedInstruction, value: unknown) {
   if (!Array.isArray(value)) {
     throw new Error(`"${instruction.name}" expects value to be an array`);
+  }
+}
+
+function ensureIsNonEmptyArray(instruction: NamedInstruction, value: unknown[]) {
+  ensureIsArray(instruction, value);
+
+  if (!value.length) {
+    throw new Error(`"${instruction.name}" expects to have at least one element in array`);
   }
 }
 
@@ -24,7 +43,7 @@ const ensureIs = (type: string) => (instruction: NamedInstruction, value: unknow
 
 export const $and: CompoundInstruction<MongoQuery<any>[]> = {
   type: 'compound',
-  validate: ensureIsArray,
+  validate: ensureIsNonEmptyArray,
   parse(instruction, queries, { parse }) {
     const conditions = queries.map(query => parse(query));
     return tryToSimplifyCompoundCondition(instruction.name, conditions);
@@ -33,13 +52,15 @@ export const $and: CompoundInstruction<MongoQuery<any>[]> = {
 export const $or = $and;
 export const $nor: CompoundInstruction<MongoQuery<any>[]> = {
   type: 'compound',
-  validate: ensureIsArray,
+  validate: ensureIsNonEmptyArray,
 };
 
 export const $not: FieldInstruction<MongoQuery<any> | RegExp> = {
   type: 'field',
   validate(instruction, value) {
-    if (!value || !(value instanceof RegExp) || typeof value !== 'object' || Array.isArray(value)) {
+    const isValid = value && (value instanceof RegExp || value.constructor === Object);
+
+    if (!isValid) {
       throw new Error(`"${instruction.name}" expects to receive either regular expression or object of field operators`);
     }
   },
@@ -53,10 +74,13 @@ export const $not: FieldInstruction<MongoQuery<any> | RegExp> = {
 };
 export const $elemMatch: FieldInstruction<MongoQuery<any>> = {
   type: 'field',
+  validate(instruction, value) {
+    if (!value || value.constructor !== Object) {
+      throw new Error(`"${instruction.name}" expects to receive an object with nested query or field level operators`);
+    }
+  },
   parse(instruction, value, { parse, field }) {
-    const isValueBased = Object.keys(value).every(key => key[0] === '$');
-    const condition = isValueBased ? parse(value, { field: ITSELF }) : parse(value);
-
+    const condition = hasOperators(value) ? parse(value, { field: ITSELF }) : parse(value);
     return new FieldCondition(instruction.name, field, condition);
   }
 };
@@ -74,7 +98,7 @@ export const $mod: FieldInstruction<[number, number]> = {
   type: 'field',
   validate(instruction, value) {
     if (!Array.isArray(value) || value.length !== 2) {
-      throw new Error(`"${instruction.name}" expects and array with 2 elements`);
+      throw new Error(`"${instruction.name}" expects an array with 2 numeric elements`);
     }
   }
 };
@@ -96,10 +120,6 @@ export const $eq: FieldInstruction = {
   type: 'field',
 };
 export const $ne = $eq;
-export const $type: FieldInstruction<string> = {
-  type: 'field',
-  validate: ensureIs('string'),
-}
 
 interface RegExpFieldContext extends FieldParsingContext {
   query: {
@@ -121,8 +141,12 @@ export const $regex: FieldInstruction<string | RegExp, RegExpFieldContext> = {
     return new FieldCondition(instruction.name, context.field, value);
   }
 }
-export const $options: FieldInstruction = $eq;
-export const $where: ValueInstruction<() => boolean> = {
-  type: 'value',
+export const $options: FieldInstruction = {
+  type: 'field',
+  parse: () => NULL_CONDITION,
+};
+
+export const $where: DocumentInstruction<() => boolean> = {
+  type: 'document',
   validate: ensureIs('function'),
 };

@@ -1,33 +1,19 @@
-import { Condition, FieldCondition, CompoundCondition, ValueCondition, NamedInstruction, ParsingInstruction, ValueInstruction, CompoundInstruction, FieldInstruction, Named } from '@ucast/core';
-import { MongoQuery, MongoQueryFieldOperators, MongoQueryOperators } from './types';
-
-function isCompound(operator: string, condition: Condition): condition is CompoundCondition {
-  return condition instanceof CompoundCondition && condition.operator === operator;
-}
-
-export function tryToSimplifyCompoundCondition(operator: string, conditions: Condition[]): Condition {
-  if (conditions.length === 1) {
-    return conditions[0];
-  }
-
-  const firstNode = conditions[0];
-
-  if (isCompound(operator, firstNode)) {
-    for (let i = 1, length = conditions.length; i < length; i++) {
-      const currentNode = conditions[i];
-
-      if (isCompound(operator, currentNode)) {
-        firstNode.add(currentNode.value);
-      } else {
-        firstNode.add(currentNode);
-      }
-    }
-
-    return firstNode;
-  }
-
-  return new CompoundCondition(operator, conditions);
-}
+import {
+  Condition,
+  FieldCondition,
+  CompoundCondition,
+  DocumentCondition,
+  NamedInstruction,
+  ParsingInstruction,
+  DocumentInstruction,
+  CompoundInstruction,
+  FieldInstruction,
+  FieldParsingContext,
+  Parse,
+  NULL_CONDITION
+} from '@ucast/core';
+import { MongoQuery, MongoQueryFieldOperators } from './types';
+import { isCompound, tryToSimplifyCompoundCondition, hasOperators } from './utils';
 
 function and(...conditions: Condition[]) {
   return tryToSimplifyCompoundCondition('$and', conditions);
@@ -36,19 +22,20 @@ function and(...conditions: Condition[]) {
 interface DefaultParsers {
   compound: Exclude<CompoundInstruction<MongoQuery[]>['parse'], undefined>,
   field: Exclude<FieldInstruction['parse'], undefined>,
-  value: Exclude<ValueInstruction['parse'], undefined>
+  document: Exclude<DocumentInstruction['parse'], undefined>
 }
 
 export const defaultParsers: DefaultParsers = {
-  compound(instruction, queries, context) {
+  compound(instruction, value, context) {
+    const queries = Array.isArray(value) ? value : [value];
     const conditions = queries.map(query => context.parse(query));
     return new CompoundCondition(instruction.name, conditions);
   },
   field(instruction, value, context) {
     return new FieldCondition(instruction.name, context.field, value);
   },
-  value(instruction, value) {
-    return new ValueCondition(instruction.name, value);
+  document(instruction, value) {
+    return new DocumentCondition(instruction.name, value);
   }
 }
 
@@ -58,8 +45,11 @@ export interface ParseOptions {
   field: string
 }
 
+type FieldInstructionContext = FieldParsingContext & { parse: Parse<any>, query: unknown };
+
 export class MongoQueryParser {
   private readonly _instructions: ParsingInstructions;
+  private _fieldInstructionContext: FieldInstructionContext;
 
   constructor(instructions: Record<string, ParsingInstruction>) {
     this._instructions = Object.keys(instructions).reduce((all, name) => {
@@ -67,6 +57,7 @@ export class MongoQueryParser {
       return all;
     }, {} as ParsingInstructions);
     this.parse = this.parse.bind(this);
+    this._fieldInstructionContext = { field: '',  query: {}, parse: this.parse };
   }
 
   private _parseField(field: string, operator: string, value: unknown, parentQuery: unknown): Condition {
@@ -76,8 +67,8 @@ export class MongoQueryParser {
       throw new Error(`Unsupported operator "${operator}"`);
     }
 
-    if (instruction.type === 'value') {
-      throw new Error(`Unexpected value "${operator}" at field level`);
+    if (instruction.type !== 'field') {
+      throw new Error(`Unexpected ${instruction.type} operator "${operator}" at field level`);
     }
 
     if (instruction.validate) {
@@ -85,20 +76,29 @@ export class MongoQueryParser {
     }
 
     const parse: Function = instruction.parse || defaultParsers.field;
-    return parse(instruction, value, { field, query: parentQuery, parse: this.parse });
+    this._fieldInstructionContext.field = field;
+    this._fieldInstructionContext.query = parentQuery;
+    return parse(instruction, value, this._fieldInstructionContext);
   }
 
   private _parseFieldOperators(field: string, value: MongoQueryFieldOperators) {
-    return Object.keys(value).map((op) => {
+    const conditions: Condition[] = [];
+    Object.keys(value).forEach((op) => {
       if (op[0] !== '$') {
         throw new Error(`Field query for "${field}" may contain only operators or a plain object as a value`);
       }
 
-      return this._parseField(field, op, value[op as keyof MongoQueryFieldOperators], value);
-    })
+      const condition = this._parseField(field, op, value[op as keyof MongoQueryFieldOperators], value);
+
+      if (condition !== NULL_CONDITION) {
+        conditions.push(condition);
+      }
+    });
+
+    return conditions;
   }
 
-  parse(rawQuery: MongoQuery<any>, options?: ParseOptions): Condition {
+  parse<T extends MongoQuery<any>>(rawQuery: T, options?: ParseOptions) {
     if (options && options.field) {
       return and(...this._parseFieldOperators(options.field, rawQuery as MongoQueryFieldOperators));
     }
@@ -114,7 +114,7 @@ export class MongoQueryParser {
         throw new Error(`Unsupported operator "${key}"`);
       }
 
-      if (isOperator && (instruction.type === 'value' || instruction.type === 'compound')) {
+      if (isOperator && (instruction.type === 'document' || instruction.type === 'compound')) {
         if (instruction.validate) {
           instruction.validate(instruction, value);
         }
@@ -135,24 +135,10 @@ export class MongoQueryParser {
       return and(rootCondition, this._parseField(key, '$eq', value, query));
     }, and());
 
-    if (mainCondition instanceof CompoundCondition && mainCondition.value.length === 1) {
+    if (isCompound('$and', mainCondition) && mainCondition.value.length === 1) {
       return mainCondition.value[0];
     }
 
     return mainCondition;
   }
-}
-
-function hasOperators(value: any): value is MongoQueryOperators {
-  if (value && value.constructor !== Object) {
-    return false;
-  }
-
-  for (const prop in value) {
-    if (prop[0] === '$') {
-      return true;
-    }
-  }
-
-  return false;
 }

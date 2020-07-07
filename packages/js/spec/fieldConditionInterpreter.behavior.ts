@@ -1,9 +1,11 @@
 import { expect, spy } from './specHelper';
 import { FieldCondition as Field, ITSELF } from '@ucast/core';
-import { createJsInterpreter, JsOperator } from '../src';
+import { createJsInterpreter, JsOperator, allInterpreters } from '../src';
 
-export function includeExamplesForFieldCondition(name: string, interpreter: JsOperator<any, any>, defaultValue: unknown = 1) {
-  const operators = { [name]: interpreter };
+type Operators = keyof typeof allInterpreters;
+
+export function includeExamplesForFieldCondition(name: Operators, defaultValue: unknown = 1) {
+  const operators = { [name]: allInterpreters[name] };
 
   it('uses "get" function from context to retrieve object value', () => {
     const condition = new Field(name, 'value', defaultValue);
@@ -16,8 +18,8 @@ export function includeExamplesForFieldCondition(name: string, interpreter: JsOp
   })
 }
 
-export function includeExamplesForEqualityInterpreter(name: string, interpreter: JsOperator<any, any>, defaultValue: unknown = []) {
-  const operators = { [name]: interpreter };
+export function includeExamplesForEqualityInterpreter(name: Operators, defaultValue: unknown = []) {
+  const operators = { [name]: allInterpreters[name] };
 
   it('uses "equal" function from context to check equality of values', () => {
     const condition = new Field(name, 'value', defaultValue);

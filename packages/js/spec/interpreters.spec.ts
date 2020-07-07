@@ -1,5 +1,5 @@
 import { expect, spy } from './specHelper';
-import { FieldCondition as Field, ITSELF, ValueCondition, CompoundCondition } from '@ucast/core';
+import { FieldCondition as Field, ITSELF, DocumentCondition, CompoundCondition } from '@ucast/core';
 import {
   $eq,
   $ne,
@@ -31,8 +31,8 @@ describe('Condition Interpreter', () => {
   describe('$eq', () => {
     const interpret = createJsInterpreter({ $eq });
 
-    includeExamplesForFieldCondition('$eq', $eq);
-    includeExamplesForEqualityInterpreter('$eq', $eq);
+    includeExamplesForFieldCondition('$eq');
+    includeExamplesForEqualityInterpreter('$eq');
 
     it('returns true if condition value is equal to field value of an object', () => {
       const condition = new Field('$eq', 'name', 'test');
@@ -75,8 +75,8 @@ describe('Condition Interpreter', () => {
   describe('$ne', () => {
     const interpret = createJsInterpreter({ $ne });
 
-    includeExamplesForFieldCondition('$ne', $ne);
-    includeExamplesForEqualityInterpreter('$ne', $ne);
+    includeExamplesForFieldCondition('$ne');
+    includeExamplesForEqualityInterpreter('$ne');
 
     it('returns true if condition value is NOT equal to field value of an object', () => {
       const condition = new Field('$ne', 'name', 'test');
@@ -95,7 +95,7 @@ describe('Condition Interpreter', () => {
   describe('$lte', () => {
     const interpret = createJsInterpreter({ $lte });
 
-    includeExamplesForFieldCondition('$lte', $lte);
+    includeExamplesForFieldCondition('$lte');
 
     it('checks that object value is less or equal to condition value', () => {
       const condition = new Field('$lte', 'age', 10);
@@ -118,7 +118,7 @@ describe('Condition Interpreter', () => {
   describe('$lt', () => {
     const interpret = createJsInterpreter({ $lt });
 
-    includeExamplesForFieldCondition('$lt', $lt);
+    includeExamplesForFieldCondition('$lt');
 
     it('checks that object value is less than condition value', () => {
       const condition = new Field('$lt', 'age', 10);
@@ -139,7 +139,7 @@ describe('Condition Interpreter', () => {
   describe('$gt', () => {
     const interpret = createJsInterpreter({ $gt });
 
-    includeExamplesForFieldCondition('$gt', $gt);
+    includeExamplesForFieldCondition('$gt');
 
     it('checks that object value is greater than condition value', () => {
       const condition = new Field('$gt', 'age', 10);
@@ -160,7 +160,7 @@ describe('Condition Interpreter', () => {
   describe('$gte', () => {
     const interpret = createJsInterpreter({ $gte });
 
-    includeExamplesForFieldCondition('$gte', $gte);
+    includeExamplesForFieldCondition('$gte');
 
     it('checks that object value is greater than condition value', () => {
       const condition = new Field('$gte', 'age', 10);
@@ -212,7 +212,7 @@ describe('Condition Interpreter', () => {
   describe('$mod', () => {
     const interpret = createJsInterpreter({ $mod });
 
-    includeExamplesForFieldCondition('$mod', $mod);
+    includeExamplesForFieldCondition('$mod');
 
     it('check that value of a field divided by a divisor has the specified remainder', () => {
       const condition = new Field('$mod', 'qty', [4, 0]);
@@ -241,7 +241,7 @@ describe('Condition Interpreter', () => {
   describe('$size', () => {
     const interpret = createJsInterpreter({ $size });
 
-    includeExamplesForFieldCondition('$size', $size);
+    includeExamplesForFieldCondition('$size');
 
     it('checks array length', () => {
       const condition = new Field('$size', 'items', 2);
@@ -269,7 +269,7 @@ describe('Condition Interpreter', () => {
   describe('$regex', () => {
     const interpret = createJsInterpreter({ $regex });
 
-    includeExamplesForFieldCondition('$regex', $regex, /@/);
+    includeExamplesForFieldCondition('$regex', /@/);
 
     it('checks value using regular expression', () => {
       const condition = new Field('$regex', 'email', /@/);
@@ -298,7 +298,7 @@ describe('Condition Interpreter', () => {
     const interpret = createJsInterpreter({ $where });
 
     it('returns true if corresponding function returns true', () => {
-      const condition = new ValueCondition('$where', () => true);
+      const condition = new DocumentCondition('$where', () => true);
 
       expect(interpret(condition, {})).to.be.true;
       expect(interpret(condition, null as unknown as Record<PropertyKey, unknown>)).to.be.true;
@@ -309,7 +309,7 @@ describe('Condition Interpreter', () => {
       const test = spy(function where(this: unknown) {
         return this === object;
       });
-      const condition = new ValueCondition('$where', test);
+      const condition = new DocumentCondition('$where', test);
 
       expect(interpret(condition, object)).to.be.true;
       expect(interpret(condition, {})).to.be.false;
@@ -319,7 +319,7 @@ describe('Condition Interpreter', () => {
   describe('$in', () => {
     const interpret = createJsInterpreter({ $in });
 
-    includeExamplesForFieldCondition('$in', $in, []);
+    includeExamplesForFieldCondition('$in', []);
 
     it('checks if value is in specified array', () => {
       const condition = new Field('$in', 'age', [1, 2]);
@@ -368,7 +368,7 @@ describe('Condition Interpreter', () => {
   describe('$nin', () => {
     const interpret = createJsInterpreter({ $nin });
 
-    includeExamplesForFieldCondition('$nin', $nin, []);
+    includeExamplesForFieldCondition('$nin', []);
 
     it('returns true if value is not in specified array', () => {
       const condition = new Field('$nin', 'age', [1, 2]);
@@ -382,7 +382,7 @@ describe('Condition Interpreter', () => {
   describe('$all', () => {
     const interpret = createJsInterpreter({ $all });
 
-    includeExamplesForFieldCondition('$all', $all, []);
+    includeExamplesForFieldCondition('$all', []);
 
     it('checks that all items from condition value are present at object field value', () => {
       const condition = new Field('$all', 'items', [1, 2]);
@@ -419,7 +419,7 @@ describe('Condition Interpreter', () => {
   describe('$elemMatch', () => {
     const interpret = createJsInterpreter({ $elemMatch, $and, $eq });
 
-    includeExamplesForFieldCondition('$elemMatch', $elemMatch, { a: 1 });
+    includeExamplesForFieldCondition('$elemMatch', { a: 1 });
 
     it('returns false if object field is not an array', () => {
       const condition = new Field('$elemMatch', 'items', new Field('$eq', 'age', 1));

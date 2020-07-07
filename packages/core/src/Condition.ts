@@ -3,7 +3,7 @@ export interface Condition {
   readonly value: unknown;
 }
 
-export class ValueCondition<T> implements Condition {
+export class DocumentCondition<T> implements Condition {
   public readonly operator!: string;
   public readonly value!: T;
 
@@ -13,25 +13,15 @@ export class ValueCondition<T> implements Condition {
   }
 }
 
-export class CompoundCondition extends ValueCondition<Condition[]> {
+export class CompoundCondition<T extends Condition = Condition> extends DocumentCondition<T[]> {
   public readonly operator!: string;
 
-  constructor(operator: string, conditions: Condition[]) {
+  constructor(operator: string, conditions: T[]) {
     if (!Array.isArray(conditions)) {
       throw new Error(`"${operator}" operator expects to receive an array of conditions`);
     }
 
     super(operator, conditions)
-  }
-
-  add(conditions: Condition | Condition[]) {
-    if (Array.isArray(conditions)) {
-      this.value.push(...conditions);
-    } else {
-      this.value.push(conditions);
-    }
-
-    return this;
   }
 }
 
@@ -47,3 +37,5 @@ export class FieldCondition<T = unknown> implements Condition {
     this.value = value;
   }
 }
+
+export const NULL_CONDITION = new DocumentCondition('__null__', null);

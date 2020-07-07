@@ -1,7 +1,7 @@
 import {
   CompoundCondition as Compound,
   FieldCondition as Field,
-  ValueCondition as Value,
+  DocumentCondition as Document,
   Condition,
   Comparable,
   ITSELF,
@@ -88,7 +88,7 @@ export const $in: JsOperator<Field<unknown[]>> = (node, object, { equal, get }) 
   const value = get(object, node.field);
 
   if (Array.isArray(value)) {
-    return node.value.some(expectedValue => includes(value, expectedValue, equal));
+    return node.value.some(item => includes(value, item, equal));
   }
 
   return includes(node.value, value, equal);
@@ -119,6 +119,6 @@ export const $elemMatch: JsOperator<Field<Condition>> = (node, object, { interpr
 }
 
 type WhereFunction = (this: AnyObject) => boolean;
-export const $where: JsOperator<Value<WhereFunction>, AnyObject> = (node, object) => {
+export const $where: JsOperator<Document<WhereFunction>, AnyObject> = (node, object) => {
   return node.value.call(object);
 };
