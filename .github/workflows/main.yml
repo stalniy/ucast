@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/main.yml
+      - packages/**/*.{js,ts,json}
+      - '*.{json,js}'
+      - .eslintrc
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 10 # 2020-04-01
+          - 12
+          - latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: pnpm/action-setup@v1.2.0
+      with:
+        version: 4.14.4
+    - name: Cache dependencies
+      uses: actions/cache@v2
+      env:
+        cache-name: ucast-deps
+      with:
+        path: ~/.pnpm-store
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('./pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+    - name: Install dependencies
+      run: pnpm install
+    - name: Build
+      run: pnpm run -r build
+    - name: lint & test
+      run: |
+        pnpm recursive run lint
+        WITH_COVERAGE=1 pnpm run -r coverage
+    # - name: submit coverage
+    #   env:
+    #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    #   run: ./packages/core/node_modules/.bin/codecov
