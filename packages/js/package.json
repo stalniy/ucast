@@ -13,7 +13,7 @@
     "build": "rollup -c ../../rollup.config.js -n ucast.js -g @ucast/core:ucast.core",
     "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register spec/*",
-    "coverage": "nyc -n src npm run test && nyc report --reporter=html"
+    "coverage": "nyc -n src npm run test && nyc report --reporter=lcov"
   },
   "repository": {
     "type": "git",

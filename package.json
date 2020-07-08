@@ -15,7 +15,7 @@
     ]
   },
   "scripts": {
-    "coverage.submit": "codecov"
+    "coverage.submit": "codecov --disable=gcov"
   },
   "repository": {
     "type": "git",
