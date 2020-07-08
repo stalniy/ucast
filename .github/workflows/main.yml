@@ -43,9 +43,9 @@ jobs:
       run: pnpm run -r build
     - name: lint & test
       run: |
-        pnpm recursive run lint
-        WITH_COVERAGE=1 pnpm run -r coverage
-    # - name: submit coverage
-    #   env:
-    #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    #   run: ./packages/core/node_modules/.bin/codecov
+        pnpm run -r lint
+        pnpm run -r coverage
+    - name: submit coverage
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      run: pnpm run coverage.submit

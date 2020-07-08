@@ -15,7 +15,7 @@
     ]
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "coverage.submit": "codecov"
   },
   "repository": {
     "type": "git",

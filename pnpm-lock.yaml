@@ -70,7 +70,6 @@ importers:
       babel-register: 6.26.0
       chai: 4.2.0
       chai-spies: 1.0.0_chai@4.2.0
-      codecov: 3.7.0
       eslint: 7.4.0
       eslint-config-airbnb-base: 14.2.0_c68bb5016e109f58285db45d8cc55073
       eslint-config-airbnb-typescript: 8.0.2_1598c57ccfe090fa114b5434ef21ec18
@@ -96,7 +95,6 @@ importers:
       babel-register: ^6.26.0
       chai: ^4.2.0
       chai-spies: ^1.0.0
-      codecov: ^3.7.0
       eslint: ^7.4.0
       eslint-config-airbnb-base: ^14.2.0
       eslint-config-airbnb-typescript: ^8.0.2
@@ -124,7 +122,6 @@ importers:
       '@typescript-eslint/eslint-plugin': 3.6.0_eslint@7.4.0+typescript@3.9.5
       chai: 4.2.0
       chai-spies: 1.0.0_chai@4.2.0
-      codecov: 3.7.0
       eslint: 7.4.0
       eslint-config-airbnb-base: 14.2.0_c68bb5016e109f58285db45d8cc55073
       eslint-config-airbnb-typescript: 8.0.2_f4d57675adba73054c1719daec7cb7ce
@@ -150,7 +147,6 @@ importers:
       '@ucast/core': ^0.0.1
       chai: ^4.2.0
       chai-spies: ^1.0.0
-      codecov: ^3.7.0
       eslint: ^7.4.0
       eslint-config-airbnb-base: ^14.2.0
       eslint-config-airbnb-typescript: ^8.0.2
@@ -178,7 +174,6 @@ importers:
       '@typescript-eslint/eslint-plugin': 3.6.0_eslint@7.4.0+typescript@3.9.5
       chai: 4.2.0
       chai-spies: 1.0.0_chai@4.2.0
-      codecov: 3.7.0
       eslint: 7.4.0
       eslint-config-airbnb-base: 14.2.0_c68bb5016e109f58285db45d8cc55073
       eslint-config-airbnb-typescript: 8.0.2_f4d57675adba73054c1719daec7cb7ce
@@ -204,7 +199,6 @@ importers:
       '@ucast/core': ^0.0.1
       chai: ^4.2.0
       chai-spies: ^1.0.0
-      codecov: ^3.7.0
       eslint: ^7.4.0
       eslint-config-airbnb-base: ^14.2.0
       eslint-config-airbnb-typescript: ^8.0.2
@@ -239,7 +233,6 @@ importers:
       '@typescript-eslint/eslint-plugin': 3.6.0_eslint@7.4.0+typescript@3.9.5
       chai: 4.2.0
       chai-spies: 1.0.0_chai@4.2.0
-      codecov: 3.7.0
       eslint: 7.4.0
       eslint-config-airbnb-base: 14.2.0_c68bb5016e109f58285db45d8cc55073
       eslint-config-airbnb-typescript: 8.0.2_f4d57675adba73054c1719daec7cb7ce
@@ -268,7 +261,6 @@ importers:
       ajv: ^6.12.3
       chai: ^4.2.0
       chai-spies: ^1.0.0
-      codecov: ^3.7.0
       eslint: ^7.4.0
       eslint-config-airbnb-base: ^14.2.0
       eslint-config-airbnb-typescript: ^8.0.2
@@ -2532,14 +2524,14 @@ packages:
       node: '>= 6.0.0'
     resolution:
       integrity: sha512-TMeqbNl2fMW0nMjTEPOwe3J/PRFP4vqeoNuQMG0HlMrtm5QxKqdvAkZ1pRBQ/ulIyDD5Yq0nJ7YbdD8ey0TO3g==
-  /agent-base/6.0.0:
+  /agent-base/6.0.1:
     dependencies:
       debug: 4.1.1
     dev: true
     engines:
       node: '>= 6.0.0'
     resolution:
-      integrity: sha512-j1Q7cSCqN+AwrmDd+pzgqc0/NpC655x2bUf5ZjRIO77DcNBFmh+OgRNzF6OKdCC9RSCb19fGd99+bhXFdkRNqw==
+      integrity: sha512-01q25QQDwLSsyfhrKbn8yuur+JNw0H+0Y4JiGIKd3z9aYk/w/2kxD/Upc+t2ZBBSUNff50VjPsSW2YxM8QYKVg==
   /aggregate-error/3.0.1:
     dependencies:
       clean-stack: 2.2.0
@@ -4077,7 +4069,7 @@ packages:
   /http-proxy-agent/4.0.1:
     dependencies:
       '@tootallnate/once': 1.1.2
-      agent-base: 6.0.0
+      agent-base: 6.0.1
       debug: 4.1.1
     dev: true
     engines:
