@@ -5,6 +5,7 @@ export interface Condition {
 
 export class DocumentCondition<T> implements Condition {
   public readonly operator!: string;
+
   public readonly value!: T;
 
   constructor(operator: string, value: T) {
@@ -21,14 +22,16 @@ export class CompoundCondition<T extends Condition = Condition> extends Document
       throw new Error(`"${operator}" operator expects to receive an array of conditions`);
     }
 
-    super(operator, conditions)
+    super(operator, conditions);
   }
 }
 
 export const ITSELF = '__itself__';
 export class FieldCondition<T = unknown> implements Condition {
   public readonly operator!: string;
+
   public readonly field!: string | typeof ITSELF;
+
   public readonly value!: T;
 
   constructor(operator: string, field: string | typeof ITSELF, value: T) {

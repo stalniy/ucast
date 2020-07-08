@@ -1,0 +1,63 @@
+{
+  "root": true,
+  "ignorePatterns": [
+    "*.d.ts"
+  ],
+  "extends": [
+    "airbnb-typescript/base"
+  ],
+  "parserOptions": {
+    "project": "tsconfig.eslint.json"
+  },
+  "rules": {
+    "max-len": ["error", {
+      "code": 100,
+      "ignoreComments": true,
+      "ignoreStrings": true,
+      "ignoreTemplateLiterals": true
+    }],
+    "no-dupe-class-members": "off",
+    "lines-between-class-members": "off",
+    "prefer-destructuring": "off",
+    "import/prefer-default-export": "off",
+    "no-plusplus": "off",
+    "comma-dangle": "off",
+    "no-underscore-dangle": "off",
+    "no-param-reassign": ["error", { "props": false }],
+    "no-mixed-operators": "off",
+    "no-prototype-builtins": "off",
+    "no-confusing-arrow": "off",
+    "no-bitwise": ["error", { "allow": ["^"] }],
+    "no-return-assign": 1,
+    "arrow-body-style": 1,
+    "prefer-spread": "off",
+    "max-classes-per-file": "off",
+    "arrow-parens": ["error", "as-needed", {
+      "requireForBlockBody": true
+    }],
+    "object-curly-newline": ["error", {
+      "ObjectPattern": "never"
+    }],
+    "import/no-extraneous-dependencies": ["error", {
+      "devDependencies": [
+        "rollup.config.js"
+      ]
+    }]
+  },
+  "overrides": [
+    {
+      "files": [
+        "packages/*/spec/**/*.{js,ts}"
+      ],
+      "env": {
+        "mocha": true
+      },
+      "rules": {
+        "@typescript-eslint/semi": ["error", "never"],
+        "@typescript-eslint/no-use-before-define": "off",
+        "@typescript-eslint/no-unused-expressions": "off",
+        "import/no-extraneous-dependencies": "off"
+      }
+    }
+  ]
+}

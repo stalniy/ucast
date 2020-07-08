@@ -11,6 +11,7 @@
     "build.types": "tsc",
     "prebuild": "rm -rf dist/* && npm run build.types",
     "build": "rollup -c ../../rollup.config.js -n ucast.js -g @ucast/core:ucast.core",
+    "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=html"
   },
@@ -19,10 +20,11 @@
     "url": "git+https://github.com/stalniy/ucast.git"
   },
   "keywords": [
+    "ast",
+    "interpreter",
     "conditions",
     "query",
-    "builder",
-    "ast"
+    "builder"
   ],
   "author": "Sergii Stotskyi <sergiy.stotskiy@freaksidea.com>",
   "license": "MIT",
@@ -41,14 +43,14 @@
     "@types/chai": "^4.2.11",
     "@types/chai-spies": "^1.0.1",
     "@types/mocha": "^7.0.2",
-    "@typescript-eslint/eslint-plugin": "^3.2.0",
+    "@typescript-eslint/eslint-plugin": "^3.6.0",
     "chai": "^4.2.0",
     "chai-spies": "^1.0.0",
     "codecov": "^3.7.0",
-    "eslint": "^7.2.0",
+    "eslint": "^7.4.0",
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-config-airbnb-typescript": "^8.0.2",
-    "eslint-plugin-import": "^2.21.2",
+    "eslint-plugin-import": "^2.22.0",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
     "rollup": "^2.15.0",
