@@ -1,4 +1,4 @@
-import { JsInterpretationOptions } from './interpreter';
+import { JsInterpretationOptions } from './types';
 
 export type AnyObject = Record<PropertyKey, unknown>;
 export type GetField = (object: any, field: string) => any;
@@ -12,7 +12,6 @@ export function includes<T>(items: T[], value: T, equal: JsInterpretationOptions
 
   return false;
 }
-
 
 function getField<T extends AnyObject>(object: T | T[], field: string, get: GetField) {
   return Array.isArray(object) ? object.map(item => get(item, field)) : get(object, field);

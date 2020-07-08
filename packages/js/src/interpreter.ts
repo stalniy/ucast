@@ -1,9 +1,11 @@
-import { Condition, createInterpreter, ITSELF, InterpretationContext } from '@ucast/core'
+import { Condition, createInterpreter, ITSELF, InterpretationContext } from '@ucast/core';
 import { getValueByPath, AnyObject, GetField } from './utils';
+import { JsInterpretationOptions } from './types';
 
 const defaultGet = (object: AnyObject, field: string) => object[field];
+type Field = string | typeof ITSELF;
 
-export function getObjectField(object: any, field: string | typeof ITSELF, get: GetField = defaultGet) {
+export function getObjectField(object: unknown, field: Field, get: GetField = defaultGet) {
   if (field === ITSELF) {
     return object;
   }
@@ -12,7 +14,7 @@ export function getObjectField(object: any, field: string | typeof ITSELF, get: 
     throw new Error(`Unable to get field "${field}" out of ${String(object)}.`);
   }
 
-  return getValueByPath(object, field, get);
+  return getValueByPath(object as Record<string, unknown>, field, get);
 }
 
 export function createGetter<T extends GetField>(get: T) {
@@ -21,19 +23,14 @@ export function createGetter<T extends GetField>(get: T) {
 
 export const equal = <T>(a: T, b: T) => a === b;
 
-export interface JsInterpretationOptions {
-  get(object: any, field: string | typeof ITSELF): any
-  equal<T>(a: T, b: T): boolean
-}
-
-export type JsOperator<N extends Condition, Value = any> = (
+export type JsInterpreter<N extends Condition, Value = any> = (
   node: N,
   value: Value,
-  context: InterpretationContext<JsOperator<N, Value>> & JsInterpretationOptions
+  context: InterpretationContext<JsInterpreter<N, Value>> & JsInterpretationOptions
 ) => boolean;
 
 export function createJsInterpreter<
-  T extends JsOperator<any>,
+  T extends JsInterpreter<any>,
   O extends Partial<JsInterpretationOptions>
 >(
   operators: Record<string, T>,

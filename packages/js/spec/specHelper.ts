@@ -1,7 +1,7 @@
-import chai from 'chai';
-import spies from 'chai-spies';
+import chai from 'chai'
+import spies from 'chai-spies'
 
-chai.use(spies);
+chai.use(spies)
 
-export const expect = chai.expect;
-export const spy = chai.spy;
+export const expect = chai.expect
+export const spy = chai.spy

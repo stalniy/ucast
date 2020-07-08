@@ -29,7 +29,7 @@
     "no-confusing-arrow": "off",
     "no-bitwise": ["error", { "allow": ["^"] }],
     "no-return-assign": 1,
-    "arrow-body-style": 1,
+    "arrow-body-style": "off",
     "prefer-spread": "off",
     "max-classes-per-file": "off",
     "arrow-parens": ["error", "as-needed", {
