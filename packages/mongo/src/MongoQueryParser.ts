@@ -9,7 +9,7 @@ import {
   CompoundInstruction,
   FieldInstruction,
   FieldParsingContext,
-  Parse,
+  ParsingContext,
   NULL_CONDITION
 } from '@ucast/core';
 import { MongoQuery, MongoQueryFieldOperators } from './types';
@@ -37,15 +37,16 @@ export const defaultParsers: DefaultParsers = {
   document(instruction, value) {
     return new DocumentCondition(instruction.name, value);
   }
-}
+};
 
+type FieldOperatorName = keyof MongoQueryFieldOperators;
 type ParsingInstructions = Record<string, NamedInstruction>;
 
 export interface ParseOptions {
   field: string
 }
 
-type FieldInstructionContext = FieldParsingContext & { parse: Parse<any>, query: unknown };
+type FieldInstructionContext = ParsingContext<FieldParsingContext & { query: unknown }>;
 
 export class MongoQueryParser {
   private readonly _instructions: ParsingInstructions;
@@ -57,11 +58,16 @@ export class MongoQueryParser {
       return all;
     }, {} as ParsingInstructions);
     this.parse = this.parse.bind(this);
-    this._fieldInstructionContext = { field: '',  query: {}, parse: this.parse };
+    this._fieldInstructionContext = { field: '', query: {}, parse: this.parse };
   }
 
-  private _parseField(field: string, operator: string, value: unknown, parentQuery: unknown): Condition {
-    const instruction = this._instructions[operator]
+  private _parseField(
+    field: string,
+    operator: string,
+    value: unknown,
+    parentQuery: unknown
+  ): Condition {
+    const instruction = this._instructions[operator];
 
     if (!instruction) {
       throw new Error(`Unsupported operator "${operator}"`);
@@ -88,7 +94,7 @@ export class MongoQueryParser {
         throw new Error(`Field query for "${field}" may contain only operators or a plain object as a value`);
       }
 
-      const condition = this._parseField(field, op, value[op as keyof MongoQueryFieldOperators], value);
+      const condition = this._parseField(field, op, value[op as FieldOperatorName], value);
 
       if (condition !== NULL_CONDITION) {
         conditions.push(condition);
@@ -119,7 +125,8 @@ export class MongoQueryParser {
           instruction.validate(instruction, value);
         }
 
-        const parse: typeof instruction.parse = instruction.parse || defaultParsers[instruction.type];
+        type Parse = typeof instruction.parse;
+        const parse: Parse = instruction.parse || defaultParsers[instruction.type];
         const condition = parse(instruction, value, defaultContext);
         return and(rootCondition, condition);
       }

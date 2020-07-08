@@ -36,7 +36,7 @@ function ensureIsComparable(instruction: NamedInstruction, value: string | numbe
 }
 
 const ensureIs = (type: string) => (instruction: NamedInstruction, value: unknown) => {
-  if (typeof value !== type) {
+  if (typeof value !== type) { // eslint-disable-line valid-typeof
     throw new Error(`"${instruction.name}" expects value to be a "${type}"`);
   }
 };
@@ -92,7 +92,7 @@ export const $size: FieldInstruction<number> = {
 export const $in: FieldInstruction<unknown[]> = {
   type: 'field',
   validate: ensureIsArray,
-}
+};
 export const $nin = $in;
 export const $mod: FieldInstruction<[number, number]> = {
   type: 'field',
@@ -106,12 +106,12 @@ export const $mod: FieldInstruction<[number, number]> = {
 export const $exists: FieldInstruction<boolean> = {
   type: 'field',
   validate: ensureIs('boolean'),
-}
+};
 
 export const $gte: FieldInstruction<Comparable> = {
   type: 'field',
   validate: ensureIsComparable
-}
+};
 export const $gt = $gte;
 export const $lt = $gt;
 export const $lte = $gt;
@@ -140,7 +140,7 @@ export const $regex: FieldInstruction<string | RegExp, RegExpFieldContext> = {
       : rawValue;
     return new FieldCondition(instruction.name, context.field, value);
   }
-}
+};
 export const $options: FieldInstruction = {
   type: 'field',
   parse: () => NULL_CONDITION,

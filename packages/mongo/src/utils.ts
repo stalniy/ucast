@@ -6,7 +6,7 @@ export function hasOperators(value: any): value is MongoQueryOperators {
     return false;
   }
 
-  for (const prop in value) {
+  for (const prop in value) { // eslint-disable-line no-restricted-syntax
     if (value.hasOwnProperty(prop) && prop[0] === '$') {
       return true;
     }
@@ -19,7 +19,10 @@ export function isCompound(operator: string, condition: Condition): condition is
   return condition instanceof CompoundCondition && condition.operator === operator;
 }
 
-export function tryToSimplifyCompoundCondition<T extends Condition>(operator: string, conditions: T[]) {
+export function tryToSimplifyCompoundCondition<T extends Condition>(
+  operator: string,
+  conditions: T[]
+) {
   if (conditions.length === 1) {
     return conditions[0];
   }

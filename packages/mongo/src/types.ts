@@ -21,20 +21,25 @@ export interface MongoQueryFieldOperators<Value = any> {
   $elemMatch?: MongoQuery<Value>,
   $exists?: boolean,
   $not?: Omit<MongoQueryFieldOperators<Value>, '$not'>,
-};
+}
 
-export type MongoQueryOperators<Value = any> = MongoQueryFieldOperators<Value> & MongoQueryTopLevelOperators<Value>;
+export type MongoQueryOperators<Value = any> =
+  MongoQueryFieldOperators<Value> & MongoQueryTopLevelOperators<Value>;
 
 interface CustomOperators {
   toplevel?: {}
   field?: {}
 }
 
-type ItemOf<T, AdditionalArrayTypes = never> = T extends any[] ? T[number] | AdditionalArrayTypes : T;
+type ItemOf<T, AdditionalArrayTypes = never> = T extends any[]
+  ? T[number] | AdditionalArrayTypes
+  : T;
+type OperatorValues<T> = null | Partial<ItemOf<T, T | []>> | MongoQueryFieldOperators<ItemOf<T>>;
+type Query<T extends Record<PropertyKey, any>, FieldOperators> = {
+  [K in keyof T]?: OperatorValues<T[K]> | FieldOperators
+};
 
 export type MongoQuery<T = Record<PropertyKey, any>, O extends CustomOperators = CustomOperators> =
   T extends Record<PropertyKey, any>
-    ? {
-        [K in keyof T]?: null | Partial<ItemOf<T[K], T[K] | []>> | MongoQueryFieldOperators<ItemOf<T[K]>> | O['field']
-      } & MongoQueryTopLevelOperators<T> & O['toplevel']
+    ? Query<T, O['field']> & MongoQueryTopLevelOperators<T> & O['toplevel']
     : MongoQueryOperators<T> & O['field'] & O['toplevel'];
