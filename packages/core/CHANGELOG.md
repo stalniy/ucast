@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.0.0...@ucast/core@1.0.1) (2020-07-10)
+
+
+### Bug Fixes
+
+* **release:** adds build, test and lint prerelease step ([683a532](https://github.com/stalniy/ucast/commit/683a5327b6adb10fcd640ee60fc9479d7036cafc))
+
 # 1.0.0 (2020-07-10)
 
 
