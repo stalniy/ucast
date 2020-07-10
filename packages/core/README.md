@@ -2,6 +2,7 @@
 
 [![@ucast/core NPM version](https://badge.fury.io/js/%40ucast%2Fcore.svg)](https://badge.fury.io/js/%40ucast%2Fcore)
 [![](https://img.shields.io/npm/dm/%40ucast%2Fcore.svg)](https://www.npmjs.com/package/%40ucast%2Fcore)
+[![UCAST join the chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/stalniy-ucast/community)
 
 This package contains classes and functions that helps to create parsers, conditions AST, interpreters and translators.
 

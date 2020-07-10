@@ -2,6 +2,7 @@
 
 [![@ucast/mongo NPM version](https://badge.fury.io/js/%40ucast%2Fmongo.svg)](https://badge.fury.io/js/%40ucast%2Fmongo)
 [![](https://img.shields.io/npm/dm/%40ucast%2Fmongo.svg)](https://www.npmjs.com/package/%40ucast%2Fmongo)
+[![UCAST join the chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/stalniy-ucast/community)
 
 This package is a part of [ucast] ecosystem. It provides a parser that can parse [MongoDB query](https://docs.mongodb.com/manual/reference/operator/query/) into conditions AST.
 
