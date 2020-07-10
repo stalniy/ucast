@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.0.0...@ucast/mongo@1.0.1) (2020-07-10)
+
+
+### Bug Fixes
+
+* **package:** fixes deps ranges ([c2de9c1](https://github.com/stalniy/ucast/commit/c2de9c1b2d6ad85050f4eeb2635c6cb377200013)), closes [#1](https://github.com/stalniy/ucast/issues/1)
+
 # 1.0.0 (2020-07-10)
 
 
