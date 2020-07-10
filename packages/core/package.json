@@ -14,8 +14,17 @@
     "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
+    "prerelease": "npm run lint && npm test && npm run build",
     "release": "semantic-release -e ../../semantic-release.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "NOTICE",
+    "*.d.ts"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/stalniy/ucast.git"
@@ -65,10 +74,5 @@
     "semantic-release": "^17.1.1",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.5"
-  },
-  "files": [
-    "dist",
-    "NOTICE",
-    "*.d.ts"
-  ]
+  }
 }
