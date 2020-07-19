@@ -3,25 +3,30 @@ import {
   Condition,
   InterpretationContext
 } from '@ucast/core';
-import { Model as ObjectionModel, QueryBuilder, QueryBuilderType } from 'objection';
+import { Model as ObjectionModel, QueryBuilder, QueryBuilderType, Relations } from 'objection';
 
 type QueryBuilderMethod = keyof QueryBuilder<ObjectionModel> & 'where' | 'orWhere' | 'whereNot';
 
 export class Query {
   public query: QueryBuilder<ObjectionModel>;
   private _method: QueryBuilderMethod;
+  private _relations: Relations;
 
   constructor(query: QueryBuilder<ObjectionModel>, method: QueryBuilderMethod = 'where') {
     this.query = query;
     this._method = method;
+    this._relations = query.modelClass().getRelations();
   }
 
   where(field: string, operator: string, value: any) {
     const possibleMethod = this._method + operator as QueryBuilderMethod;
 
-    // TODO: implement joins if field has dot inside
-    //       otherwise add where condition over JSON field if field is of JSON data type
-
+    if (field.includes('.')) {
+      const [joinTable] = field.split('.');
+      if (this._relations[joinTable]) {
+        this.query.joinRelation(joinTable);
+      }
+    }
     if (typeof this.query[possibleMethod] === 'function') {
       this.query[possibleMethod](field, value);
     } else {

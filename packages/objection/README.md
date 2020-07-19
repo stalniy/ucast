@@ -3,7 +3,7 @@
 [![@ucast/objection NPM version](https://badge.fury.io/js/%40ucast%2Fobjection.svg)](https://badge.fury.io/js/%40ucast%2Fobjection)
 [![](https://img.shields.io/npm/dm/%40ucast%2Fobjection.svg)](https://www.npmjs.com/package/%40ucast%2Fobjection)
 
-This package is a part of [ucast] ecosystem. It provides a parser that can parse [Objection query](https://docs.mongodb.com/manual/reference/operator/query/) into conditions AST.
+This package is a part of [ucast] ecosystem. It provides a parser that can parse [Objection query](https://vincit.github.io/objection.js/api/query-builder/) into conditions AST.
 
 [ucast]: https://github.com/stalniy/ucast
 
@@ -19,110 +19,49 @@ pnpm add @ucast/objection
 
 ## Getting Started
 
-To parse MongoDB query into conditions AST, you need to create a `MongoQueryParser` instance:
+### Interpret conditions AST
+
+First of all, you need AST to interpret it. For the sake of an example, we will create it manually:
 
 ```js
-import { MongoQueryParser, allParsingInstructions } from '@ucast/objection';
+import { CompoundCondition, FieldCondition } from '@ucast/core';
+import { interpret } from '@ucast/objection';
+import { Model } from 'objection';
 
-const parser = new MongoQueryParser(allParsingInstructions);
-const ast = parser.parse({
-  id: 1,
-  active: true
-});
+class User extends Model {
+  static tableName = 'users'
+}
+
+// x > 5 && y < 10
+const condition = new CompoundCondition('$and', [
+  new FieldCondition('$gt', 'x', 5),
+  new FieldCondition('$lt', 'y', 10),
+]);
+
+interpret(condition, User.query()); // select users.* from users where x > 5 and y < 10
 ```
 
-To create a parser you need to pass in it parsing instruction. Parsing instruction is an object that defines how a particular operator should be parsed. There are 3 types of `ParsingInstruction`, one for each `Condition`:
+**Pay attention**, all operators has `$` prefix. This was done to make sure that names of operators doesn't intersects with JavaScript reversed words (e.g., `in`). This also helps to support tree shaking (so, it's possible to `export const $in = ...`);
 
-* `FieldInstruction`\
-  It represents an instruction for an operator which operates in a field context only. For example, operators `$eq`, `$lt`, `$not`, `$regex`
-* `CompoundInstruction`\
-  It represents an instruction for an operator which operates in a document context and contains nested queries. For example, operators `$and`, `$or`, `$nor`
-* `ValueInstruction`\
-  It represents an instruction for an operator which operates in a document context only. For example, `$where`
+* supports dot notation to access related table values in conditions:
 
-### Optimization logic
+  ```js
+  const condition = new FieldCondition('$eq', 'address.street', 'some street');
+  interpret(condition, User.query()); // select users.* from users inner join address on user.id = address.user_id where address.street = 'some street'
+  ```
 
-It's important to understand that it's not required for `FieldInstruction` to be parsed into `FieldCondition`. I can be parsed into `CompoundCondition` as it's done for `$not` operator.
+### Custom interpreter
 
-Also some operators like `$and` and `$or` optimize their parsing logic, so if one of that operators contain only one condition it will be resolved to `FieldCondition`.
-
-As said before `$and` and `$or` operators optimize their representation in case they have a single condition but this is not all. They also recursively collapse conditions from nested operators with the same name. Let's see an example to understand what this means:
+Sometimes you may want to reduce (or restrict) amount of supported operators (e.g., to utilize tree-shaking and reduce bundle size). To do this you can create interpreter manually:
 
 ```js
-const ast = parser.parse({
-  a: 1
-  $and: [
-    { b: 2 },
-    { c: 3 }
-  ]
-});
-console.dir(ast, { depth: null })
-/*
- CompoundCondition {
-   operator: "$and",
-   value: [
-     FieldCondition { operator: "$eq", field: "a", value: 1 },
-     FieldCondition { operator: "$eq", field: "b", value: 2 },
-     FieldCondition { operator: "$eq", field: "c", value: 3 },
-   ]
- }
- */
+import { createObjectionInterpreter, $eq, $lt, $gt } from '@ucast/objection';
+
+const interpret = new createObjectionInterpreter(({ $eq, $lt, $gt });
+const condition = new FieldCondition('$eq', 'x', true);
+
+interpret(condition, User.query()); // select * from users where x = true
 ```
-
-This optimization logic helps to speed up interpreter's execution time, instead of going deeply over tree-like structure we have a plain structure of all conditions under a single compound condition.
-
-### Custom Operator
-
-In order for an operator to be parsed, it needs to define a parsing instruction. Let's implement a custom instruction which checks that object corresponds to a particular [json schema](https://json-schema.org/).
-
-First of all, we need to understand on which level this operator operates (field or document). In this case, `$jsonSchema` clearly operates on document level. It doesn't contain nested MongoDB queries, so it should be defined using `DocumentInstruction`.
-
-To test that document corresponds to provided json schema, we will use [ajv](https://ajv.js.org/) but it's possible to use any JSON schema validator you want.
-
-```js
-// operators/jsonSchema.js
-import { DocumentInstruction, DocumentCondition } from '@ucast/core';
-import Ajv from 'ajv';
-
-export const $jsonSchema: DocumentInstruction = {
-  type: 'document',
-  validate(instruction, value) {
-    if (!value || typeof value !== 'object') {
-      throw new Error(`"${instruction.name}" expects to receive an object`)
-    }
-  },
-  parse(instruction, schema) {
-    const ajv = new Ajv();
-    return new DocumentCondition(instruction.name, ajv.compile(schema));
-  }
-};
-```
-
-In order to use this operator, we need to pass it into `MongoQueryParser` constructor:
-
-```js
-import { MongoQueryParser, allParsingInstructions } from '@ucast/core';
-import { $jsonSchema } from './operators/jsonSchema';
-
-const parser = new MongoQueryParser({ ...allParsingInstructions, $jsonSchema });
-const ast = parser.parse({
-  $jsonSchema: {
-    type: 'object',
-    properties: {
-      firstName: { type: 'string' },
-      lastName: { type: 'string' },
-    },
-    additionalProperties: false,
-  }
-});
-
-console.dir(ast, { depth: null });
-/*
-  DocumentCondition { operator: "$jsonSchema", value: [Function: validate] }
- */
-```
-
-The only thing which is left is to implement a corresponding interpreter.
 
 ## Want to help?
 

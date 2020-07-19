@@ -7,11 +7,14 @@
   "es2015": "dist/es6/index.js",
   "typings": "dist/types/index.d.ts",
   "scripts": {
+    "build.types": "tsc",
     "prebuild": "rm -rf dist/* && npm run build.types",
     "build": "rollup -c ../../rollup.config.js -n ucast.objection -g @ucast/core:ucast.core",
     "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register spec/*",
-    "coverage": "nyc -n src npm run test && nyc report --reporter=lcov"
+    "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
+    "prerelease": "npm run lint && npm test && npm run build",
+    "release": "semantic-release -e ../../semantic-release.js"
   },
   "repository": {
     "type": "git",
