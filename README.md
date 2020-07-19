@@ -27,8 +27,10 @@ All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
 | [@ucast/core]     | [![@ucast/core-status]][@ucast/core-package] | conditions AST and helpers |
 | [@ucast/js]       | [![@ucast/js-status]][@ucast/js-package] | ucast JavaScript interpreter |
 | [@ucast/mongo]    | [![@ucast/mongo-status]][@ucast/mongo-package] | [MongoDB query] parser |
+| [@ucast/objection]    | [![@ucast/objection-status]][@ucast/objection-package] | [Objection query] parser |
 
 [MongoDB query]: http://docs.mongodb.org/manual/reference/operator/query/
+[Objection query]: http://docs.mongodb.org/manual/reference/operator/query/
 
 [@ucast/core]: packages/core
 [@ucast/js]: packages/js
@@ -37,10 +39,12 @@ All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
 [@ucast/core-status]: https://img.shields.io/npm/v/@ucast/core.svg
 [@ucast/js-status]: https://img.shields.io/npm/v/@ucast/js.svg
 [@ucast/mongo-status]: https://img.shields.io/npm/v/@ucast/mongo.svg
+[@ucast/objection-status]: https://img.shields.io/npm/v/@ucast/objection.svg
 
 [@ucast/core-package]: https://www.npmjs.com/package/@ucast/core
 [@ucast/js-package]: https://www.npmjs.com/package/@ucast/js
 [@ucast/mongo-package]: https://www.npmjs.com/package/@ucast/mongo
+[@ucast/objection-package]: https://www.npmjs.com/package/@ucast/objection
 
 ## Want to help?
 

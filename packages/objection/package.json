@@ -1,0 +1,67 @@
+{
+  "name": "@ucast/objection",
+  "version": "0.0.1",
+  "description": "git@github.com:stalniy/ucast.git",
+  "main": "dist/umd/index.js",
+  "module": "dist/es5m/index.js",
+  "es2015": "dist/es6/index.js",
+  "typings": "dist/types/index.d.ts",
+  "scripts": {
+    "prebuild": "rm -rf dist/* && npm run build.types",
+    "build": "rollup -c ../../rollup.config.js -n ucast.objection -g @ucast/core:ucast.core",
+    "lint": "eslint --ext .js,.ts src/ spec/",
+    "test": "mocha -r ts-node/register spec/*",
+    "coverage": "nyc -n src npm run test && nyc report --reporter=lcov"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stalniy/ucast.git"
+  },
+  "keywords": [
+    "objection",
+    "conditions",
+    "query",
+    "builder",
+    "ast"
+  ],
+  "author": "Sergii Stotskyi <sergiy.stotskiy@freaksidea.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stalniy/ucast/issues"
+  },
+  "homepage": "https://github.com/stalniy/ucast#readme",
+  "devDependencies": {
+    "@babel/core": "^7.10.2",
+    "@babel/plugin-proposal-class-properties": "^7.10.4",
+    "@babel/plugin-proposal-object-rest-spread": "^7.10.4",
+    "@babel/plugin-transform-typescript": "^7.10.1",
+    "@babel/preset-env": "^7.10.2",
+    "@rollup/plugin-babel": "^5.0.3",
+    "@rollup/plugin-node-resolve": "^8.0.1",
+    "@types/chai": "^4.2.11",
+    "@types/chai-spies": "^1.0.1",
+    "@types/mocha": "^7.0.2",
+    "@typescript-eslint/eslint-plugin": "^3.6.0",
+    "chai": "^4.2.0",
+    "chai-spies": "^1.0.0",
+    "eslint": "^7.4.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-config-airbnb-typescript": "^8.0.2",
+    "eslint-plugin-import": "^2.22.0",
+    "knex": "^0.21.2",
+    "mocha": "^8.0.1",
+    "nyc": "^15.1.0",
+    "objection": "^2.2.1",
+    "rollup": "^2.15.0",
+    "rollup-plugin-terser": "^6.1.0",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.5"
+  },
+  "peerDependencies": {
+    "knex": "~0.21.2",
+    "objection": "^2.2.1"
+  },
+  "dependencies": {
+    "@ucast/core": "^1.0.0"
+  }
+}
