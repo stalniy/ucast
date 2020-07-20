@@ -27,7 +27,7 @@ All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
 | [@ucast/core]     | [![@ucast/core-status]][@ucast/core-package] | conditions AST and helpers |
 | [@ucast/js]       | [![@ucast/js-status]][@ucast/js-package] | ucast JavaScript interpreter |
 | [@ucast/mongo]    | [![@ucast/mongo-status]][@ucast/mongo-package] | [MongoDB query] parser |
-| [@ucast/objection]    | [![@ucast/objection-status]][@ucast/objection-package] | [Objection query] parser |
+| [@ucast/objection]    | [![@ucast/objection-status]][@ucast/objection-package] | [Objection query] interpreter |
 
 [MongoDB query]: http://docs.mongodb.org/manual/reference/operator/query/
 [Objection query]: https://vincit.github.io/objection.js/api/query-builder/
