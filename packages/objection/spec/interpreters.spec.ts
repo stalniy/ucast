@@ -156,6 +156,14 @@ describe('Condition Interpreter', () => {
       )
     })
 
+    it('generates query with null condition', () => {
+      const condition = new Field('$exists', 'address', false)
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+        'select "users".* from "users" where "address" is null'
+      )
+    })
+
     it('generates query using join when using dot notation', () => {
       const condition = new Field('$exists', 'projects.due_date', true)
 

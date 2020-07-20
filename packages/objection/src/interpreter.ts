@@ -5,7 +5,7 @@ import {
 } from '@ucast/core';
 import { Model as ObjectionModel, QueryBuilder, QueryBuilderType, Relations } from 'objection';
 
-type QueryBuilderMethod = keyof QueryBuilder<ObjectionModel> & 'where' | 'orWhere' | 'whereNot';
+type QueryBuilderMethod = keyof Pick<QueryBuilder<ObjectionModel>, 'where' | 'orWhere' | 'whereNot'>;
 
 export class Query {
   public query: QueryBuilder<ObjectionModel>;
@@ -21,10 +21,12 @@ export class Query {
   where(field: string, operator: string, value: any) {
     const possibleMethod = this._method + operator as QueryBuilderMethod;
 
-    if (field.includes('.')) {
-      const [joinTable] = field.split('.');
-      if (this._relations[joinTable]) {
-        this.query.joinRelation(joinTable);
+    const relationNameIndex = field.indexOf('.');
+
+    if (relationNameIndex !== -1) {
+      const relationName = field.slice(0, relationNameIndex);
+      if (this._relations[relationName]) {
+        this.query.joinRelation(relationName);
       }
     }
     if (typeof this.query[possibleMethod] === 'function') {

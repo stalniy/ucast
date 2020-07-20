@@ -27,7 +27,10 @@
     "builder",
     "ast"
   ],
-  "author": "Sergii Stotskyi <sergiy.stotskiy@freaksidea.com>",
+  "author": "Otávio Augusto Soares <otaviokk@gmail.com>",
+  "contributors": [
+    { "name": "Sergii Stotskyi", "email": "sergiy.stotskiy@freaksidea.com" }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/stalniy/ucast/issues"
@@ -61,7 +64,6 @@
     "typescript": "^3.9.5"
   },
   "peerDependencies": {
-    "knex": "~0.21.2",
     "objection": "^2.2.1"
   },
   "dependencies": {

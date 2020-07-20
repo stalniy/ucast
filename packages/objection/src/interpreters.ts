@@ -30,7 +30,7 @@ export const $gte: ObjectionOperator<FieldCondition<Comparable>> = (condition, q
 };
 
 export const $exists: ObjectionOperator<FieldCondition<Comparable>> = (condition, query) => {
-  return query.where(condition.field, 'NotNull', condition.value);
+  return query.where(condition.field, condition.value ? 'NotNull' : 'Null', condition.value);
 };
 
 export const $in: ObjectionOperator<FieldCondition<Comparable[]>> = (condition, query) => {
@@ -42,8 +42,8 @@ export const $nin: ObjectionOperator<FieldCondition<Comparable[]>> = (condition,
 };
 
 export const $not: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  const whereNot = new Query(query.query, 'whereNot');
-  node.value.forEach(condition => interpret(condition, whereNot));
+  const notQuery = new Query(query.query, 'whereNot');
+  node.value.forEach(condition => interpret(condition, notQuery));
   return query;
 };
 
