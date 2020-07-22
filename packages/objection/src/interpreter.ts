@@ -3,9 +3,9 @@ import {
   Condition,
   InterpretationContext
 } from '@ucast/core';
-import { Model as ObjectionModel, QueryBuilder, QueryBuilderType, Relations } from 'objection';
+import { raw, Model as ObjectionModel, QueryBuilder, QueryBuilderType, Relations } from 'objection';
 
-type QueryBuilderMethod = keyof Pick<QueryBuilder<ObjectionModel>, 'where' | 'orWhere' | 'whereNot'>;
+type QueryBuilderMethod = keyof Pick<QueryBuilder<ObjectionModel>, 'where' | 'orWhere' | 'whereNot' | 'whereRaw'>;
 
 export class Query {
   public query: QueryBuilder<ObjectionModel>;
@@ -18,23 +18,32 @@ export class Query {
     this._relations = query.modelClass().getRelations();
   }
 
-  where(field: string, operator: string, value: any) {
-    const possibleMethod = this._method + operator as QueryBuilderMethod;
-
+  checkRelation(field: string) {
     const relationNameIndex = field.indexOf('.');
 
     if (relationNameIndex !== -1) {
       const relationName = field.slice(0, relationNameIndex);
       if (this._relations[relationName]) {
-        this.query.joinRelation(relationName);
+        this.query.joinRelated(relationName);
       }
     }
+  }
+
+  where(field: string, operator: string, value: any) {
+    const possibleMethod = this._method + operator as QueryBuilderMethod;
+    this.checkRelation(field);
     if (typeof this.query[possibleMethod] === 'function') {
       this.query[possibleMethod](field, value);
     } else {
       this.query[this._method](field, operator, value);
     }
 
+    return this;
+  }
+
+  whereRaw(field: string, sql: string, bindings?: any) {
+    this.checkRelation(field);
+    this.query.where(raw(sql, bindings));
     return this;
   }
 }

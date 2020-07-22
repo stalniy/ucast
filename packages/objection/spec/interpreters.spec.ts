@@ -1,45 +1,9 @@
-import { Model } from 'objection'
 import { FieldCondition as Field, CompoundCondition } from '@ucast/core'
-import Knex from 'knex'
 import { expect } from './specHelper'
-import { createObjectionInterpreter, $eq, $ne, $lte, $lt, $gte, $gt, $exists, $in, $nin, $and, $not, $or } from '../src'
-
-const knex = Knex({ client: 'pg' })
-Model.knex(knex)
+import { createObjectionInterpreter, $eq, $ne, $lte, $lt, $gte, $gt, $exists, $in, $nin, $and, $not, $or, $nor, $mod, $elemMatch } from '../src'
+import { Project, User } from './fixtures'
 
 describe('Condition Interpreter', () => {
-  class User extends Model {
-    static tableName = 'users'
-
-    static get relationMappings() {
-      return {
-        projects: {
-          relation: Model.HasManyRelation,
-          modelClass: Project,
-          join: {
-            from: 'users.id',
-            to: 'projects.user_id'
-          }
-        }
-      }
-    }
-  }
-  class Project extends Model {
-    static tableName = 'projects'
-
-    static get relationMappings() {
-      return {
-        user: {
-          relation: Model.BelongsToOneRelation,
-          modelClass: User,
-          join: {
-            from: 'users.id',
-            to: 'projects.user_id'
-          }
-        }
-      }
-    }
-  }
   describe('$eq', () => {
     const interpret = createObjectionInterpreter({ $eq })
     it('generates query with equal condition', () => {
@@ -240,7 +204,7 @@ describe('Condition Interpreter', () => {
       ])
 
       expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" where "age" = 1 or "active" = true'
+        'select "users".* from "users" where ("age" = 1 or "active" = true)'
       )
     })
 
@@ -251,7 +215,76 @@ describe('Condition Interpreter', () => {
       ])
 
       expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "age" = 1 or "projects"."active" = true'
+        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where ("age" = 1 or "projects"."active" = true)'
+      )
+    })
+  })
+
+  describe('$nor', () => {
+    const interpret = createObjectionInterpreter({ $nor, $eq })
+    it('generates query using logical "not or"', () => {
+      const condition = new CompoundCondition('$nor', [
+        new Field('$eq', 'age', 1),
+        new Field('$eq', 'active', true)
+      ])
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+        'select "users".* from "users" where not ("age" = 1 and "active" = true)'
+      )
+    })
+  })
+
+  describe('$mod', () => {
+    const interpret = createObjectionInterpreter({ $mod })
+    it('generates query using "mod"', () => {
+      const condition = new Field('$mod', 'qty', [4, 0])
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+        'select "users".* from "users" where mod("qty", 4) = 0'
+      )
+    })
+
+    it('generates query using join when using dot notation', () => {
+      const condition = new Field('$mod', 'projects.qty', [4, 0])
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where mod("projects"."qty", 4) = 0'
+      )
+    })
+  })
+
+  describe('$elemMatch', () => {
+    const interpret = createObjectionInterpreter({ $elemMatch, $eq, $or, $and, $lt, $gt })
+    it('generates query that interprets "$elemMatch"', () => {
+      const condition = new Field('$elemMatch', 'projects', new Field('$eq', 'active', true))
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."active" = true'
+      )
+    })
+
+    it('generates query that interprets "$elemMatch" from compound nested conditions', () => {
+      const condition = new Field('$elemMatch', 'projects', new CompoundCondition('$and', [
+        new Field('$gt', 'count', 5),
+        new Field('$lt', 'count', 10),
+      ]))
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."count" > 5 and "projects"."count" < 10'
+      )
+    })
+
+    it('generates query that interprets "$elemMatch" from compound nested conditions', () => {
+      const condition = new Field('$elemMatch', 'projects', new CompoundCondition('$and', [
+        new Field('$eq', 'active', true),
+        new CompoundCondition('$or', [
+          new Field('$gt', 'count', 5),
+          new Field('$lt', 'count', 10)
+        ]),
+      ]))
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."active" = true and ("projects"."count" > 5 or "projects"."count" < 10)'
       )
     })
   })
