@@ -229,7 +229,7 @@ describe('Condition Interpreter', () => {
       ])
 
       expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" where not ("age" = 1 and "active" = true)'
+        'select "users".* from "users" where not ("age" = 1 or "active" = true)'
       )
     })
   })

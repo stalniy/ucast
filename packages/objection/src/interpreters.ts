@@ -4,7 +4,7 @@ import {
   FieldCondition,
   Comparable
 } from '@ucast/core';
-import { Query, ObjectionOperator } from './interpreter';
+import { ObjectionOperator } from './interpreter';
 
 export const $eq: ObjectionOperator<FieldCondition> = (condition, query) => {
   return query.where(condition.field, '=', condition.value);
@@ -59,8 +59,10 @@ export const $or: ObjectionOperator<CompoundCondition> = (node, query, { interpr
   return query;
 };
 
-export const $nor: ObjectionOperator<CompoundCondition> = (node, query, context) => {
-  query.query.whereNot(builder => $and(node, new Query(builder), context).query);
+export const $nor: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
+  const orQuery = query.buildUsing('orWhere', query.query.clone());
+  node.value.forEach(condition => interpret(condition, orQuery));
+  query.query.whereNot(builder => orQuery.applyTo(builder));
   return query;
 };
 
