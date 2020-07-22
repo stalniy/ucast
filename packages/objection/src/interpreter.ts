@@ -9,29 +9,38 @@ type QueryBuilderMethod = keyof Pick<QueryBuilder<ObjectionModel>, 'where' | 'or
 
 export class Query {
   public query: QueryBuilder<ObjectionModel>;
+  private _rootQuery: QueryBuilder<ObjectionModel>;
   private _method: QueryBuilderMethod;
   private _relations: Relations;
 
-  constructor(query: QueryBuilder<ObjectionModel>, method: QueryBuilderMethod = 'where') {
+  constructor(
+    query: QueryBuilder<ObjectionModel>,
+    method: QueryBuilderMethod = 'where',
+    rootQuery: QueryBuilder<ObjectionModel> = query
+  ) {
     this.query = query;
     this._method = method;
-    this._relations = query.modelClass().getRelations();
+    this._rootQuery = rootQuery;
+    this._relations = rootQuery.modelClass().getRelations();
   }
 
-  checkRelation(field: string) {
+  private _tryToJoinRelation(field: string) {
     const relationNameIndex = field.indexOf('.');
 
     if (relationNameIndex !== -1) {
       const relationName = field.slice(0, relationNameIndex);
+
       if (this._relations[relationName]) {
-        this.query.joinRelated(relationName);
+        this._rootQuery.joinRelated(relationName);
       }
     }
   }
 
   where(field: string, operator: string, value: any) {
     const possibleMethod = this._method + operator as QueryBuilderMethod;
-    this.checkRelation(field);
+
+    this._tryToJoinRelation(field);
+
     if (typeof this.query[possibleMethod] === 'function') {
       this.query[possibleMethod](field, value);
     } else {
@@ -42,9 +51,17 @@ export class Query {
   }
 
   whereRaw(field: string, sql: string, bindings?: any) {
-    this.checkRelation(field);
-    this.query.where(raw(sql, bindings));
+    this._tryToJoinRelation(field);
+    this.query[this._method](raw(sql, bindings) as any);
     return this;
+  }
+
+  buildUsing(method: QueryBuilderMethod, query: QueryBuilder<ObjectionModel> = this.query) {
+    return new Query(query, method, this._rootQuery);
+  }
+
+  applyTo(builder: QueryBuilder<ObjectionModel>): QueryBuilder<ObjectionModel> {
+    return (this.query as any).toKnexQuery(builder);
   }
 }
 

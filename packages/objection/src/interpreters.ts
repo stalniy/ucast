@@ -44,7 +44,7 @@ export const $nin: ObjectionOperator<FieldCondition<Comparable[]>> = (condition,
 };
 
 export const $not: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  const notQuery = new Query(query.query, 'whereNot');
+  const notQuery = query.buildUsing('whereNot');
   node.value.forEach(condition => interpret(condition, notQuery));
   return query;
 };
@@ -54,8 +54,9 @@ export const $and: ObjectionOperator<CompoundCondition> = (node, query, { interp
 };
 
 export const $or: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  const orQuery = new Query(query.query, 'orWhere');
+  const orQuery = query.buildUsing('orWhere', query.query.clone());
   node.value.forEach(condition => interpret(condition, orQuery));
+  query.query.where(builder => orQuery.applyTo(builder));
   return query;
 };
 
@@ -65,8 +66,11 @@ export const $nor: ObjectionOperator<CompoundCondition> = (node, query, context)
 };
 
 export const $mod: ObjectionOperator<FieldCondition<[number, number]>> = (condition, query) => {
-  query.whereRaw(condition.field, 'mod(:field:, :num1) = :num2', { field: condition.field, num1: condition.value[0], num2: condition.value[1] });
-  return query;
+  return query.whereRaw(condition.field, 'mod(:field:, :dividend) = :divider', {
+    field: condition.field,
+    dividend: condition.value[0],
+    divider: condition.value[1]
+  });
 };
 
 type IMatch = ObjectionOperator<FieldCondition<Condition>>;
