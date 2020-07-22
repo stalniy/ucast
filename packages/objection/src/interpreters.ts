@@ -5,7 +5,6 @@ import {
   Comparable
 } from '@ucast/core';
 import { Query, ObjectionOperator } from './interpreter';
-import { renameFields } from './utils';
 
 export const $eq: ObjectionOperator<FieldCondition> = (condition, query) => {
   return query.where(condition.field, '=', condition.value);
@@ -75,7 +74,6 @@ export const $mod: ObjectionOperator<FieldCondition<[number, number]>> = (condit
 
 type IMatch = ObjectionOperator<FieldCondition<Condition>>;
 export const $elemMatch: IMatch = (condition, query, { interpret }) => {
-  const renamedCondition = renameFields(condition.value, condition.field);
-  interpret(renamedCondition, query);
+  interpret(condition.value, query.prefixed(condition.field));
   return query;
 };

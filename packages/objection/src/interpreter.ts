@@ -12,16 +12,19 @@ export class Query {
   private _rootQuery: QueryBuilder<ObjectionModel>;
   private _method: QueryBuilderMethod;
   private _relations: Relations;
+  private _fieldPrefix: string;
 
   constructor(
     query: QueryBuilder<ObjectionModel>,
     method: QueryBuilderMethod = 'where',
-    rootQuery: QueryBuilder<ObjectionModel> = query
+    rootQuery: QueryBuilder<ObjectionModel> = query,
+    fieldPrefix: string = ''
   ) {
     this.query = query;
     this._method = method;
     this._rootQuery = rootQuery;
     this._relations = rootQuery.modelClass().getRelations();
+    this._fieldPrefix = fieldPrefix;
   }
 
   private _tryToJoinRelation(field: string) {
@@ -38,13 +41,14 @@ export class Query {
 
   where(field: string, operator: string, value: any) {
     const possibleMethod = this._method + operator as QueryBuilderMethod;
+    const fieldPrefixed = `${this._fieldPrefix}${field}`;
 
-    this._tryToJoinRelation(field);
+    this._tryToJoinRelation(fieldPrefixed);
 
     if (typeof this.query[possibleMethod] === 'function') {
-      this.query[possibleMethod](field, value);
+      this.query[possibleMethod](fieldPrefixed, value);
     } else {
-      this.query[this._method](field, operator, value);
+      this.query[this._method](fieldPrefixed, operator, value);
     }
 
     return this;
@@ -62,6 +66,10 @@ export class Query {
 
   applyTo(builder: QueryBuilder<ObjectionModel>): QueryBuilder<ObjectionModel> {
     return (this.query as any).toKnexQuery(builder);
+  }
+
+  prefixed(fieldPrefix: string) {
+    return new Query(this.query, this._method, this._rootQuery, `${fieldPrefix}.`);
   }
 }
 
