@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.0.1...@ucast/mongo@1.0.2) (2020-07-23)
+
+
+### Bug Fixes
+
+* **license:** changes mistakenly set MIT license to the correct one - Apache 2.0 ([197363c](https://github.com/stalniy/ucast/commit/197363c321392c742d31b7e1e024d88c0499ce73))
+
 ## [1.0.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.0.0...@ucast/mongo@1.0.1) (2020-07-10)
 
 
