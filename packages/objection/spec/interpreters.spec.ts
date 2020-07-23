@@ -359,5 +359,21 @@ describe('Condition Interpreter', () => {
         )
       })
     })
+
+    describe('MSSQL', () => {
+      before(() => {
+        setClient('mssql')
+      })
+      after(() => {
+        setClient('pg')
+      })
+      it('throws an error', () => {
+        const condition = new Field('$regex', 'email', /@/)
+
+        expect(() => interpret(condition, User.query())).to.throw(
+          'regex operator does not support mssql database'
+        )
+      })
+    })
   })
 })
