@@ -6,6 +6,7 @@ import {
 import { raw, Model as ObjectionModel, QueryBuilder, QueryBuilderType, Relations } from 'objection';
 
 type QueryBuilderMethod = keyof Pick<QueryBuilder<ObjectionModel>, 'where' | 'orWhere' | 'whereNot' | 'whereRaw'>;
+type WhereCallback = (builder: Query) => unknown;
 
 export class Query {
   public query: QueryBuilder<ObjectionModel>;
@@ -54,6 +55,13 @@ export class Query {
     return this;
   }
 
+  orWhere(callback: WhereCallback, method: Exclude<QueryBuilderMethod, 'whereRaw'> = 'where') {
+    const orQuery = this.buildUsing('orWhere', this.query.modelClass().query());
+    callback(orQuery);
+    this.query[method](builder => orQuery.applyTo(builder));
+    return this;
+  }
+
   whereRaw(field: string, sql: string, bindings?: any) {
     this._tryToJoinRelation(field);
     this.query[this._method](raw(sql, bindings) as any);
@@ -61,7 +69,7 @@ export class Query {
   }
 
   buildUsing(method: QueryBuilderMethod, query: QueryBuilder<ObjectionModel> = this.query) {
-    return new Query(query, method, this._rootQuery);
+    return new Query(query, method, this._rootQuery, this._fieldPrefix);
   }
 
   applyTo(builder: QueryBuilder<ObjectionModel>): QueryBuilder<ObjectionModel> {

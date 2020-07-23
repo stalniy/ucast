@@ -53,17 +53,13 @@ export const $and: ObjectionOperator<CompoundCondition> = (node, query, { interp
 };
 
 export const $or: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  const orQuery = query.buildUsing('orWhere', query.query.clone());
-  node.value.forEach(condition => interpret(condition, orQuery));
-  query.query.where(builder => orQuery.applyTo(builder));
-  return query;
+  return query.orWhere(builder => node.value.forEach(condition => interpret(condition, builder)));
 };
 
 export const $nor: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  const orQuery = query.buildUsing('orWhere', query.query.clone());
-  node.value.forEach(condition => interpret(condition, orQuery));
-  query.query.whereNot(builder => orQuery.applyTo(builder));
-  return query;
+  return query.orWhere((builder) => {
+    node.value.forEach(condition => interpret(condition, builder));
+  }, 'whereNot');
 };
 
 export const $mod: ObjectionOperator<FieldCondition<[number, number]>> = (condition, query) => {
