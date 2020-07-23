@@ -1,8 +1,6 @@
 import { Model } from 'objection'
 import Knex from 'knex'
 
-process.env.TZ = 'UTC'
-
 const knex = Knex({ client: 'pg' })
 
 Model.knex(knex)
