@@ -1,7 +1,9 @@
 import { FieldCondition as Field, CompoundCondition } from '@ucast/core'
 import { expect } from './specHelper'
-import { createObjectionInterpreter, $eq, $ne, $lte, $lt, $gte, $gt, $exists, $in, $nin, $and, $not, $or, $nor, $mod, $elemMatch } from '../src'
-import { Project, User } from './fixtures'
+import { createObjectionInterpreter, $eq, $ne, $lte, $lt, $gte, $gt, $exists, $in, $nin, $and, $not, $or, $nor, $mod, $elemMatch, $regex } from '../src'
+import { Project, User, setClient } from './fixtures'
+
+before(() => setClient('pg'))
 
 describe('Condition Interpreter', () => {
   describe('$eq', () => {
@@ -286,6 +288,76 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
         'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."active" = true and ("projects"."count" > 5 or "projects"."count" < 10)'
       )
+    })
+  })
+
+  describe('$regex', () => {
+    const interpret = createObjectionInterpreter({ $regex })
+
+    describe('postgres', () => {
+      it('builds query using posix operator', () => {
+        const condition = new Field('$regex', 'email', /@/)
+
+        expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+          'select "users".* from "users" where "email" ~ \'@\''
+        )
+      })
+
+      it('generates join relation when using dot notation', () => {
+        const condition = new Field('$regex', 'user.email', /@/i)
+
+        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
+          'select "projects".* from "projects" inner join "users" as "user" on "user"."id" = "projects"."user_id" where "user"."email" ~* \'@\''
+        )
+      })
+    })
+
+    describe('oracle', () => {
+      before(() => {
+        setClient('oracledb')
+      })
+      after(() => {
+        setClient('pg')
+      })
+      it('builds query using posix operator', () => {
+        const condition = new Field('$regex', 'email', /@/)
+
+        expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+          'select "users".* from "users" where "email" ~ \'@\''
+        )
+      })
+
+      it('generates join relation when using dot notation', () => {
+        const condition = new Field('$regex', 'user.email', /@/i)
+
+        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
+          'select "projects".* from "projects" inner join "users" "user" on "user"."id" = "projects"."user_id" where "user"."email" ~* \'@\''
+        )
+      })
+    })
+
+    describe('mysql', () => {
+      before(() => {
+        setClient('mysql')
+      })
+      after(() => {
+        setClient('pg')
+      })
+      it('build query using regexp', () => {
+        const condition = new Field('$regex', 'email', /@/)
+
+        expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
+          'select `users`.* from `users` where `email` regexp \'@\' = 1'
+        )
+      })
+
+      it('generates join relation when using dot notation', () => {
+        const condition = new Field('$regex', 'user.email', /@/i)
+
+        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
+          'select `projects`.* from `projects` inner join `users` as `user` on `user`.`id` = `projects`.`user_id` where `user`.`email` regexp \'@\' = 1'
+        )
+      })
     })
   })
 })

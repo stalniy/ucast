@@ -5,6 +5,7 @@ import {
   Comparable
 } from '@ucast/core';
 import { ObjectionOperator } from './interpreter';
+import { generateRegexQuery } from './utils';
 
 export const $eq: ObjectionOperator<FieldCondition> = (condition, query) => {
   return query.where(condition.field, '=', condition.value);
@@ -74,4 +75,10 @@ type IMatch = ObjectionOperator<FieldCondition<Condition>>;
 export const $elemMatch: IMatch = (condition, query, { interpret }) => {
   interpret(condition.value, query.prefixed(condition.field));
   return query;
+};
+export const $regex: ObjectionOperator<FieldCondition<RegExp>> = (condition, query) => {
+  return query.whereRaw(condition.field, generateRegexQuery(condition.value.ignoreCase), {
+    field: condition.field,
+    regex: condition.value.source,
+  });
 };

@@ -1,9 +1,11 @@
 import { Model } from 'objection'
 import Knex from 'knex'
 
-const knex = Knex({ client: 'pg' })
+export function setClient(client: string) {
+  const knex = Knex({ client })
 
-Model.knex(knex)
+  Model.knex(knex)
+}
 
 export class User extends Model {
   static tableName = 'users'
