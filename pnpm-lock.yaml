@@ -7,6 +7,7 @@ importers:
       '@babel/plugin-transform-typescript': 7.10.4_@babel+core@7.10.4
       '@babel/preset-env': 7.10.4_@babel+core@7.10.4
       '@rollup/plugin-babel': 5.0.4_@babel+core@7.10.4+rollup@2.18.2
+      '@rollup/plugin-commonjs': 14.0.0_rollup@2.18.2
       '@rollup/plugin-node-resolve': 8.1.0_rollup@2.18.2
       '@semantic-release/changelog': 5.0.1_semantic-release@17.1.1
       '@semantic-release/git': 9.0.0_semantic-release@17.1.1
@@ -39,6 +40,7 @@ importers:
       '@babel/plugin-transform-typescript': ^7.10.1
       '@babel/preset-env': ^7.10.2
       '@rollup/plugin-babel': ^5.0.3
+      '@rollup/plugin-commonjs': ^14.0.0
       '@rollup/plugin-node-resolve': ^8.0.1
       '@semantic-release/changelog': ^5.0.1
       '@semantic-release/git': ^9.0.0
@@ -72,6 +74,7 @@ importers:
       '@babel/plugin-transform-typescript': 7.10.4_@babel+core@7.10.4
       '@babel/preset-env': 7.10.4_@babel+core@7.10.4
       '@rollup/plugin-babel': 5.0.4_@babel+core@7.10.4+rollup@2.18.2
+      '@rollup/plugin-commonjs': 14.0.0_rollup@2.18.2
       '@rollup/plugin-node-resolve': 8.1.0_rollup@2.18.2
       '@semantic-release/changelog': 5.0.1_semantic-release@17.1.1
       '@semantic-release/git': 9.0.0_semantic-release@17.1.1
@@ -102,6 +105,7 @@ importers:
       '@babel/plugin-transform-typescript': ^7.10.1
       '@babel/preset-env': ^7.10.2
       '@rollup/plugin-babel': ^5.0.3
+      '@rollup/plugin-commonjs': ^14.0.0
       '@rollup/plugin-node-resolve': ^8.0.1
       '@semantic-release/changelog': ^5.0.1
       '@semantic-release/git': ^9.0.0
@@ -135,6 +139,7 @@ importers:
       '@babel/plugin-transform-typescript': 7.10.1_@babel+core@7.10.2
       '@babel/preset-env': 7.10.2_@babel+core@7.10.2
       '@rollup/plugin-babel': 5.0.3_@babel+core@7.10.2+rollup@2.15.0
+      '@rollup/plugin-commonjs': 14.0.0_rollup@2.15.0
       '@rollup/plugin-node-resolve': 8.0.1_rollup@2.15.0
       '@semantic-release/changelog': 5.0.1_semantic-release@17.1.1
       '@semantic-release/git': 9.0.0_semantic-release@17.1.1
@@ -164,6 +169,7 @@ importers:
       '@babel/plugin-transform-typescript': ^7.10.1
       '@babel/preset-env': ^7.10.2
       '@rollup/plugin-babel': ^5.0.3
+      '@rollup/plugin-commonjs': ^14.0.0
       '@rollup/plugin-node-resolve': ^8.0.1
       '@semantic-release/changelog': ^5.0.1
       '@semantic-release/git': ^9.0.0
@@ -197,6 +203,7 @@ importers:
       '@babel/plugin-transform-typescript': 7.10.1_@babel+core@7.10.2
       '@babel/preset-env': 7.10.2_@babel+core@7.10.2
       '@rollup/plugin-babel': 5.0.3_@babel+core@7.10.2+rollup@2.15.0
+      '@rollup/plugin-commonjs': 14.0.0_rollup@2.15.0
       '@rollup/plugin-node-resolve': 8.0.1_rollup@2.15.0
       '@semantic-release/changelog': 5.0.1_semantic-release@17.1.1
       '@semantic-release/git': 9.0.0_semantic-release@17.1.1
@@ -226,6 +233,7 @@ importers:
       '@babel/plugin-transform-typescript': ^7.10.1
       '@babel/preset-env': ^7.10.2
       '@rollup/plugin-babel': ^5.0.3
+      '@rollup/plugin-commonjs': ^14.0.0
       '@rollup/plugin-node-resolve': ^8.0.1
       '@semantic-release/changelog': ^5.0.1
       '@semantic-release/git': ^9.0.0
@@ -2354,6 +2362,40 @@ packages:
       rollup: ^1.20.0||^2.0.0
     resolution:
       integrity: sha512-MBtNoi5gqBEbqy1gE9jZBfPsi10kbuK2CEu9bx53nk1Z3ATRvBOoZ/GsbhXOeVbS76xXi/DeYM+vYX6EGIDv9A==
+  /@rollup/plugin-commonjs/14.0.0_rollup@2.15.0:
+    dependencies:
+      '@rollup/pluginutils': 3.1.0_rollup@2.15.0
+      commondir: 1.0.1
+      estree-walker: 1.0.1
+      glob: 7.1.6
+      is-reference: 1.2.1
+      magic-string: 0.25.7
+      resolve: 1.17.0
+      rollup: 2.15.0
+    dev: true
+    engines:
+      node: '>= 8.0.0'
+    peerDependencies:
+      rollup: ^2.3.4
+    resolution:
+      integrity: sha512-+PSmD9ePwTAeU106i9FRdc+Zb3XUWyW26mo5Atr2mk82hor8+nPwkztEjFo8/B1fJKfaQDg9aM2bzQkjhi7zOw==
+  /@rollup/plugin-commonjs/14.0.0_rollup@2.18.2:
+    dependencies:
+      '@rollup/pluginutils': 3.1.0_rollup@2.18.2
+      commondir: 1.0.1
+      estree-walker: 1.0.1
+      glob: 7.1.6
+      is-reference: 1.2.1
+      magic-string: 0.25.7
+      resolve: 1.17.0
+      rollup: 2.18.2
+    dev: true
+    engines:
+      node: '>= 8.0.0'
+    peerDependencies:
+      rollup: ^2.3.4
+    resolution:
+      integrity: sha512-+PSmD9ePwTAeU106i9FRdc+Zb3XUWyW26mo5Atr2mk82hor8+nPwkztEjFo8/B1fJKfaQDg9aM2bzQkjhi7zOw==
   /@rollup/plugin-node-resolve/8.0.1_rollup@2.15.0:
     dependencies:
       '@rollup/pluginutils': 3.1.0_rollup@2.15.0
@@ -2564,6 +2606,10 @@ packages:
     dev: true
     resolution:
       integrity: sha512-EYNwp3bU+98cpU4lAWYYL7Zz+2gryWH1qbdDTidVd6hkiR6weksdbMadyXKXNPEkQFhXM+hVO9ZygomHXp+AIw==
+  /@types/estree/0.0.45:
+    dev: true
+    resolution:
+      integrity: sha512-jnqIUKDUqJbDIUxm0Uj7bnlMnRm1T/eZ9N+AVMqhPgzrba2GhGG5o/jCTwmdPK709nEZsGoMzXEDUjcXHa3W0g==
   /@types/json-schema/7.0.5:
     dev: true
     resolution:
@@ -5195,6 +5241,12 @@ packages:
       node: '>=0.10.0'
     resolution:
       integrity: sha512-Xnpx182SBMrr/aBik8y+GuR4U1L9FqMSojwDQwPMmxyC6bvEqly9UBCxhauBF5vNh2gwWJNX6oDV7O+OM4z34g==
+  /is-reference/1.2.1:
+    dependencies:
+      '@types/estree': 0.0.45
+    dev: true
+    resolution:
+      integrity: sha512-U82MsXXiFIrjCK4otLT+o2NA2Cd2g5MLoOVXUZjIOhLurrRxpEXzI8O0KZHr3IjLvlAH1kTPYSuqer5T9ZVBKQ==
   /is-regex/1.1.0:
     dependencies:
       has-symbols: 1.0.1
@@ -5784,6 +5836,12 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-ko6deozZYiAkqa/0gmcsz+p4jSy3gY7/ZsCEokPaYd8k+6/aXGkiTgr61+Owup7Sf+xjqW8u2ElhoM9SEcEfuA==
+  /magic-string/0.25.7:
+    dependencies:
+      sourcemap-codec: 1.4.8
+    dev: true
+    resolution:
+      integrity: sha512-4CrMT5DOHTDk4HYDlzmwu4FVCcIYI8gauveasrdCu2IKIFOJ3f0v/8MDGJCDL9oD2ppz/Av1b0Nj345H9M+XIA==
   /make-dir/3.1.0:
     dependencies:
       semver: 6.3.0
@@ -7452,6 +7510,10 @@ packages:
       node: '>=0.10.0'
     resolution:
       integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==
+  /sourcemap-codec/1.4.8:
+    dev: true
+    resolution:
+      integrity: sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==
   /spawn-error-forwarder/1.0.0:
     dev: true
     resolution:

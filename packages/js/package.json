@@ -1,11 +1,12 @@
 {
   "name": "@ucast/js",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "git@github.com:stalniy/ucast.git",
   "sideEffects": false,
-  "main": "dist/umd/index.js",
+  "main": "dist/es6c/index.js",
   "module": "dist/es5m/index.js",
-  "es2015": "dist/es6/index.js",
+  "es2015": "dist/es6m/index.js",
+  "legacy": "dist/umd/index.js",
   "typings": "dist/types/index.d.ts",
   "scripts": {
     "build.types": "tsc",
@@ -37,7 +38,7 @@
     "builder"
   ],
   "author": "Sergii Stotskyi <sergiy.stotskiy@freaksidea.com>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/stalniy/ucast/issues"
   },
@@ -49,6 +50,7 @@
     "@babel/plugin-transform-typescript": "^7.10.1",
     "@babel/preset-env": "^7.10.2",
     "@rollup/plugin-babel": "^5.0.3",
+    "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-node-resolve": "^8.0.1",
     "@semantic-release/changelog": "^5.0.1",
     "@semantic-release/git": "^9.0.0",
