@@ -1,3 +1,5 @@
+import { Comparable } from '@ucast/core';
+
 export interface MongoQueryTopLevelOperators<Value> {
   $and?: MongoQuery<Value>[],
   $or?: MongoQuery<Value>[],
@@ -8,10 +10,10 @@ export interface MongoQueryTopLevelOperators<Value> {
 export interface MongoQueryFieldOperators<Value = any> {
   $eq?: Value,
   $ne?: Value,
-  $lt?: string | number | Date,
-  $lte?: string | number | Date,
-  $gt?: string | number | Date,
-  $gte?: string | number | Date,
+  $lt?: Extract<Comparable, Value>,
+  $lte?: Extract<Comparable, Value>,
+  $gt?: Extract<Comparable, Value>,
+  $gte?: Extract<Comparable, Value>,
   $in?: Value[],
   $nin?: Value[],
   $all?: Value[],
