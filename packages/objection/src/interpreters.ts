@@ -4,6 +4,7 @@ import {
   FieldCondition,
   Comparable
 } from '@ucast/core';
+import { raw } from 'objection';
 import { ObjectionOperator } from './interpreter';
 import { generateRegexQuery } from './utils';
 
@@ -32,7 +33,7 @@ export const $gte: ObjectionOperator<FieldCondition<Comparable>> = (condition, q
 };
 
 export const $exists: ObjectionOperator<FieldCondition<Comparable>> = (condition, query) => {
-  return query.where(condition.field, condition.value ? 'NotNull' : 'Null', condition.value);
+  return query.where(condition.field, condition.value ? 'NotNull' : 'Null');
 };
 
 export const $in: ObjectionOperator<FieldCondition<Comparable[]>> = (condition, query) => {
@@ -44,31 +45,35 @@ export const $nin: ObjectionOperator<FieldCondition<Comparable[]>> = (condition,
 };
 
 export const $not: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  const notQuery = query.buildUsing('whereNot');
-  node.value.forEach(condition => interpret(condition, notQuery));
-  return query;
+  return query.whereWrapped('where', (builder) => {
+    node.value.forEach(condition => interpret(condition, builder));
+  }, true);
 };
 
 export const $and: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  return node.value.reduce((builder, condition) => interpret(condition, builder), query);
+  return query.whereWrapped('where', (builder) => {
+    node.value.forEach(condition => interpret(condition, builder));
+  });
 };
 
 export const $or: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  return query.orWhere(builder => node.value.forEach(condition => interpret(condition, builder)));
+  return query.whereWrapped('orWhere', (builder) => {
+    node.value.forEach(condition => interpret(condition, builder));
+  });
 };
 
 export const $nor: ObjectionOperator<CompoundCondition> = (node, query, { interpret }) => {
-  return query.orWhere((builder) => {
+  return query.whereWrapped('orWhere', (builder) => {
     node.value.forEach(condition => interpret(condition, builder));
-  }, 'whereNot');
+  }, true);
 };
 
 export const $mod: ObjectionOperator<FieldCondition<[number, number]>> = (condition, query) => {
-  return query.whereRaw(condition.field, 'mod(:field:, :dividend) = :divider', {
+  return query.whereRaw(condition.field, raw('mod(:field:, :dividend) = :divider', {
     field: condition.field,
     dividend: condition.value[0],
     divider: condition.value[1]
-  });
+  }));
 };
 
 type IElemMatch = ObjectionOperator<FieldCondition<Condition>>;
@@ -78,8 +83,8 @@ export const $elemMatch: IElemMatch = (condition, query, { interpret }) => {
 };
 
 export const $regex: ObjectionOperator<FieldCondition<RegExp>> = (condition, query) => {
-  return query.whereRaw(condition.field, generateRegexQuery(condition.value.ignoreCase), {
+  return query.whereRaw(condition.field, raw(generateRegexQuery(condition.value.ignoreCase), {
     field: condition.field,
     regex: condition.value.source,
-  });
+  }));
 };

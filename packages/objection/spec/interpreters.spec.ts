@@ -1,5 +1,5 @@
 import { FieldCondition as Field, CompoundCondition } from '@ucast/core'
-import { expect } from './specHelper'
+import { expect, linearize } from './specHelper'
 import { createObjectionInterpreter, $eq, $ne, $lte, $lt, $gte, $gt, $exists, $in, $nin, $and, $not, $or, $nor, $mod, $elemMatch, $regex } from '../src'
 import { Project, User, setClient } from './fixtures'
 
@@ -18,9 +18,12 @@ describe('Condition Interpreter', () => {
 
     it('generates join relation when using dot notation', () => {
       const condition = new Field('$eq', 'projects.name', 'test')
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."name" = \'test\''
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where "projects"."name" = 'test'
+      `)
     })
   })
 
@@ -36,9 +39,12 @@ describe('Condition Interpreter', () => {
 
     it('generates join relation when using dot notation', () => {
       const condition = new Field('$ne', 'projects.name', 'test')
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where not "projects"."name" = \'test\''
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where not "projects"."name" = 'test'
+      `)
     })
   })
 
@@ -55,9 +61,12 @@ describe('Condition Interpreter', () => {
 
     it('generates join relation when using dot notation', () => {
       const condition = new Field('$lte', 'user.age', 10)
-      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
-        'select "projects".* from "projects" inner join "users" as "user" on "user"."id" = "projects"."user_id" where "user"."age" <= 10'
-      )
+      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "projects".*
+        from "projects"
+          inner join "users" as "user" on "user"."id" = "projects"."user_id"
+        where "user"."age" <= 10
+      `)
     })
   })
 
@@ -74,9 +83,12 @@ describe('Condition Interpreter', () => {
 
     it('generates join relation when using dot notation', () => {
       const condition = new Field('$lt', 'user.age', 10)
-      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
-        'select "projects".* from "projects" inner join "users" as "user" on "user"."id" = "projects"."user_id" where "user"."age" < 10'
-      )
+      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "projects".*
+        from "projects"
+          inner join "users" as "user" on "user"."id" = "projects"."user_id"
+        where "user"."age" < 10
+      `)
     })
   })
 
@@ -93,9 +105,12 @@ describe('Condition Interpreter', () => {
 
     it('generates join relation when using dot notation', () => {
       const condition = new Field('$gt', 'user.age', 10)
-      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
-        'select "projects".* from "projects" inner join "users" as "user" on "user"."id" = "projects"."user_id" where "user"."age" > 10'
-      )
+      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "projects".*
+        from "projects"
+          inner join "users" as "user" on "user"."id" = "projects"."user_id"
+        where "user"."age" > 10
+      `)
     })
   })
 
@@ -112,9 +127,12 @@ describe('Condition Interpreter', () => {
 
     it('generates join relation when using dot notation', () => {
       const condition = new Field('$gte', 'user.age', 10)
-      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
-        'select "projects".* from "projects" inner join "users" as "user" on "user"."id" = "projects"."user_id" where "user"."age" >= 10'
-      )
+      expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "projects".*
+        from "projects"
+          inner join "users" as "user" on "user"."id" = "projects"."user_id"
+        where "user"."age" >= 10
+      `)
     })
   })
 
@@ -140,9 +158,12 @@ describe('Condition Interpreter', () => {
     it('generates query using join when using dot notation', () => {
       const condition = new Field('$exists', 'projects.due_date', true)
 
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."due_date" is not null'
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where "projects"."due_date" is not null
+      `)
     })
   })
 
@@ -171,13 +192,18 @@ describe('Condition Interpreter', () => {
   })
 
   describe('$not', () => {
-    const interpret = createObjectionInterpreter({ $not, $eq })
+    const interpret = createObjectionInterpreter({ $not, $eq, $or })
 
     it('generates query with not condition', () => {
-      const condition = new CompoundCondition('$not', [new Field('$eq', 'age', 12)])
+      const condition = new CompoundCondition('$not', [
+        new CompoundCondition('$or', [
+          new Field('$eq', 'age', 12),
+          new Field('$eq', 'age', 13),
+        ])
+      ])
 
       expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" where not "age" = 12'
+        'select "users".* from "users" where not (("age" = 12 or "age" = 13))'
       )
     })
   })
@@ -192,7 +218,7 @@ describe('Condition Interpreter', () => {
       ])
 
       expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" where "age" = 1 and "active" = true'
+        'select "users".* from "users" where ("age" = 1 and "active" = true)'
       )
     })
 
@@ -202,9 +228,12 @@ describe('Condition Interpreter', () => {
         new Field('$eq', 'projects.active', true)
       ])
 
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."name" = \'test\' and "projects"."active" = true'
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where ("projects"."name" = 'test' and "projects"."active" = true)
+      `)
     })
   })
 
@@ -228,9 +257,12 @@ describe('Condition Interpreter', () => {
         new Field('$eq', 'projects.active', true)
       ])
 
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where ("age" = 1 or "projects"."active" = true)'
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where ("age" = 1 or "projects"."active" = true)
+      `)
     })
   })
 
@@ -249,8 +281,42 @@ describe('Condition Interpreter', () => {
     })
   })
 
+  describe('nested compound condition', () => {
+    const interpret = createObjectionInterpreter({ $not, $nor, $and, $or, $eq, $lt, $gt })
+
+    it('is generated with proper brackets around children', () => {
+      const condition = new CompoundCondition('$or', [
+        new CompoundCondition('$or', [
+          new Field('$eq', 'age', 1),
+          new Field('$eq', 'age', 2),
+        ]),
+        new CompoundCondition('$and', [
+          new Field('$gt', 'qty', 1),
+          new Field('$lt', 'qty', 20),
+        ]),
+        new CompoundCondition('$nor', [
+          new Field('$gt', 'qty', 10),
+          new Field('$lt', 'qty', 20),
+        ]),
+        new CompoundCondition('$not', [new CompoundCondition('$and', [
+          new Field('$eq', 'active', false),
+          new Field('$gt', 'age', 18)
+        ])])
+      ])
+
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+        where (("age" = 1 or "age" = 2)
+           or ("qty" > 1 and "qty" < 20)
+           or not ("qty" > 10 or "qty" < 20)
+           or not (("active" = false and "age" > 18)))
+      `)
+    })
+  })
+
   describe('$mod', () => {
-    const interpret = createObjectionInterpreter({ $mod })
+    const interpret = createObjectionInterpreter({ $mod, $or })
 
     it('generates query using "mod"', () => {
       const condition = new Field('$mod', 'qty', [4, 0])
@@ -263,8 +329,22 @@ describe('Condition Interpreter', () => {
     it('generates query using join when using dot notation', () => {
       const condition = new Field('$mod', 'projects.qty', [4, 0])
 
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where mod("projects"."qty", 4) = 0
+      `)
+    })
+
+    it('is correctly generated inside compound condition', () => {
+      const condition = new CompoundCondition('$or', [
+        new Field('$mod', 'qty', [4, 0]),
+        new Field('$mod', 'qty', [4, 2]),
+      ])
+
       expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where mod("projects"."qty", 4) = 0'
+        'select "users".* from "users" where (mod("qty", 4) = 0 or mod("qty", 4) = 2)'
       )
     })
   })
@@ -275,9 +355,12 @@ describe('Condition Interpreter', () => {
     it('generates query that interprets "$elemMatch"', () => {
       const condition = new Field('$elemMatch', 'projects', new Field('$eq', 'active', true))
 
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."active" = true'
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where "projects"."active" = true
+      `)
     })
 
     it('generates query that interprets "$elemMatch" from compound nested conditions', () => {
@@ -286,9 +369,12 @@ describe('Condition Interpreter', () => {
         new Field('$lt', 'count', 10),
       ]))
 
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."count" > 5 and "projects"."count" < 10'
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where ("projects"."count" > 5 and "projects"."count" < 10)
+      `)
     })
 
     it('generates query that interprets "$elemMatch" from compound nested conditions', () => {
@@ -300,16 +386,20 @@ describe('Condition Interpreter', () => {
         ]),
       ]))
 
-      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(
-        'select "users".* from "users" inner join "projects" on "projects"."user_id" = "users"."id" where "projects"."active" = true and ("projects"."count" > 5 or "projects"."count" < 10)'
-      )
+      expect(interpret(condition, User.query()).toKnexQuery().toString()).to.equal(linearize`
+        select "users".*
+        from "users"
+          inner join "projects" on "projects"."user_id" = "users"."id"
+        where ("projects"."active" = true
+          and ("projects"."count" > 5 or "projects"."count" < 10))
+      `)
     })
   })
 
   describe('$regex', () => {
     const interpret = createObjectionInterpreter({ $regex })
 
-    describe('postgres', () => {
+    describe('Postgres', () => {
       it('builds query using posix operator', () => {
         const condition = new Field('$regex', 'email', /@/)
 
@@ -321,13 +411,16 @@ describe('Condition Interpreter', () => {
       it('generates join relation when using dot notation', () => {
         const condition = new Field('$regex', 'user.email', /@/i)
 
-        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
-          'select "projects".* from "projects" inner join "users" as "user" on "user"."id" = "projects"."user_id" where "user"."email" ~* \'@\''
-        )
+        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(linearize`
+          select "projects".*
+          from "projects"
+            inner join "users" as "user" on "user"."id" = "projects"."user_id"
+          where "user"."email" ~* '@'
+        `)
       })
     })
 
-    describe('oracle', () => {
+    describe('Oracle', () => {
       before(() => {
         setClient('oracledb')
       })
@@ -347,13 +440,16 @@ describe('Condition Interpreter', () => {
       it('generates join relation when using dot notation', () => {
         const condition = new Field('$regex', 'user.email', /@/i)
 
-        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
-          'select "projects".* from "projects" inner join "users" "user" on "user"."id" = "projects"."user_id" where "user"."email" ~* \'@\''
-        )
+        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(linearize`
+          select "projects".*
+          from "projects"
+            inner join "users" "user" on "user"."id" = "projects"."user_id"
+          where "user"."email" ~* '@'
+        `)
       })
     })
 
-    describe('mysql', () => {
+    describe('MySQL', () => {
       before(() => {
         setClient('mysql')
       })
@@ -373,9 +469,12 @@ describe('Condition Interpreter', () => {
       it('generates join relation when using dot notation', () => {
         const condition = new Field('$regex', 'user.email', /@/i)
 
-        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(
-          'select `projects`.* from `projects` inner join `users` as `user` on `user`.`id` = `projects`.`user_id` where `user`.`email` regexp \'@\' = 1'
-        )
+        expect(interpret(condition, Project.query()).toKnexQuery().toString()).to.equal(linearize`
+          select \`projects\`.*
+          from \`projects\`
+            inner join \`users\` as \`user\` on \`user\`.\`id\` = \`projects\`.\`user_id\`
+          where \`user\`.\`email\` regexp '@' = 1
+        `)
       })
     })
 

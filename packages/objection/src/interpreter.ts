@@ -3,9 +3,9 @@ import {
   Condition,
   InterpretationContext
 } from '@ucast/core';
-import { raw, Model as ObjectionModel, QueryBuilder, QueryBuilderType, Relations } from 'objection';
+import { RawBuilder, Model as ObjectionModel, QueryBuilder, QueryBuilderType, Relations } from 'objection';
 
-type QueryBuilderMethod = keyof Pick<QueryBuilder<ObjectionModel>, 'where' | 'orWhere' | 'whereNot' | 'whereRaw'>;
+type QueryBuilderMethod = keyof Pick<QueryBuilder<ObjectionModel>, 'where' | 'orWhere' | 'whereNot'>;
 type WhereCallback = (builder: Query) => unknown;
 
 export class Query {
@@ -40,40 +40,48 @@ export class Query {
     }
   }
 
-  where(field: string, operator: string, value: any) {
+  private _applyTo(builder: QueryBuilder<ObjectionModel>): QueryBuilder<ObjectionModel> {
+    return (this.query as any).toKnexQuery(builder);
+  }
+
+  where(field: string, operator: string, value?: any) {
     const possibleMethod = this._method + operator as QueryBuilderMethod;
     const fieldPrefixed = `${this._fieldPrefix}${field}`;
 
     this._tryToJoinRelation(fieldPrefixed);
 
-    if (typeof this.query[possibleMethod] === 'function') {
-      this.query[possibleMethod](fieldPrefixed, value);
-    } else {
+    if (typeof this.query[possibleMethod] !== 'function') {
       this.query[this._method](fieldPrefixed, operator, value);
+      return this;
+    }
+
+    if (typeof value === 'undefined') {
+      this.query[possibleMethod as 'whereNull'](fieldPrefixed);
+    } else {
+      this.query[possibleMethod](fieldPrefixed, value);
     }
 
     return this;
   }
 
-  orWhere(callback: WhereCallback, method: Exclude<QueryBuilderMethod, 'whereRaw'> = 'where') {
-    const orQuery = this.buildUsing('orWhere', this.query.modelClass().query());
-    callback(orQuery);
-    this.query[method](builder => orQuery.applyTo(builder));
+  whereWrapped(method: 'where' | 'orWhere', callback: WhereCallback, isInverted = false) {
+    const tmpQuery = this.buildUsing(method, this.query.modelClass().query());
+    const wrappingMethod = `${this._method}${isInverted ? 'Not' : ''}` as QueryBuilderMethod;
+
+    callback(tmpQuery);
+    this.query[wrappingMethod](builder => tmpQuery._applyTo(builder));
+
     return this;
   }
 
-  whereRaw(field: string, sql: string, bindings?: any) {
+  whereRaw(field: string, sql: RawBuilder) {
     this._tryToJoinRelation(field);
-    this.query[this._method](raw(sql, bindings) as any);
+    this.query[this._method](sql);
     return this;
   }
 
   buildUsing(method: QueryBuilderMethod, query: QueryBuilder<ObjectionModel> = this.query) {
     return new Query(query, method, this._rootQuery, this._fieldPrefix);
-  }
-
-  applyTo(builder: QueryBuilder<ObjectionModel>): QueryBuilder<ObjectionModel> {
-    return (this.query as any).toKnexQuery(builder);
   }
 
   prefixed(fieldPrefix: string) {
