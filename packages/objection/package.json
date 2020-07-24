@@ -19,6 +19,12 @@
     "type": "git",
     "url": "git+https://github.com/stalniy/ucast.git"
   },
+  "files": [
+    "dist",
+    "NOTICE",
+    "AUTHORS.md",
+    "*.d.ts"
+  ],
   "keywords": [
     "objection",
     "conditions",
@@ -30,7 +36,7 @@
   "contributors": [
     { "name": "Sergii Stotskyi", "email": "sergiy.stotskiy@freaksidea.com" }
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/stalniy/ucast/issues"
   },
