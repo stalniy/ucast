@@ -27,7 +27,7 @@ All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
 | [@ucast/core]     | [![@ucast/core-status]][@ucast/core-package] | conditions AST and helpers |
 | [@ucast/js]       | [![@ucast/js-status]][@ucast/js-package] | ucast JavaScript interpreter |
 | [@ucast/mongo]    | [![@ucast/mongo-status]][@ucast/mongo-package] | [MongoDB query] parser |
-| [@ucast/objection]    | [![@ucast/objection-status]][@ucast/objection-package] | [Objection query] interpreter |
+| [@ucast/objection]    | [![@ucast/objection-status]][@ucast/objection-package] | [Objection query] interpreter (SQL ORM) |
 
 [MongoDB query]: http://docs.mongodb.org/manual/reference/operator/query/
 [Objection query]: https://vincit.github.io/objection.js/api/query-builder/
@@ -35,6 +35,7 @@ All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
 [@ucast/core]: packages/core
 [@ucast/js]: packages/js
 [@ucast/mongo]: packages/mongo
+[@ucast/objection]: packages/objection
 
 [@ucast/core-status]: https://img.shields.io/npm/v/@ucast/core.svg
 [@ucast/js-status]: https://img.shields.io/npm/v/@ucast/js.svg
