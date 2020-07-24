@@ -19,6 +19,9 @@
     "type": "git",
     "url": "git+https://github.com/stalniy/ucast.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "NOTICE",
