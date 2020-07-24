@@ -3,7 +3,6 @@ import Knex from 'knex'
 
 export function setClient(client: string) {
   const knex = Knex({ client })
-
   Model.knex(knex)
 }
 

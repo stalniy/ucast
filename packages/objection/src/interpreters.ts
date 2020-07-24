@@ -71,11 +71,12 @@ export const $mod: ObjectionOperator<FieldCondition<[number, number]>> = (condit
   });
 };
 
-type IMatch = ObjectionOperator<FieldCondition<Condition>>;
-export const $elemMatch: IMatch = (condition, query, { interpret }) => {
+type IElemMatch = ObjectionOperator<FieldCondition<Condition>>;
+export const $elemMatch: IElemMatch = (condition, query, { interpret }) => {
   interpret(condition.value, query.prefixed(condition.field));
   return query;
 };
+
 export const $regex: ObjectionOperator<FieldCondition<RegExp>> = (condition, query) => {
   return query.whereRaw(condition.field, generateRegexQuery(condition.value.ignoreCase), {
     field: condition.field,
