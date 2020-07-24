@@ -1,6 +1,6 @@
 {
   "name": "@ucast/objection",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "git@github.com:stalniy/ucast.git",
   "main": "dist/es6c/index.js",
   "es2015": "dist/es6m/index.js",
@@ -34,7 +34,10 @@
   ],
   "author": "Otávio Augusto Soares <otaviokk@gmail.com>",
   "contributors": [
-    { "name": "Sergii Stotskyi", "email": "sergiy.stotskiy@freaksidea.com" }
+    {
+      "name": "Sergii Stotskyi",
+      "email": "sergiy.stotskiy@freaksidea.com"
+    }
   ],
   "license": "Apache-2.0",
   "bugs": {
