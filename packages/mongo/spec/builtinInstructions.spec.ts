@@ -15,7 +15,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse({ $and: [{ a: 1 }, { b: 2 }] }) as CompoundCondition
 
       expect(ast).to.be.instanceOf(CompoundCondition)
-      expect(ast.operator).to.equal('$and')
+      expect(ast.operator).to.equal('and')
       expect(ast.value.every(c => c instanceof FieldCondition)).to.be.true
     })
 
@@ -23,7 +23,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse({ $and: [{ field: 5 }] })
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$eq')
+      expect(ast.operator).to.equal('eq')
     })
 
     it('merges child conditions of with the same operator', () => {
@@ -40,10 +40,10 @@ describe('Built-in instructions', () => {
       expect(conditions).to.have.length(4)
       expect(conditions.every(c => c instanceof FieldCondition)).to.be.true
       expect(conditions).to.deep.equal([
-        { field: 'a', operator: '$eq', value: 1 },
-        { field: 'b', operator: '$eq', value: 2 },
-        { field: 'c', operator: '$eq', value: 3 },
-        { field: 'd', operator: '$eq', value: 4 },
+        { field: 'a', operator: 'eq', value: 1 },
+        { field: 'b', operator: 'eq', value: 2 },
+        { field: 'c', operator: 'eq', value: 3 },
+        { field: 'd', operator: 'eq', value: 4 },
       ])
     })
   })
@@ -64,7 +64,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse({ $nor: [{ a: 1 }] }) as CompoundCondition
 
       expect(ast).to.be.instanceOf(CompoundCondition)
-      expect(ast.operator).to.equal('$nor')
+      expect(ast.operator).to.equal('nor')
       expect(ast.value[0]).to.be.instanceOf(FieldCondition)
     })
   })
@@ -75,10 +75,10 @@ describe('Built-in instructions', () => {
       const conditions = ast.value as FieldCondition[]
 
       expect(ast).to.be.instanceOf(CompoundCondition)
-      expect(ast.operator).to.equal('$not')
+      expect(ast.operator).to.equal('not')
       expect(conditions).to.have.length(1)
       expect(conditions[0]).to.be.instanceOf(FieldCondition)
-      expect(conditions[0].operator).to.equal('$regex')
+      expect(conditions[0].operator).to.equal('regex')
     })
 
     it('is parsed as `CompoundCondition` of `FieldCondition`s when object literal is passed', () => {
@@ -87,13 +87,13 @@ describe('Built-in instructions', () => {
       const nestedConditions = conditions[0].value as FieldCondition[]
 
       expect(ast).to.be.instanceOf(CompoundCondition)
-      expect(ast.operator).to.equal('$not')
+      expect(ast.operator).to.equal('not')
       expect(conditions).to.have.length(1)
       expect(conditions[0]).to.be.instanceOf(CompoundCondition)
-      expect(conditions[0].operator).to.equal('$and')
+      expect(conditions[0].operator).to.equal('and')
       expect(nestedConditions).to.deep.equal([
-        { operator: '$gt', field: 'field', value: 1 },
-        { operator: '$lt', field: 'field', value: 2 }
+        { operator: 'gt', field: 'field', value: 1 },
+        { operator: 'lt', field: 'field', value: 2 }
       ])
     })
 
@@ -122,12 +122,12 @@ describe('Built-in instructions', () => {
       }) as FieldCondition<CompoundCondition>
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$elemMatch')
+      expect(ast.operator).to.equal('elemMatch')
       expect(ast.value).to.be.instanceOf(CompoundCondition)
-      expect(ast.value.operator).to.equal('$and')
+      expect(ast.value.operator).to.equal('and')
       expect(ast.value.value).to.deep.equal([
-        { field: 'a', operator: '$eq', value: 1 },
-        { field: 'b', operator: '$eq', value: 2 },
+        { field: 'a', operator: 'eq', value: 1 },
+        { field: 'b', operator: 'eq', value: 2 },
       ])
     })
 
@@ -142,12 +142,12 @@ describe('Built-in instructions', () => {
       }) as FieldCondition<CompoundCondition>
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$elemMatch')
+      expect(ast.operator).to.equal('elemMatch')
       expect(ast.value).to.be.instanceOf(CompoundCondition)
-      expect(ast.value.operator).to.equal('$and')
+      expect(ast.value.operator).to.equal('and')
       expect(ast.value.value).to.deep.equal([
-        { field: ITSELF, operator: '$lt', value: 1 },
-        { field: ITSELF, operator: '$gt', value: 2 },
+        { field: ITSELF, operator: 'lt', value: 1 },
+        { field: ITSELF, operator: 'gt', value: 2 },
       ])
     })
 
@@ -169,7 +169,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse({ a: { $size: 10 } }) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$size')
+      expect(ast.operator).to.equal('size')
       expect(ast.value).to.equal(10)
       expect(ast.field).to.equal('a')
     })
@@ -193,7 +193,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse(query) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$in')
+      expect(ast.operator).to.equal('in')
       expect(ast.value).to.equal(query.a.$in)
       expect(ast.field).to.equal('a')
     })
@@ -217,7 +217,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse(query) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$mod')
+      expect(ast.operator).to.equal('mod')
       expect(ast.value).to.equal(query.a.$mod)
       expect(ast.field).to.equal('a')
     })
@@ -244,7 +244,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse(query) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$exists')
+      expect(ast.operator).to.equal('exists')
       expect(ast.value).to.equal(query.a.$exists)
       expect(ast.field).to.equal('a')
     })
@@ -268,7 +268,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse(query) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$gt')
+      expect(ast.operator).to.equal('gt')
       expect(ast.value).to.equal(query.a.$gt)
       expect(ast.field).to.equal('a')
     })
@@ -304,7 +304,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse(query) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$eq')
+      expect(ast.operator).to.equal('eq')
       expect(ast.value).to.equal(query.a.$eq)
       expect(ast.field).to.equal('a')
     })
@@ -322,7 +322,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse(query) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$regex')
+      expect(ast.operator).to.equal('regex')
       expect(ast.value).to.equal(query.a.$regex)
       expect(ast.field).to.equal('a')
     })
@@ -362,7 +362,7 @@ describe('Built-in instructions', () => {
       const ast = parser.parse(query) as DocumentCondition<Function>
 
       expect(ast).to.be.instanceOf(DocumentCondition)
-      expect(ast.operator).to.equal('$where')
+      expect(ast.operator).to.equal('where')
       expect(ast.value).to.equal(query.$where)
     })
 

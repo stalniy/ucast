@@ -16,7 +16,7 @@ import { MongoQuery, MongoQueryFieldOperators } from './types';
 import { isCompound, tryToSimplifyCompoundCondition, hasOperators } from './utils';
 
 function and(...conditions: Condition[]) {
-  return tryToSimplifyCompoundCondition('$and', conditions);
+  return tryToSimplifyCompoundCondition('and', conditions);
 }
 
 interface DefaultParsers {
@@ -54,7 +54,7 @@ export class MongoQueryParser {
 
   constructor(instructions: Record<string, ParsingInstruction>) {
     this._instructions = Object.keys(instructions).reduce((all, name) => {
-      all[name] = { ...instructions[name], name };
+      all[name] = { ...instructions[name], name: name.slice(1) };
       return all;
     }, {} as ParsingInstructions);
     this.parse = this.parse.bind(this);
@@ -142,7 +142,7 @@ export class MongoQueryParser {
       return and(rootCondition, this._parseField(key, '$eq', value, query));
     }, and());
 
-    if (isCompound('$and', mainCondition) && mainCondition.value.length === 1) {
+    if (isCompound('and', mainCondition) && mainCondition.value.length === 1) {
       return mainCondition.value[0];
     }
 

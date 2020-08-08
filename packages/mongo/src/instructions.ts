@@ -66,7 +66,7 @@ export const $not: FieldInstruction<MongoQuery<any> | RegExp> = {
   },
   parse(instruction, value, context) {
     const condition = value instanceof RegExp
-      ? new FieldCondition('$regex' as typeof instruction.name, context.field, value)
+      ? new FieldCondition('regex' as typeof instruction.name, context.field, value)
       : context.parse(value, context);
 
     return new CompoundCondition(instruction.name, [condition]);

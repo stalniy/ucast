@@ -27,9 +27,9 @@ describe('MongoQueryParser', () => {
     const conditions = ast.value as FieldCondition[]
 
     expect(ast).to.be.instanceOf(CompoundCondition)
-    expect(ast.operator).to.equal('$and')
+    expect(ast.operator).to.equal('and')
     expect(conditions).to.have.length(2)
-    expect(conditions.every(c => c instanceof FieldCondition && c.operator === '$eq')).to.be.true
+    expect(conditions.every(c => c instanceof FieldCondition && c.operator === 'eq')).to.be.true
   })
 
   describe('when "field" level parsing instruction is specified', () => {
@@ -39,25 +39,25 @@ describe('MongoQueryParser', () => {
       const ast = parser.parse({ field: { $my: 1 } }) as FieldCondition
 
       expect(ast).to.be.instanceOf(FieldCondition)
-      expect(ast.operator).to.equal('$my')
+      expect(ast.operator).to.equal('my')
       expect(ast.value).to.equal(1)
       expect(ast.field).to.equal('field')
     })
 
     it('uses its "validate" hook to validate operator value', () => {
-      const $my = { type: 'field', validate: spy(), name: '$my' }
+      const $my = { type: 'field', validate: spy() }
       const parser = new MongoQueryParser({ $my })
       parser.parse({ field: { $my: 1 } })
 
-      expect($my.validate).to.have.been.called.with($my, 1)
+      expect($my.validate).to.have.been.called.with({ ...$my, name: 'my' }, 1)
     })
 
     it('uses its "parse" hook to customize its parsing', () => {
-      const $my = { name: '$my', type: 'field', parse: spy(defaultParsers.field) }
+      const $my = { type: 'field', parse: spy(defaultParsers.field) }
       const parser = new MongoQueryParser({ $my })
       parser.parse({ field: { $my: 1 } })
 
-      expect($my.parse).to.have.been.called.with($my, 1, {
+      expect($my.parse).to.have.been.called.with({ ...$my, name: 'my' }, 1, {
         field: 'field',
         parse: parser.parse,
         query: { $my: 1 },
@@ -72,37 +72,37 @@ describe('MongoQueryParser', () => {
       const ast = parser.parse({ $my: [] }) as CompoundCondition
 
       expect(ast).to.be.instanceOf(CompoundCondition)
-      expect(ast.operator).to.equal('$my')
+      expect(ast.operator).to.equal('my')
       expect(ast.value).to.have.length(0)
     })
 
     it('parses value as nested mongo query', () => {
-      const $my = { name: '$my', type: 'compound' }
+      const $my = { type: 'compound' }
       const parser = new MongoQueryParser({ $my, $eq })
       const ast = parser.parse({ $my: { a: 1 } }) as CompoundCondition
       const childAst = ast.value[0] as FieldCondition
 
       expect(ast.value).to.have.length(1)
       expect(childAst).to.be.instanceOf(FieldCondition)
-      expect(childAst.operator).to.equal('$eq')
+      expect(childAst.operator).to.equal('eq')
       expect(childAst.value).to.equal(1)
       expect(childAst.field).to.equal('a')
     })
 
     it('uses its "validate" hook to validate operator value', () => {
-      const $my = { type: 'compound', validate: spy(), name: '$my' }
+      const $my = { type: 'compound', validate: spy() }
       const parser = new MongoQueryParser({ $my })
       parser.parse({ $my: [] })
 
-      expect($my.validate).to.have.been.called.with($my, [])
+      expect($my.validate).to.have.been.called.with({ ...$my, name: 'my' }, [])
     })
 
     it('uses its "parse" hook to customize its parsing', () => {
-      const $my = { name: '$my', type: 'compound', parse: spy(defaultParsers.compound) }
+      const $my = { type: 'compound', parse: spy(defaultParsers.compound) }
       const parser = new MongoQueryParser({ $my })
       parser.parse({ $my: [] })
 
-      expect($my.parse).to.have.been.called.with($my, [], {
+      expect($my.parse).to.have.been.called.with({ ...$my, name: 'my' }, [], {
         parse: parser.parse,
         query: { $my: [] },
       })
@@ -116,24 +116,24 @@ describe('MongoQueryParser', () => {
       const ast = parser.parse({ $my: 1 }) as DocumentCondition<number>
 
       expect(ast).to.be.instanceOf(DocumentCondition)
-      expect(ast.operator).to.equal('$my')
+      expect(ast.operator).to.equal('my')
       expect(ast.value).to.equal(1)
     })
 
     it('uses its "validate" hook to validate operator value', () => {
-      const $my = { type: 'document', validate: spy(), name: '$my' }
+      const $my = { type: 'document', validate: spy() }
       const parser = new MongoQueryParser({ $my })
       parser.parse({ $my: 1 })
 
-      expect($my.validate).to.have.been.called.with($my, 1)
+      expect($my.validate).to.have.been.called.with({ ...$my, name: 'my' }, 1)
     })
 
     it('uses its "parse" hook to customize its parsing', () => {
-      const $my = { name: '$my', type: 'document', parse: spy(defaultParsers.document) }
+      const $my = { type: 'document', parse: spy(defaultParsers.document) }
       const parser = new MongoQueryParser({ $my })
       parser.parse({ $my: 2 })
 
-      expect($my.parse).to.have.been.called.with($my, 2, {
+      expect($my.parse).to.have.been.called.with({ ...$my, name: 'my' }, 2, {
         parse: parser.parse,
         query: { $my: 2 },
       })
