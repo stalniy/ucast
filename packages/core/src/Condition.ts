@@ -1,9 +1,9 @@
-export interface Condition {
+export interface Condition<T = unknown> {
   readonly operator: string;
-  readonly value: unknown;
+  readonly value: T;
 }
 
-export class DocumentCondition<T> implements Condition {
+export class DocumentCondition<T> implements Condition<T> {
   public readonly operator!: string;
 
   public readonly value!: T;
@@ -27,7 +27,7 @@ export class CompoundCondition<T extends Condition = Condition> extends Document
 }
 
 export const ITSELF = '__itself__';
-export class FieldCondition<T = unknown> implements Condition {
+export class FieldCondition<T = unknown> implements Condition<T> {
   public readonly operator!: string;
 
   public readonly field!: string | typeof ITSELF;
@@ -42,3 +42,4 @@ export class FieldCondition<T = unknown> implements Condition {
 }
 
 export const NULL_CONDITION = new DocumentCondition('__null__', null);
+export type ConditionValue<T> = T extends Condition<infer V> ? V : unknown;
