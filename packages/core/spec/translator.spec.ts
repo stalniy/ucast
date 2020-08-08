@@ -23,4 +23,11 @@ describe('createTranslatorFactory', () => {
     expect(translate('test')).to.be.true
     expect(translate('test2')).to.be.false
   })
+
+  it('adds `ast` property to resulting function', () => {
+    const factory = createTranslatorFactory(parse, interpret)
+    const translate = factory('test')
+
+    expect(translate.ast).to.deep.equal(parse('test'))
+  })
 })
