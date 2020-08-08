@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.1.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.0.2...@ucast/mongo@1.1.0) (2020-08-08)
+
+
+### Features
+
+* **mongo:** adds built-in `$all` instruction for MongoQueryParser ([6d3f224](https://github.com/stalniy/ucast/commit/6d3f224bcba1ef6b875f992752f08d01116bbf9b))
+
+
+### Performance Improvements
+
+* **build:** adds es6cjs format which works few times faster then umd in node env ([4adba3b](https://github.com/stalniy/ucast/commit/4adba3bbf85afe95abfbcee0e36b5edc9d09396f))
+
 ## [1.0.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.0.1...@ucast/mongo@1.0.2) (2020-07-23)
 
 
