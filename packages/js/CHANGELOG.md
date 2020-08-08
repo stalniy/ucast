@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+# [2.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@1.0.2...@ucast/js@2.0.0) (2020-08-08)
+
+
+### Code Refactoring
+
+* **interpreters:** removes `$` prefix from names of operator interpreters ([04ea7ac](https://github.com/stalniy/ucast/commit/04ea7ac60a6aba4598b4fa27e6decb615e69a29d))
+
+
+### Performance Improvements
+
+* **build:** adds es6cjs format which works few times faster then umd in node env ([4adba3b](https://github.com/stalniy/ucast/commit/4adba3bbf85afe95abfbcee0e36b5edc9d09396f))
+
+
+### BREAKING CHANGES
+
+* **interpreters:** removes `$` prefix from names of operator interpreters. Also renames `$in` to `within` because `in` is a reserved word in JS. This ensures we can safely import/re-export symbols from this package and other parsers/interpreters inside/from single file:
+
+**Before**:
+
+```js
+import { $in, $and } from '@ucast/js'
+```
+
+**After**:
+
+```js
+import { within, and } from '@ucast/js'
+```
+
 ## [1.0.2](https://github.com/stalniy/ucast/compare/@ucast/js@1.0.1...@ucast/js@1.0.2) (2020-07-23)
 
 
