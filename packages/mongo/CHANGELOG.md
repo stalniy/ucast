@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+# [2.0.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.1.0...@ucast/mongo@2.0.0) (2020-08-08)
+
+
+### Bug Fixes
+
+* **docs:** removes `$` sign from README examples ([0dc924a](https://github.com/stalniy/ucast/commit/0dc924af72abfefa41ebeac107f1bc070ad796c7))
+
+
+### Code Refactoring
+
+* **parser:** removes `$` from operator name in resulting AST ([e589a9c](https://github.com/stalniy/ucast/commit/e589a9ce577bc191f48e481fc8aebe5b1164783b))
+
+
+### BREAKING CHANGES
+
+* **parser:** `MongoQueryParser.parse` returns AST with operator names that doesn't have `$` prefix. This was done to make it easier import/re-export parser instructions and operator interpreters from single package
+
 # [1.1.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.0.2...@ucast/mongo@1.1.0) (2020-08-08)
 
 
