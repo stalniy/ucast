@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.0.0...@ucast/js@2.0.1) (2020-08-08)
+
+
+### Bug Fixes
+
+* **docs:** removes `$` sign from README ([1a7e96b](https://github.com/stalniy/ucast/commit/1a7e96b0e7bd29d7de5fe236863e472e28b9e119))
+
 # [2.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@1.0.2...@ucast/js@2.0.0) (2020-08-08)
 
 
