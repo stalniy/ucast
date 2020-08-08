@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.2.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.1.0...@ucast/core@1.2.0) (2020-08-08)
+
+
+### Features
+
+* **condition:** adds generic type to `Condition` interface ([a3f2961](https://github.com/stalniy/ucast/commit/a3f2961879e5bc20ee6379516ed7f0c3d58bd525))
+
 # [1.1.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.0.2...@ucast/core@1.1.0) (2020-08-08)
 
 
