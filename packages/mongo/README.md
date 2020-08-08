@@ -60,17 +60,19 @@ const ast = parser.parse({
 console.dir(ast, { depth: null })
 /*
  CompoundCondition {
-   operator: "$and",
+   operator: "and",
    value: [
-     FieldCondition { operator: "$eq", field: "a", value: 1 },
-     FieldCondition { operator: "$eq", field: "b", value: 2 },
-     FieldCondition { operator: "$eq", field: "c", value: 3 },
+     FieldCondition { operator: "eq", field: "a", value: 1 },
+     FieldCondition { operator: "eq", field: "b", value: 2 },
+     FieldCondition { operator: "eq", field: "c", value: 3 },
    ]
  }
  */
 ```
 
 This optimization logic helps to speed up interpreter's execution time, instead of going deeply over tree-like structure we have a plain structure of all conditions under a single compound condition.
+
+**Pay attention**: parser removes `$` prefix from operator names, so the resulting AST operators doesn't have in its `operator` property!
 
 ### Custom Operator
 
@@ -119,7 +121,7 @@ const ast = parser.parse({
 
 console.dir(ast, { depth: null });
 /*
-  DocumentCondition { operator: "$jsonSchema", value: [Function: validate] }
+  DocumentCondition { operator: "jsonSchema", value: [Function: validate] }
  */
 ```
 
