@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.1.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.0.2...@ucast/core@1.1.0) (2020-08-08)
+
+
+### Features
+
+* **translator:** adds `ast` property to translate function ([814e874](https://github.com/stalniy/ucast/commit/814e87419a0162f8ef5210d497477d2da08e456a))
+
+
+### Performance Improvements
+
+* **build:** adds es6cjs format which works few times faster then umd in node env ([4adba3b](https://github.com/stalniy/ucast/commit/4adba3bbf85afe95abfbcee0e36b5edc9d09396f))
+
 ## [1.0.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.0.1...@ucast/core@1.0.2) (2020-07-23)
 
 
