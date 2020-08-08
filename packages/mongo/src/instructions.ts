@@ -94,6 +94,7 @@ export const $in: FieldInstruction<unknown[]> = {
   validate: ensureIsArray,
 };
 export const $nin = $in;
+export const $all = $in;
 export const $mod: FieldInstruction<[number, number]> = {
   type: 'field',
   validate(instruction, value) {
