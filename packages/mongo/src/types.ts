@@ -17,9 +17,11 @@ export interface MongoQueryFieldOperators<Value = any> {
   $in?: Value[],
   $nin?: Value[],
   $all?: Value[],
+  /** checks by array length */
   $size?: number,
   $regex?: RegExp | string,
   $options?: 'i' | 'g' | 'm' | 'u',
+  /** checks the shape of array item */
   $elemMatch?: MongoQuery<Value>,
   $exists?: boolean,
   $not?: Omit<MongoQueryFieldOperators<Value>, '$not'>,
@@ -28,7 +30,7 @@ export interface MongoQueryFieldOperators<Value = any> {
 export type MongoQueryOperators<Value = any> =
   MongoQueryFieldOperators<Value> & MongoQueryTopLevelOperators<Value>;
 
-interface CustomOperators {
+export interface CustomOperators {
   toplevel?: {}
   field?: {}
 }
@@ -41,7 +43,17 @@ type Query<T extends Record<PropertyKey, any>, FieldOperators> = {
   [K in keyof T]?: OperatorValues<T[K]> | FieldOperators
 };
 
+export interface DefaultOperators<T> {
+  toplevel: MongoQueryTopLevelOperators<T>
+  field: MongoQueryOperators<T>
+}
+
+export type BuildMongoQuery<
+  T = Record<PropertyKey, any>,
+  O extends CustomOperators = DefaultOperators<T>
+> = T extends Record<PropertyKey, any>
+  ? Query<T, O['field']> & O['toplevel']
+  : O['field'] & O['toplevel'];
+
 export type MongoQuery<T = Record<PropertyKey, any>, O extends CustomOperators = CustomOperators> =
-  T extends Record<PropertyKey, any>
-    ? Query<T, O['field']> & MongoQueryTopLevelOperators<T> & O['toplevel']
-    : MongoQueryOperators<T> & O['field'] & O['toplevel'];
+  BuildMongoQuery<T, DefaultOperators<T> & O>;
