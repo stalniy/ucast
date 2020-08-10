@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [2.1.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.0.0...@ucast/mongo@2.1.0) (2020-08-10)
+
+
+### Bug Fixes
+
+* **types:** ensure `MongoQuery<any>` returns proper types and can be used with primitive values ([d138ee5](https://github.com/stalniy/ucast/commit/d138ee565bc54d623a283243dc12fc9c930dd2af))
+
+
+### Features
+
+* **types:** exports CustomOperators type and adds `BuildMongoQuery` type ([5ebff17](https://github.com/stalniy/ucast/commit/5ebff1709a448d8683650b26ffff5b7e472c6ac3))
+
 # [2.0.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@1.1.0...@ucast/mongo@2.0.0) (2020-08-08)
 
 
