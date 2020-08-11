@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [2.1.0](https://github.com/stalniy/ucast/compare/@ucast/js@2.0.1...@ucast/js@2.1.0) (2020-08-11)
+
+
+### Features
+
+* **comparing:** adds `compare` option to interpreter ([576d128](https://github.com/stalniy/ucast/commit/576d128a92d554e9e6a1508667a2f159908613c6))
+
 ## [2.0.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.0.0...@ucast/js@2.0.1) (2020-08-08)
 
 
