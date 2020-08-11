@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.2.0...@ucast/core@1.2.1) (2020-08-11)
+
+
+### Bug Fixes
+
+* **translator:** prevents passing rest parameters from translator to parser ([83c6a56](https://github.com/stalniy/ucast/commit/83c6a56b4ecc66879af0de8deb62da7966080a56))
+
 # [1.2.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.1.0...@ucast/core@1.2.0) (2020-08-08)
 
 
