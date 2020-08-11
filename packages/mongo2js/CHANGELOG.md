@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.1.0...@ucast/mongo2js@1.1.1) (2020-08-11)
+
+
+### Bug Fixes
+
+* **mongo2js:** removes `workspace:` protocol from deps ([5b6862d](https://github.com/stalniy/ucast/commit/5b6862d2c15573baf9578761372f0d19614922de))
+
 # [1.1.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.0.0...@ucast/mongo2js@1.1.0) (2020-08-11)
 
 
