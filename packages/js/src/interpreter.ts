@@ -22,6 +22,13 @@ export function createGetter<T extends GetField>(get: T) {
 }
 
 export const equal = <T>(a: T, b: T) => a === b;
+export function compare<T>(a: T, b: T): 0 | 1 | -1 {
+  if (a === b) {
+    return 0;
+  }
+
+  return a > b ? 1 : -1;
+}
 
 export type JsInterpreter<N extends Condition, Value = any> = (
   node: N,
@@ -36,9 +43,11 @@ export function createJsInterpreter<
   operators: Record<string, T>,
   options: O = {} as O
 ) {
+  const compareValues = options.compare || compare;
   return createInterpreter(operators, {
+    get: getObjectField,
+    compare,
+    equal: <T>(a: T, b: T): boolean => compareValues(a, b) === 0,
     ...options,
-    get: options.get || getObjectField,
-    equal: options.equal || equal,
   });
 }

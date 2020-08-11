@@ -80,14 +80,22 @@ const condition = new FieldCondition('in', 'x', [1, 2]);
 interpret(condition, { x: 1 }) // throws Error, `$in` is not supported
 ```
 
-You can also provide a custom `get` or `equal` function. So, you can implement custom logic to get object's property or to compare values. `equal` is used everywhere equality is required (e.g., in `$in`).
+You can also provide a custom `get` or `compare` function. So, you can implement custom logic to get object's property or to compare values. `compare` is used everywhere equality or comparison is required (e.g., in `$in`, `$lt`, `$gt`). This function must return `1` if `a > b`, `-1` if `a < b` and `0` if `a === b`
 Let's enhance our interpreter to support deep object comparison using [lodash]:
 
 ```js
-import equal from 'lodash/isEqual';
-import { createJsInterpreter, allInterpreters } from '@ucast/js';
+import isEqual from 'lodash/isEqual';
+import { createJsInterpreter, allInterpreters, compare } from '@ucast/js';
 
-const interpret = createJsInterpreter(allInterpreters, { equal });
+const interpret = createJsInterpreter(allInterpreters, {
+  compare(a, b) {
+    if (typeof a === typeof b && typeof a === 'object' && isEqual(a, b)) {
+      return 0;
+    }
+
+    return compare(a, b);
+  }
+});
 const condition = new FieldCondition('eq', 'x', { active: true });
 
 interpret(condition, { x: { active: true } }); // true

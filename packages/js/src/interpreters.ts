@@ -40,10 +40,20 @@ export const ne: typeof eq = (node, object, context) => {
 };
 
 type ICompare = Interpret<Field<Comparable>, AnyObject | Comparable>;
-export const lte: ICompare = (node, object, { get }) => get(object, node.field) <= node.value;
-export const lt: ICompare = (node, object, { get }) => get(object, node.field) < node.value;
-export const gt: ICompare = (node, object, { get }) => get(object, node.field) > node.value;
-export const gte: ICompare = (node, object, { get }) => get(object, node.field) >= node.value;
+export const lte: ICompare = (node, object, { get, compare }) => {
+  const value = compare(get(object, node.field), node.value);
+  return value === 0 || value === -1;
+};
+export const lt: ICompare = (node, object, { get, compare }) => {
+  return compare(get(object, node.field), node.value) === -1;
+};
+export const gt: ICompare = (node, object, { get, compare }) => {
+  return compare(get(object, node.field), node.value) === 1;
+};
+export const gte: ICompare = (node, object, { get, compare }) => {
+  const value = compare(get(object, node.field), node.value);
+  return value === 0 || value === 1;
+};
 
 export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
   if (node.field === ITSELF) {

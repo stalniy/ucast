@@ -1,6 +1,6 @@
 import { FieldCondition as Field } from '@ucast/core'
 import { expect, spy } from './specHelper'
-import { createJsInterpreter, allInterpreters } from '../src'
+import { createJsInterpreter, allInterpreters, compare as defaultCompare } from '../src'
 
 type Operators = keyof typeof allInterpreters
 
@@ -21,13 +21,13 @@ export function includeExamplesForFieldCondition(name: Operators, defaultValue: 
 export function includeExamplesForEqualityInterpreter(name: Operators, defaultValue: unknown = []) {
   const operators = { [name]: allInterpreters[name] }
 
-  it('uses "equal" function from context to check equality of values', () => {
+  it('uses "compare" function from context to check equality of values', () => {
     const condition = new Field(name, 'value', defaultValue)
-    const equal = spy(<T>(a: T, b: T) => a === b)
+    const compare = spy(defaultCompare)
     const object = { value: condition.value }
-    const interpret = createJsInterpreter(operators, { equal })
+    const interpret = createJsInterpreter(operators, { compare })
     interpret(condition, object)
 
-    expect(equal).to.have.been.called.with(condition.value, object.value)
+    expect(compare).to.have.been.called.with(condition.value, object.value)
   })
 }

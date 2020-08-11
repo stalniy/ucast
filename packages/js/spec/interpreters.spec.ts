@@ -20,7 +20,8 @@ import {
   or,
   nor,
   not,
-  createJsInterpreter
+  createJsInterpreter,
+  compare as defaultCompare
 } from '../src'
 import {
   includeExamplesForFieldCondition,
@@ -354,14 +355,14 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, 3)).to.be.false
     })
 
-    it('uses "equal" function from context to check equality of values', () => {
+    it('uses "compare" function from context to check equality of values', () => {
       const condition = new Field('within', 'value', [1, 2])
-      const equal = spy(<T>(a: T, b: T) => a === b)
+      const compare = spy(defaultCompare)
       const object = { value: condition.value }
-      const test = createJsInterpreter({ within }, { equal })
+      const test = createJsInterpreter({ within }, { compare })
       test(condition, object)
 
-      expect(equal).to.have.been.called.with(1, 1)
+      expect(compare).to.have.been.called.with(1, 1)
     })
   })
 
@@ -405,14 +406,14 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, item([3, 1]))).to.be.false
     })
 
-    it('uses "equal" function from context to check equality of values', () => {
+    it('uses "compare" function from context to check equality of values', () => {
       const condition = new Field('all', 'value', [1, 2])
-      const equal = spy(<T>(a: T, b: T) => a === b)
+      const compare = spy(defaultCompare)
       const object = { value: condition.value }
-      const test = createJsInterpreter({ all }, { equal })
+      const test = createJsInterpreter({ all }, { compare })
       test(condition, object)
 
-      expect(equal).to.have.been.called.with(1, 1)
+      expect(compare).to.have.been.called.with(1, 1)
     })
   })
 
