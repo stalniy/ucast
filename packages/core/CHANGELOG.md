@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.3.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.2.1...@ucast/core@1.3.0) (2020-08-11)
+
+
+### Features
+
+* **intepreter:** adds possibility to specify amount of arguments used in interpreter ([e4ddcbd](https://github.com/stalniy/ucast/commit/e4ddcbd6c0602bd3be2befdfcd51ced37cebd158))
+
 ## [1.2.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.2.0...@ucast/core@1.2.1) (2020-08-11)
 
 
