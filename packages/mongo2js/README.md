@@ -133,10 +133,6 @@ type ExtendedPerson = Person & {
 const test = filter<ExtendedPerson>({ lastName: 'Doe' });
 ```
 
-## Tests
-
-This package doesn't implement any logic, it just combines several modules together and fixes the resulting function type. That's why it doesn't contains any unit tests as they are useless.
-
 ## Want to help?
 
 Want to file a bug, contribute some code, or improve documentation? Excellent! Read up on guidelines for [contributing]
