@@ -10,8 +10,8 @@ export function createTranslatorFactory<Lang, Interpreter extends AnyInterpreter
   parse: Parse<Lang>,
   interpret: Interpreter
 ) {
-  return (query: Lang, ...args: unknown[]): Bound<Interpreter> => {
-    const ast = parse(query, ...args);
+  return (query: Lang): Bound<Interpreter> => {
+    const ast = parse(query);
     const translate = (interpret as any).bind(null, ast);
     translate.ast = ast;
     return translate;
