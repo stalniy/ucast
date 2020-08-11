@@ -18,23 +18,38 @@ export interface InterpretationContext<T extends AnyInterpreter> {
   interpret(...args: ArgsExceptLast<T>): ReturnType<T>;
 }
 
+function getInterpreter<T extends Record<string, AnyInterpreter>>(
+  interpreters: T,
+  operator: keyof T
+) {
+  const interpret = interpreters[operator];
+
+  if (typeof interpret !== 'function') {
+    throw new Error(`Unable to interpret "${operator}" condition. Did you forget to register interpreter for it?`);
+  }
+
+  return interpret;
+}
+
+export interface InterpreterOptions {
+  numberOfArguments?: 2 | 3
+}
+
 export function createInterpreter<T extends AnyInterpreter, U extends {} = {}>(
   interpreters: Record<string, T>,
   options?: U
 ) {
   const defaultContext = {
     ...options,
-    interpret(condition, ...args): ReturnType<T> {
-      const interpretOperator = interpreters[condition.operator];
-
-      if (typeof interpretOperator !== 'function') {
-        throw new Error(`Unable to interpret "${condition.operator}" condition. Did you forget to register interpreter for it?`);
+    interpret: options && (options as InterpreterOptions).numberOfArguments === 3
+      ? (condition, value, params) => {
+        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        return interpretOperator(condition, value, params, defaultContext);
       }
-
-      (args as unknown[]).push(defaultContext);
-
-      return interpretOperator(condition, ...args);
-    }
+      : (condition, value) => {
+        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        return interpretOperator(condition, value, defaultContext);
+      }
   } as InterpretationContext<T> & U;
 
   return defaultContext.interpret;
