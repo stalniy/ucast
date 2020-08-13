@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.1.0...@ucast/mongo@2.1.1) (2020-08-13)
+
+
+### Performance Improvements
+
+* **parser:** replaces `Object.keys().forEach` with `Object.keys() + for(..)` ([003661d](https://github.com/stalniy/ucast/commit/003661da2170243a6bd95233df397eb7c9c4d70a))
+
 # [2.1.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.0.0...@ucast/mongo@2.1.0) (2020-08-10)
 
 
