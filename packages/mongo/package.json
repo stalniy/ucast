@@ -74,6 +74,6 @@
     "typescript": "^3.9.5"
   },
   "dependencies": {
-    "@ucast/core": "^1.0.0"
+    "@ucast/core": "^1.4.0"
   }
 }
