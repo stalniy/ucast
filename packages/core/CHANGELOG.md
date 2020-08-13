@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.4.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.3.0...@ucast/core@1.4.0) (2020-08-13)
+
+
+### Features
+
+* **core:** exposes `optimizedCompoundCondition` and `and` and `or` helpers to construct optimized compound conditions ([2ae5584](https://github.com/stalniy/ucast/commit/2ae5584a4a382a1431656880f1ba201664b95e30))
+
 # [1.3.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.2.1...@ucast/core@1.3.0) (2020-08-11)
 
 
