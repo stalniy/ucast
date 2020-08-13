@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.4.0...@ucast/core@1.4.1) (2020-08-13)
+
+
+### Bug Fixes
+
+* **builder:** renames condition builder methods as they very likely to conflict with interpreter ([575efc9](https://github.com/stalniy/ucast/commit/575efc9fbe55e8bf235423a365abed5147e6dd39))
+
 # [1.4.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.3.0...@ucast/core@1.4.0) (2020-08-13)
 
 
