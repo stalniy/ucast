@@ -5,7 +5,7 @@ import {
   FieldParsingContext,
   ParsingContext,
   NULL_CONDITION,
-  and,
+  buildAnd as and,
 } from '@ucast/core';
 import { MongoQuery, MongoQueryFieldOperators } from './types';
 import { hasOperators } from './utils';
