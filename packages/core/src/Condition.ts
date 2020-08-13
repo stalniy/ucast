@@ -36,8 +36,8 @@ export class FieldCondition<T = unknown> implements Condition<T> {
 
   constructor(operator: string, field: string | typeof ITSELF, value: T) {
     this.operator = operator;
-    this.field = field;
     this.value = value;
+    this.field = field;
   }
 }
 

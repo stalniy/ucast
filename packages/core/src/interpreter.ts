@@ -32,24 +32,40 @@ function getInterpreter<T extends Record<string, AnyInterpreter>>(
 }
 
 export interface InterpreterOptions {
-  numberOfArguments?: 2 | 3
+  numberOfArguments?: 1 | 2 | 3
 }
 
 export function createInterpreter<T extends AnyInterpreter, U extends {} = {}>(
   interpreters: Record<string, T>,
-  options?: U
+  rawOptions?: U
 ) {
+  const options = rawOptions as U & InterpreterOptions;
+  let interpret;
+
+  switch (options ? options.numberOfArguments : 0) {
+    case 1:
+      interpret = ((condition) => {
+        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        return interpretOperator(condition, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
+      }) as InterpretationContext<T>['interpret'];
+      break;
+    case 3:
+      interpret = ((condition, value, params) => {
+        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        return interpretOperator(condition, value, params, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
+      }) as InterpretationContext<T>['interpret'];
+      break;
+    default:
+      interpret = ((condition, value) => {
+        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        return interpretOperator(condition, value, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
+      }) as InterpretationContext<T>['interpret'];
+      break;
+  }
+
   const defaultContext = {
     ...options,
-    interpret: options && (options as InterpreterOptions).numberOfArguments === 3
-      ? (condition, value, params) => {
-        const interpretOperator = getInterpreter(interpreters, condition.operator);
-        return interpretOperator(condition, value, params, defaultContext);
-      }
-      : (condition, value) => {
-        const interpretOperator = getInterpreter(interpreters, condition.operator);
-        return interpretOperator(condition, value, defaultContext);
-      }
+    interpret,
   } as InterpretationContext<T> & U;
 
   return defaultContext.interpret;
