@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.1.1...@ucast/mongo@2.1.2) (2020-08-13)
+
+
+### Bug Fixes
+
+* **parser:** updates @ucast/core and uses `buildAnd` instead of `and` ([154c7a6](https://github.com/stalniy/ucast/commit/154c7a6ff86c3a193592f642416030d0d78ea8ea))
+
 ## [2.1.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.1.0...@ucast/mongo@2.1.1) (2020-08-13)
 
 
