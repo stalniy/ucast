@@ -8,9 +8,10 @@ import {
   Comparable,
   ITSELF,
   NULL_CONDITION,
-  FieldParsingContext
+  FieldParsingContext,
+  optimizedCompoundCondition,
 } from '@ucast/core';
-import { tryToSimplifyCompoundCondition, hasOperators } from './utils';
+import { hasOperators } from './utils';
 import { MongoQuery } from './types';
 
 function ensureIsArray(instruction: NamedInstruction, value: unknown) {
@@ -46,7 +47,7 @@ export const $and: CompoundInstruction<MongoQuery<any>[]> = {
   validate: ensureIsNonEmptyArray,
   parse(instruction, queries, { parse }) {
     const conditions = queries.map(query => parse(query));
-    return tryToSimplifyCompoundCondition(instruction.name, conditions);
+    return optimizedCompoundCondition(instruction.name, conditions);
   }
 };
 export const $or = $and;

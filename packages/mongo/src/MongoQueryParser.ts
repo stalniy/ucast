@@ -1,43 +1,15 @@
 import {
   Condition,
-  FieldCondition,
-  CompoundCondition,
-  DocumentCondition,
   NamedInstruction,
   ParsingInstruction,
-  DocumentInstruction,
-  CompoundInstruction,
-  FieldInstruction,
   FieldParsingContext,
   ParsingContext,
-  NULL_CONDITION
+  NULL_CONDITION,
+  and,
 } from '@ucast/core';
 import { MongoQuery, MongoQueryFieldOperators } from './types';
-import { isCompound, tryToSimplifyCompoundCondition, hasOperators } from './utils';
-
-function and(...conditions: Condition[]) {
-  return tryToSimplifyCompoundCondition('and', conditions);
-}
-
-interface DefaultParsers {
-  compound: Exclude<CompoundInstruction<MongoQuery[]>['parse'], undefined>,
-  field: Exclude<FieldInstruction['parse'], undefined>,
-  document: Exclude<DocumentInstruction['parse'], undefined>
-}
-
-export const defaultParsers: DefaultParsers = {
-  compound(instruction, value, context) {
-    const queries = Array.isArray(value) ? value : [value];
-    const conditions = queries.map(query => context.parse(query));
-    return new CompoundCondition(instruction.name, conditions);
-  },
-  field(instruction, value, context) {
-    return new FieldCondition(instruction.name, context.field, value);
-  },
-  document(instruction, value) {
-    return new DocumentCondition(instruction.name, value);
-  }
-};
+import { hasOperators } from './utils';
+import { parseInstruction } from './defaultParsers';
 
 type FieldOperatorName = keyof MongoQueryFieldOperators;
 type ParsingInstructions = Record<string, NamedInstruction>;
@@ -46,11 +18,9 @@ export interface ParseOptions {
   field: string
 }
 
-type FieldInstructionContext = ParsingContext<FieldParsingContext & { query: unknown }>;
-
 export class MongoQueryParser {
   private readonly _instructions: ParsingInstructions;
-  private _fieldInstructionContext: FieldInstructionContext;
+  private _fieldInstructionContext: ParsingContext<FieldParsingContext & { query: unknown }>;
 
   constructor(instructions: Record<string, ParsingInstruction>) {
     this._instructions = Object.keys(instructions).reduce((all, name) => {
@@ -61,12 +31,7 @@ export class MongoQueryParser {
     this._fieldInstructionContext = { field: '', query: {}, parse: this.parse };
   }
 
-  private _parseField(
-    field: string,
-    operator: string,
-    value: unknown,
-    parentQuery: unknown
-  ): Condition {
+  private _parseField(field: string, operator: string, value: unknown, parentQuery: unknown) {
     const instruction = this._instructions[operator];
 
     if (!instruction) {
@@ -77,19 +42,19 @@ export class MongoQueryParser {
       throw new Error(`Unexpected ${instruction.type} operator "${operator}" at field level`);
     }
 
-    if (instruction.validate) {
-      instruction.validate(instruction, value);
-    }
-
-    const parse: Function = instruction.parse || defaultParsers.field;
     this._fieldInstructionContext.field = field;
     this._fieldInstructionContext.query = parentQuery;
-    return parse(instruction, value, this._fieldInstructionContext);
+
+    return parseInstruction(instruction, value, this._fieldInstructionContext);
   }
 
   private _parseFieldOperators(field: string, value: MongoQueryFieldOperators) {
     const conditions: Condition[] = [];
-    Object.keys(value).forEach((op) => {
+    const keys = Object.keys(value);
+
+    for (let i = 0, length = keys.length; i < length; i++) {
+      const op = keys[i];
+
       if (op[0] !== '$') {
         throw new Error(`Field query for "${field}" may contain only operators or a plain object as a value`);
       }
@@ -99,53 +64,44 @@ export class MongoQueryParser {
       if (condition !== NULL_CONDITION) {
         conditions.push(condition);
       }
-    });
+    }
 
     return conditions;
   }
 
-  parse<T extends MongoQuery<any>>(rawQuery: T, options?: ParseOptions) {
+  parse<T extends MongoQuery<any>>(rawQuery: T, options?: ParseOptions): Condition {
     if (options && options.field) {
-      return and(...this._parseFieldOperators(options.field, rawQuery as MongoQueryFieldOperators));
+      return and(this._parseFieldOperators(options.field, rawQuery as MongoQueryFieldOperators));
     }
 
     const query = rawQuery as MongoQuery;
     const defaultContext = { query, parse: this.parse };
-    const mainCondition = Object.keys(query).reduce((rootCondition, key) => {
+    const conditions = [];
+    const keys = Object.keys(query);
+
+    for (let i = 0, length = keys.length; i < length; i++) {
+      const key = keys[i];
       const value = query[key];
       const isOperator = key[0] === '$';
       const instruction = this._instructions[key];
 
-      if (isOperator && !instruction) {
-        throw new Error(`Unsupported operator "${key}"`);
-      }
-
-      if (isOperator && (instruction.type === 'document' || instruction.type === 'compound')) {
-        if (instruction.validate) {
-          instruction.validate(instruction, value);
+      if (isOperator) {
+        if (!instruction) {
+          throw new Error(`Unsupported operator "${key}"`);
         }
 
-        type Parse = typeof instruction.parse;
-        const parse: Parse = instruction.parse || defaultParsers[instruction.type];
-        const condition = parse(instruction, value, defaultContext);
-        return and(rootCondition, condition);
+        if (instruction.type !== 'document' && instruction.type !== 'compound') {
+          throw new Error(`Unknown top level operator "${key}"`);
+        }
+
+        conditions.push(parseInstruction(instruction, value, defaultContext));
+      } else if (hasOperators(value)) {
+        conditions.push(...this._parseFieldOperators(key, value));
+      } else {
+        conditions.push(this._parseField(key, '$eq', value, query));
       }
-
-      if (isOperator) {
-        throw new Error(`Unknown top level operator "${key}"`);
-      }
-
-      if (hasOperators(value)) {
-        return and(rootCondition, ...this._parseFieldOperators(key, value));
-      }
-
-      return and(rootCondition, this._parseField(key, '$eq', value, query));
-    }, and());
-
-    if (isCompound('and', mainCondition) && mainCondition.value.length === 1) {
-      return mainCondition.value[0];
     }
 
-    return mainCondition;
+    return and(conditions);
   }
 }
