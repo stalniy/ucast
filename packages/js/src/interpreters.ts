@@ -6,8 +6,8 @@ import {
   Comparable,
   ITSELF,
 } from '@ucast/core';
-import { JsInterpreter as Interpret } from './interpreter';
-import { includes, AnyObject } from './utils';
+import { JsInterpreter as Interpret } from './types';
+import { includes, AnyObject, testValueOrArray } from './utils';
 
 export const or: Interpret<Compound> = (node, object, { interpret }) => {
   return node.value.some(condition => interpret(condition, object));
@@ -39,21 +39,21 @@ export const ne: typeof eq = (node, object, context) => {
   return !eq(node, object, context);
 };
 
-type ICompare = Interpret<Field<Comparable>, AnyObject | Comparable>;
-export const lte: ICompare = (node, object, { get, compare }) => {
-  const value = compare(get(object, node.field), node.value);
-  return value === 0 || value === -1;
-};
-export const lt: ICompare = (node, object, { get, compare }) => {
-  return compare(get(object, node.field), node.value) === -1;
-};
-export const gt: ICompare = (node, object, { get, compare }) => {
-  return compare(get(object, node.field), node.value) === 1;
-};
-export const gte: ICompare = (node, object, { get, compare }) => {
-  const value = compare(get(object, node.field), node.value);
-  return value === 0 || value === 1;
-};
+export const lte = testValueOrArray<Comparable>((node, value, context) => {
+  const result = context.compare(value, node.value);
+  return result === 0 || result === -1;
+});
+
+export const lt = testValueOrArray<Comparable>((node, value, context) => {
+  return context.compare(value, node.value) === -1;
+});
+export const gt = testValueOrArray<Comparable>((node, value, context) => {
+  return context.compare(value, node.value) === 1;
+});
+export const gte = testValueOrArray<Comparable>((node, value, context) => {
+  const result = context.compare(value, node.value);
+  return result === 0 || result === 1;
+});
 
 export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
   if (node.field === ITSELF) {
@@ -63,27 +63,37 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
   let item = object;
   let field = node.field;
   const dotIndex = node.field.lastIndexOf('.');
+  const test = (value: {}) => !!value && value.hasOwnProperty(field) === node.value;
 
   if (dotIndex !== -1) {
     field = node.field.slice(dotIndex + 1);
-    item = get(item, node.field.slice(0, dotIndex));
+    item = get(object, node.field.slice(0, dotIndex));
   }
 
-  return !!item && item.hasOwnProperty(field) === node.value;
+  if (!Array.isArray(item)) {
+    return !!item && item.hasOwnProperty(field) === node.value;
+  }
+
+  return Array.isArray(item) ? item.some(test) : test(item);
 };
 
-type IModulo = Interpret<Field<[number, number]>, AnyObject | number>;
-export const mod: IModulo = (node, object, { get }) => {
-  return get(object, node.field) % node.value[0] === node.value[1];
-};
+export const mod = testValueOrArray<[number, number], number>((node, value) => {
+  return value % node.value[0] === node.value[1];
+});
 
 export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, object, { get }) => {
-  return get(object, node.field).length === node.value;
+  const value = get(object, node.field);
+
+  if (!Array.isArray(value)) {
+    return false;
+  }
+
+  return value.hasOwnProperty('projected')
+    ? value.some(v => Array.isArray(v) && v.length === node.value)
+    : value.length === node.value;
 };
 
-export const regex: Interpret<Field<RegExp>, AnyObject | string> = (node, object, { get }) => {
-  return node.value.test(get(object, node.field));
-};
+export const regex = testValueOrArray<RegExp, string>((node, value) => node.value.test(value));
 
 export const within: Interpret<Field<unknown[]>> = (node, object, { equal, get }) => {
   const value = get(object, node.field);

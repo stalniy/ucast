@@ -1,4 +1,5 @@
-import { JsInterpretationOptions } from './types';
+import { FieldCondition } from '@ucast/core';
+import { JsInterpretationOptions, JsInterpreter } from './types';
 
 export type AnyObject = Record<PropertyKey, unknown>;
 export type GetField = (object: any, field: string) => any;
@@ -14,7 +15,12 @@ export function includes<T>(items: T[], value: T, equal: JsInterpretationOptions
 }
 
 function getField<T extends AnyObject>(object: T | T[], field: string, get: GetField) {
-  return Array.isArray(object) ? object.map(item => get(item, field)) : get(object, field);
+  if (Array.isArray(object)) {
+    const items = object.map(item => get(item, field));
+    return Object.defineProperty(items, 'projected', { value: true });
+  }
+
+  return get(object, field);
 }
 
 export function getValueByPath(object: AnyObject, field: string, get: GetField) {
@@ -34,4 +40,16 @@ export function getValueByPath(object: AnyObject, field: string, get: GetField) 
   }
 
   return value;
+}
+
+export function testValueOrArray<T, U = T>(test: JsInterpreter<FieldCondition<T>, U>) {
+  return ((node, object, context) => {
+    const value = context.get(object, node.field);
+
+    if (!Array.isArray(value)) {
+      return test(node, value, context);
+    }
+
+    return value.some(v => test(node, v, context));
+  }) as JsInterpreter<FieldCondition<T>, AnyObject | U>;
 }

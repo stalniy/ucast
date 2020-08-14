@@ -114,6 +114,14 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, object(10))).to.be.true
       expect(interpret(condition, object(11))).to.be.false
     })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('lte', 'items', 10)
+
+      expect(interpret(condition, { items: [11] })).to.be.false
+      expect(interpret(condition, { items: [11, 10] })).to.be.true
+      expect(interpret(condition, { items: [1, 2, 10] })).to.be.true
+    })
   })
 
   describe('lt', () => {
@@ -135,6 +143,13 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, object(9))).to.be.true
       expect(interpret(condition, object(10))).to.be.false
     })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('lt', 'items', 10)
+
+      expect(interpret(condition, { items: [11, 10] })).to.be.false
+      expect(interpret(condition, { items: [1, 2, 10] })).to.be.true
+    })
   })
 
   describe('gt', () => {
@@ -155,6 +170,13 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, object(11))).to.be.true
       expect(interpret(condition, object(10))).to.be.false
+    })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('gt', 'items', 10)
+
+      expect(interpret(condition, { items: [10, 10, 11] })).to.be.true
+      expect(interpret(condition, { items: [1, 2, 10] })).to.be.false
     })
   })
 
@@ -178,6 +200,13 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, object(11))).to.be.true
       expect(interpret(condition, object(10))).to.be.true
       expect(interpret(condition, object(9))).to.be.false
+    })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('gte', 'items', 10)
+
+      expect(interpret(condition, { items: [10, 10, 11] })).to.be.true
+      expect(interpret(condition, { items: [1, 2] })).to.be.false
     })
   })
 
@@ -208,6 +237,14 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { address: null })).to.be.false
       expect(interpret(condition, { address: { building: 1 } })).to.be.true
     })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('exists', 'items.age', true)
+
+      expect(interpret(condition, { items: [] })).to.be.false
+      expect(interpret(condition, { items: [{ age: 1 }] })).to.be.true
+      expect(interpret(condition, { items: [{ name: 'test' }, { age: 1 }] })).to.be.true
+    })
   })
 
   describe('mod', () => {
@@ -237,6 +274,13 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, 4)).to.be.true
       expect(interpret(condition, 5)).to.be.false
     })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('mod', 'items', [3, 1])
+
+      expect(interpret(condition, { items: [2, 3] })).to.be.false
+      expect(interpret(condition, { items: [5, 4] })).to.be.true
+    })
   })
 
   describe('size', () => {
@@ -264,6 +308,14 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, item([1, 2]))).to.be.true
       expect(interpret(condition, item([]))).to.be.false
+    })
+
+    it('checks that at least one item from projected array satisfies condition', () => {
+      const condition = new Field('size', 'items.a', 2)
+
+      expect(interpret(condition, { items: [{ a: [2, 3] }, { a: [] }, {}] })).to.be.true
+      expect(interpret(condition, { items: [5, 4] })).to.be.false
+      expect(interpret(condition, { items: { a: [2, 3] } })).to.be.true
     })
   })
 

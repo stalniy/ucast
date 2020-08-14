@@ -1,6 +1,6 @@
-import { Condition, createInterpreter, ITSELF, InterpretationContext } from '@ucast/core';
+import { createInterpreter, ITSELF } from '@ucast/core';
 import { getValueByPath, AnyObject, GetField } from './utils';
-import { JsInterpretationOptions } from './types';
+import { JsInterpretationOptions, JsInterpreter } from './types';
 
 const defaultGet = (object: AnyObject, field: string) => object[field];
 type Field = string | typeof ITSELF;
@@ -29,12 +29,6 @@ export function compare<T>(a: T, b: T): 0 | 1 | -1 {
 
   return a > b ? 1 : -1;
 }
-
-export type JsInterpreter<N extends Condition, Value = any> = (
-  node: N,
-  value: Value,
-  context: InterpretationContext<JsInterpreter<N, Value>> & JsInterpretationOptions
-) => boolean;
 
 export function createJsInterpreter<
   T extends JsInterpreter<any>,
