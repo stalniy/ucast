@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.0...@ucast/js@2.1.1) (2020-08-14)
+
+
+### Bug Fixes
+
+* **interpreters:** ensure field level interpreters work with array values as well ([32e38ef](https://github.com/stalniy/ucast/commit/32e38efb9d4dea632f6c927243f6e6b96d57b69b)), closes [#7](https://github.com/stalniy/ucast/issues/7)
+
 # [2.1.0](https://github.com/stalniy/ucast/compare/@ucast/js@2.0.1...@ucast/js@2.1.0) (2020-08-11)
 
 
