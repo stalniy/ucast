@@ -1,0 +1,89 @@
+{
+  "name": "@ucast/sql",
+  "version": "1.0.0",
+  "description": "git@github.com:stalniy/ucast.git",
+  "main": "dist/es6c/index.js",
+  "es2015": "dist/es6m/index.js",
+  "typings": "dist/types/index.d.ts",
+  "scripts": {
+    "build.types": "tsc",
+    "build": "npm run build.sql && npm run build.objection",
+    "prebuild": "rm -rf dist/* && npm run build.types",
+    "build.sql": "BUILD_TYPES=es6m,es6c rollup -c ../../rollup.config.js -e @ucast/core",
+    "build.objection": "npm run build.sql -- -i src/lib/objection.ts -e objection -e ../index",
+    "lint": "eslint --ext .js,.ts src/ spec/",
+    "test": "mocha -r ts-node/register spec/*",
+    "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
+    "prerelease": "npm run lint && npm test && npm run build",
+    "release": "semantic-release -e ../../semantic-release.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stalniy/ucast.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "NOTICE",
+    "*.d.ts",
+    "objection"
+  ],
+  "keywords": [
+    "sql",
+    "conditions",
+    "query",
+    "builder",
+    "ast"
+  ],
+  "author": "Sergii Stotskyi <sergiy.stotskiy@gmail.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/stalniy/ucast/issues"
+  },
+  "homepage": "https://github.com/stalniy/ucast#readme",
+  "devDependencies": {
+    "@babel/core": "^7.10.2",
+    "@babel/plugin-proposal-class-properties": "^7.10.4",
+    "@babel/plugin-proposal-object-rest-spread": "^7.10.4",
+    "@babel/plugin-transform-typescript": "^7.10.1",
+    "@babel/preset-env": "^7.10.2",
+    "@rollup/plugin-babel": "^5.0.3",
+    "@rollup/plugin-node-resolve": "^8.0.1",
+    "@semantic-release/changelog": "^5.0.1",
+    "@semantic-release/git": "^9.0.0",
+    "@semantic-release/github": "^7.0.7",
+    "@semantic-release/npm": "^7.0.5",
+    "@types/chai": "^4.2.11",
+    "@types/chai-spies": "^1.0.1",
+    "@types/mocha": "^7.0.2",
+    "@typescript-eslint/eslint-plugin": "^3.6.0",
+    "chai": "^4.2.0",
+    "chai-spies": "^1.0.0",
+    "eslint": "^7.4.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-config-airbnb-typescript": "^8.0.2",
+    "eslint-plugin-import": "^2.22.0",
+    "knex": "^0.21.2",
+    "mocha": "^8.0.1",
+    "nyc": "^15.1.0",
+    "objection": "^2.2.1",
+    "rollup": "^2.15.0",
+    "rollup-plugin-terser": "^6.1.0",
+    "semantic-release": "^17.1.1",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.5"
+  },
+  "peerDependencies": {
+    "objection": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "objection": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@ucast/core": "^1.0.0"
+  }
+}
