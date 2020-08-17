@@ -161,6 +161,35 @@ const condition = new CompoundCondition('and', [
 const query = interpret(condition, User.query())
 ```
 
+### [Sequelize](https://sequelize.org/)
+
+```js
+import { interpret } from '@ucast/sql/sequelize';
+import { CompoundCondition, FieldCondition } from '@ucast/core';
+import { Model, Sequelize, DataTypes } from 'sequelize';
+
+const sequelize = new Sequelize('sqlite::memory:');
+
+class User extends Model {}
+
+User.init({
+  name: { type: DataTypes.STRING },
+  blocked: { type: DataTypes.BOOLEAN },
+  lastLoggedIn: { type: DataTypes.DATETIME },
+});
+
+const condition = new CompoundCondition('and', [
+  new FieldCondition('eq', 'blocked', false),
+  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+]);
+
+// {
+//  include: [],
+//  where: literal('(`blocked` = 0 and lastLoggedIn < 1597594415354)')
+// }
+const query = interpret(condition, User)
+```
+
 ## Want to help?
 
 Want to file a bug, contribute some code, or improve documentation? Excellent! Read up on guidelines for [contributing]

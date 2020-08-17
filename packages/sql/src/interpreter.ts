@@ -3,13 +3,10 @@ import {
   Condition,
   InterpretationContext
 } from '@ucast/core';
+import { DialectOptions } from './dialects';
 
-export interface SqlQueryOptions {
+export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string
-  regexp(field: string, placeholder: string, ignoreCase: boolean): string
-  joinRelation(relationName: string, context: unknown): boolean
-  escapeField(field: string): string
-  paramPlaceholder(index: number): string
 }
 
 export class Query {

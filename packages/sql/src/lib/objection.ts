@@ -4,11 +4,8 @@ import {
   createSqlInterpreter,
   allInterpreters,
   SqlOperator,
-  sqlite,
-  mssql,
-  pg,
-  oracle,
-  mysql
+  createDialects,
+  mysql,
 } from '../index';
 
 function joinRelation(relationName: string, query: QueryBuilder<Model>) {
@@ -20,38 +17,9 @@ function joinRelation(relationName: string, query: QueryBuilder<Model>) {
   return true;
 }
 
-const dialects = {
-  mssql: {
-    ...mssql,
-    joinRelation,
-    paramPlaceholder: mysql.paramPlaceholder,
-  },
-  postgres: {
-    ...pg,
-    joinRelation,
-    paramPlaceholder: mysql.paramPlaceholder,
-  },
-  oracle: {
-    ...oracle,
-    joinRelation,
-    paramPlaceholder: mysql.paramPlaceholder,
-  },
-  mysql: {
-    ...mysql,
-    joinRelation,
-  },
-  sqlite: {
-    ...sqlite,
-    joinRelation,
-    paramPlaceholder: mysql.paramPlaceholder,
-  },
-};
-
-Object.assign(dialects, {
-  mysql2: dialects.mysql,
-  oracledb: dialects.oracle,
-  sqlite3: dialects.sqlite,
-  pg: dialects.postgres,
+const dialects = createDialects({
+  joinRelation,
+  paramPlaceholder: mysql.paramPlaceholder,
 });
 
 export function createInterpreter(interpreters: Record<string, SqlOperator<any>>) {

@@ -5,7 +5,7 @@ import { interpret } from '../src/lib/objection'
 import { expect, linearize } from './specHelper'
 
 describe('Condition interpreter for Objection', () => {
-  const { User } = configureObjection()
+  const { User } = configureORM()
 
   it('returns `QueryBuilder`', () => {
     const condition = new FieldCondition('eq', 'name', 'test')
@@ -45,7 +45,7 @@ describe('Condition interpreter for Objection', () => {
   })
 })
 
-function configureObjection() {
+function configureORM() {
   Model.knex(Knex({ client: 'pg' }))
 
   class User extends Model {
