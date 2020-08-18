@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [2.2.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.1.2...@ucast/mongo@2.2.0) (2020-08-18)
+
+
+### Features
+
+* **parser:** adds possibility to set `parse` function ([8a1e388](https://github.com/stalniy/ucast/commit/8a1e388fe1c5722ae322b783101f066d763dfde5)), closes [#9](https://github.com/stalniy/ucast/issues/9)
+
 ## [2.1.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.1.1...@ucast/mongo@2.1.2) (2020-08-13)
 
 
