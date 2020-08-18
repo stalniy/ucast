@@ -25,8 +25,26 @@ describe('squire', () => {
     expect(test(now.getTime() - 10)).to.be.false
   })
 
-  it('throws exception when field or top-level operator is specified', () => {
-    expect(() => squire({ $and: [] } as any)).to.throw(Error)
-    expect(() => squire({ field: 5 } as any)).to.throw(Error)
+  it('can interpret `$and` operator for primitives', () => {
+    const test = squire({ $and: [{ $gt: 5 }, { $lt: 10 }] })
+
+    expect(test(6)).to.be.true
+    expect(test(3)).to.be.false
+  })
+
+  it('can interpret `$or` operator for primitives correctly', () => {
+    const test = squire({ $or: [{ $gt: 6 }, { $eq: 6 }] })
+
+    expect(test(6)).to.be.true
+    expect(test(7)).to.be.true
+    expect(test(3)).to.be.false
+  })
+
+  it('can interpret `$nor` operator for primitives correctly', () => {
+    const test = squire({ $nor: [{ $gt: 6 }, { $eq: 6 }] })
+
+    expect(test(6)).to.be.false
+    expect(test(7)).to.be.false
+    expect(test(3)).to.be.true
   })
 })

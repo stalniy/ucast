@@ -311,7 +311,7 @@ importers:
       '@typescript-eslint/eslint-plugin': ^3.9.0
       '@ucast/core': ^1.2.1
       '@ucast/js': ^2.0.1
-      '@ucast/mongo': ^2.1.0
+      '@ucast/mongo': 'workspace:^2.2.0'
       chai: ^4.2.0
       chai-spies: ^1.0.0
       eslint: ^7.6.0

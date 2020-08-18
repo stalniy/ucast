@@ -3,7 +3,8 @@ import {
   MongoQuery,
   MongoQueryParser,
   MongoQueryFieldOperators,
-  allParsingInstructions
+  allParsingInstructions,
+  defaultParsers
 } from '@ucast/mongo';
 import {
   createJsInterpreter,
@@ -44,9 +45,15 @@ export type Filter = <
   T = Record<string, unknown>,
   Q extends MongoQuery<T> = MongoQuery<T>
 >(query: Q) => ThingFilter<T>;
+
+export type PrimitiveMongoQuery<T> = MongoQueryFieldOperators<T> & Partial<{
+  $and: MongoQueryFieldOperators<T>[],
+  $or: MongoQueryFieldOperators<T>[],
+  $nor: MongoQueryFieldOperators<T>[]
+}>;
 export type PrimitiveFilter = <
   T,
-  Q extends MongoQueryFieldOperators<T> = MongoQueryFieldOperators<T>
+  Q extends PrimitiveMongoQuery<T> = PrimitiveMongoQuery<T>
 >(query: Q) => ThingFilter<T>;
 
 type FilterType<T extends { forPrimitives?: true }> = T['forPrimitives'] extends true
@@ -66,15 +73,29 @@ export function createFactory<
 
   if (options && options.forPrimitives) {
     const params = { field: ITSELF };
-    const parse: typeof parser.parse = query => parser.parse(query, params);
-    return createTranslatorFactory(parse, interpret) as any;
+    const parse = parser.parse;
+    parser.setParse(query => parse(query, params));
   }
 
   return createTranslatorFactory(parser.parse, interpret) as any;
 }
 
 export const guard = createFactory(allParsingInstructions, allInterpreters);
-export const squire = createFactory(allParsingInstructions, allInterpreters, {
+
+const compoundOperators = ['$and', '$or'] as const;
+const allPrimitiveParsingInstructions = compoundOperators.reduce((instructions, name) => {
+  instructions[name] = { ...instructions[name], type: 'field' } as any;
+  return instructions;
+}, {
+  ...allParsingInstructions,
+  $nor: {
+    ...allParsingInstructions.$nor,
+    type: 'field',
+    parse: defaultParsers.compound
+  }
+});
+
+export const squire = createFactory(allPrimitiveParsingInstructions, allInterpreters, {
   forPrimitives: true
 });
 export const filter = guard; // TODO: remove in next major version
