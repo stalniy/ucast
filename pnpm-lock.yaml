@@ -311,7 +311,7 @@ importers:
       '@typescript-eslint/eslint-plugin': ^3.9.0
       '@ucast/core': ^1.2.1
       '@ucast/js': ^2.0.1
-      '@ucast/mongo': 'workspace:^2.2.0'
+      '@ucast/mongo': ^2.2.0
       chai: ^4.2.0
       chai-spies: ^1.0.0
       eslint: ^7.6.0
@@ -8550,7 +8550,7 @@ packages:
     dependencies:
       ajv: 6.12.3
       db-errors: 0.2.3
-      knex: 0.21.2_sqlite3@5.0.0
+      knex: 0.21.2
     dev: true
     engines:
       node: '>=8.0.0'

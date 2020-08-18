@@ -32,7 +32,7 @@ describe('squire', () => {
     expect(test(3)).to.be.false
   })
 
-  it('can interpret `$or` operator for primitives correctly', () => {
+  it('can interpret `$or` operator for primitives', () => {
     const test = squire({ $or: [{ $gt: 6 }, { $eq: 6 }] })
 
     expect(test(6)).to.be.true
@@ -40,7 +40,7 @@ describe('squire', () => {
     expect(test(3)).to.be.false
   })
 
-  it('can interpret `$nor` operator for primitives correctly', () => {
+  it('can interpret `$nor` operator for primitives', () => {
     const test = squire({ $nor: [{ $gt: 6 }, { $eq: 6 }] })
 
     expect(test(6)).to.be.false
