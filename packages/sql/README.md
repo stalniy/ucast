@@ -198,7 +198,7 @@ import { CompoundCondition, FieldCondition } from '@ucast/core';
 import { MikroORM, Entity, PrimaryKey, Property } from 'mikro-orm';
 
 @Entity()
-class User extends Model {
+class User {
   @PrimaryKey()
   id!: number;
 
@@ -229,6 +229,55 @@ async function main() {
   //   .where('blocked = ?', [false])
   //   .andWhere('lastLoggedIn = ?', [Date.now() - 24 * 3600 * 1000])
   const qb = interpret(condition, orm.em.createQueryBuilder(User));
+}
+
+main().catch(console.error);
+```
+
+### [TypeORM](https://typeorm.io/)
+
+```js
+import { interpret } from '@ucast/sql/typeorm';
+import { CompoundCondition, FieldCondition } from '@ucast/core';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  createConnection
+} from 'typeorm';
+
+@Entity()
+class User {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column()
+  blocked: boolean;
+
+  @Column()
+  name!: string;
+
+  @Column()
+  lastLoggedIn = new Date();
+}
+
+const condition = new CompoundCondition('and', [
+  new FieldCondition('eq', 'blocked', false),
+  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+]);
+
+async function main() {
+  const conn = await createConnection({
+    type: 'sqlite',
+    database: ':memory:',
+    entities: [User]
+  });
+
+  // the next code produces:
+  // conn.createQueryBuilder(User, 'u')
+  //   .where('blocked = ?', [false])
+  //   .andWhere('lastLoggedIn = ?', [Date.now() - 24 * 3600 * 1000])
+  const qb = interpret(condition, conn.createQueryBuilder(User, 'u'));
 }
 
 main().catch(console.error);
