@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.2.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.1.1...@ucast/mongo2js@1.2.0) (2020-08-18)
+
+
+### Features
+
+* **mongo2js:** adds `squire` function for primitives and renames `filter` to `guard` ([683d813](https://github.com/stalniy/ucast/commit/683d81367e60282d0828f5b3e2fe1603c27f8f4e)), closes [#9](https://github.com/stalniy/ucast/issues/9)
+* **mongo2js:** adds support for compound operators in primitive mongo query ([a4273a6](https://github.com/stalniy/ucast/commit/a4273a63a9442a130225681cfca75326c9799f42)), closes [#9](https://github.com/stalniy/ucast/issues/9)
+
 ## [1.1.1](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.1.0...@ucast/mongo2js@1.1.1) (2020-08-11)
 
 
