@@ -137,30 +137,6 @@ console.log(params) // [new Date()]
 
 This library provides sub-modules that allows quickly integrate SQL interpreter with popular ORMs:
 
-### [Objection.js](https://vincit.github.io/objection.js/)
-
-```js
-import { interpret } from '@ucast/sql/objection';
-import { CompoundCondition, FieldCondition } from '@ucast/core';
-import { Model } from 'objection';
-import Knex from 'knex';
-
-Model.knex(Knex({ client: 'pg' }));
-
-class User extends Model {}
-
-const condition = new CompoundCondition('and', [
-  new FieldCondition('eq', 'blocked', false),
-  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
-]);
-
-// the next code produces:
-// User.query()
-//   .where('blocked', false)
-//   .where('lastLoggedIn', Date.now() - 24 * 3600 * 1000)
-const query = interpret(condition, User.query())
-```
-
 ### [Sequelize](https://sequelize.org/)
 
 ```js
@@ -189,6 +165,78 @@ const condition = new CompoundCondition('and', [
 // }
 const query = interpret(condition, User)
 ```
+
+### [Objection.js](https://vincit.github.io/objection.js/)
+
+```js
+import { interpret } from '@ucast/sql/objection';
+import { CompoundCondition, FieldCondition } from '@ucast/core';
+import { Model } from 'objection';
+import Knex from 'knex';
+
+Model.knex(Knex({ client: 'pg' }));
+
+class User extends Model {}
+
+const condition = new CompoundCondition('and', [
+  new FieldCondition('eq', 'blocked', false),
+  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+]);
+
+// the next code produces:
+// User.query()
+//   .where('blocked', false)
+//   .where('lastLoggedIn', Date.now() - 24 * 3600 * 1000)
+const query = interpret(condition, User.query())
+```
+
+### [MikroORM](https://mikro-orm.io/)
+
+```js
+import { interpret } from '@ucast/sql/mikro-orm';
+import { CompoundCondition, FieldCondition } from '@ucast/core';
+import { MikroORM, Entity, PrimaryKey, Property } from 'mikro-orm';
+
+@Entity()
+class User extends Model {
+  @PrimaryKey()
+  id!: number;
+
+  @Property()
+  blocked: boolean;
+
+  @Property()
+  name!: string;
+
+  @Property()
+  lastLoggedIn = new Date();
+}
+
+const condition = new CompoundCondition('and', [
+  new FieldCondition('eq', 'blocked', false),
+  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+]);
+
+async function main() {
+  const orm = await MikroORM.init({
+    entities: [User],
+    dbName: ':memory:',
+    type: 'sqlite',
+  });
+
+  // the next code produces:
+  // orm.em.createQueryBuilder(User)
+  //   .where('blocked = ?', [false])
+  //   .andWhere('lastLoggedIn = ?', [Date.now() - 24 * 3600 * 1000])
+  const qb = interpret(condition, orm.em.createQueryBuilder(User));
+}
+
+main().catch(console.error);
+```
+
+## TypeScript Support
+
+Written in TypeScript and supports type inference for supported ORMs.
 
 ## Want to help?
 

@@ -7,11 +7,12 @@
   "typings": "dist/types/index.d.ts",
   "scripts": {
     "build.types": "tsc",
-    "build": "npm run build.sql && npm run build.objection && npm run build.sequelize",
+    "build": "npm run build.sql && npm run build.objection && npm run build.sequelize && npm run build.mikro-orm",
     "prebuild": "rm -rf dist/* && npm run build.types",
     "build.sql": "BUILD_TYPES=es6m,es6c rollup -c ../../rollup.config.js -e @ucast/core",
     "build.objection": "npm run build.sql -- -i src/lib/objection.ts -e objection -e ../index",
     "build.sequelize": "npm run build.sql -- -i src/lib/sequelize.ts -e sequelize -e ../index",
+    "build.mikro-orm": "npm run build.sql -- -i src/lib/mikro-orm.ts -e mikro-orm -e ../index",
     "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
@@ -69,6 +70,7 @@
     "eslint-config-airbnb-typescript": "^8.0.2",
     "eslint-plugin-import": "^2.22.0",
     "knex": "^0.21.2",
+    "mikro-orm": "^3.6.15",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
     "objection": "^2.2.1",
@@ -82,13 +84,17 @@
   },
   "peerDependencies": {
     "objection": "^2.0.0",
-    "sequelize": "^5.0.0 || ^6.0.0"
+    "sequelize": "^5.0.0 || ^6.0.0",
+    "mikro-orm": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "objection": {
       "optional": true
     },
     "sequelize": {
+      "optional": true
+    },
+    "mikro-orm": {
       "optional": true
     }
   },
