@@ -31,6 +31,11 @@ export class MongoQueryParser {
     this._fieldInstructionContext = { field: '', query: {}, parse: this.parse };
   }
 
+  setParse(parse: this['parse']) {
+    this.parse = parse;
+    this._fieldInstructionContext.parse = parse;
+  }
+
   private _parseField(field: string, operator: string, value: unknown, parentQuery: unknown) {
     const instruction = this._instructions[operator];
 
