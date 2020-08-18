@@ -29,6 +29,7 @@ All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
 | [@ucast/mongo]    | [![@ucast/mongo-status]][@ucast/mongo-package] | [MongoDB query] parser |
 | [@ucast/mongo2js]    | [![@ucast/mongo2js-status]][@ucast/mongo2js-package] | Evaluates [MongoDB query] in JavaScript runtime |
 | [@ucast/objection]    | [![@ucast/objection-status]][@ucast/objection-package] | [Objection query] interpreter (SQL ORM) |
+| [@ucast/sql]    | [![@ucast/sql-status]][@ucast/sql-package] | SQL query interpreter + integrations with major ORMs |
 
 
 [MongoDB query]: http://docs.mongodb.org/manual/reference/operator/query/
@@ -39,18 +40,21 @@ All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
 [@ucast/mongo]: packages/mongo
 [@ucast/mongo2js]: packages/mongo2js
 [@ucast/objection]: packages/objection
+[@ucast/sql]: packages/sql
 
 [@ucast/core-status]: https://img.shields.io/npm/v/@ucast/core.svg
 [@ucast/js-status]: https://img.shields.io/npm/v/@ucast/js.svg
 [@ucast/mongo-status]: https://img.shields.io/npm/v/@ucast/mongo.svg
 [@ucast/mongo2js-status]: https://img.shields.io/npm/v/@ucast/mongo2js.svg
 [@ucast/objection-status]: https://img.shields.io/npm/v/@ucast/objection.svg
+[@ucast/sql-status]: https://img.shields.io/npm/v/@ucast/sql.svg
 
 [@ucast/core-package]: https://www.npmjs.com/package/@ucast/core
 [@ucast/js-package]: https://www.npmjs.com/package/@ucast/js
 [@ucast/mongo-package]: https://www.npmjs.com/package/@ucast/mongo
 [@ucast/mongo2js-package]: https://www.npmjs.com/package/@ucast/mongo
 [@ucast/objection-package]: https://www.npmjs.com/package/@ucast/objection
+[@ucast/sql-package]: https://www.npmjs.com/package/@ucast/sql
 
 ## Want to help?
 
