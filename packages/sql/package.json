@@ -1,20 +1,21 @@
 {
   "name": "@ucast/sql",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "git@github.com:stalniy/ucast.git",
   "main": "dist/es6c/index.js",
   "es2015": "dist/es6m/index.js",
   "typings": "dist/types/index.d.ts",
   "scripts": {
     "build.types": "tsc",
-    "build": "npm run build.sql && npm run build.objection && npm run build.sequelize && npm run build.mikro-orm",
+    "build": "npm run build.sql && npm run build.objection && npm run build.sequelize && npm run build.mikro-orm && npm run build.typeorm",
     "prebuild": "rm -rf dist/* && npm run build.types",
     "build.sql": "BUILD_TYPES=es6m,es6c rollup -c ../../rollup.config.js -e @ucast/core",
     "build.objection": "npm run build.sql -- -i src/lib/objection.ts -e objection -e ../index",
     "build.sequelize": "npm run build.sql -- -i src/lib/sequelize.ts -e sequelize -e ../index",
     "build.mikro-orm": "npm run build.sql -- -i src/lib/mikro-orm.ts -e mikro-orm -e ../index",
+    "build.typeorm": "npm run build.sql -- -i src/lib/typeorm.ts -e typeorm -e ../index",
     "lint": "eslint --ext .js,.ts src/ spec/",
-    "test": "mocha -r ts-node/register -r reflect-metadata spec/*",
+    "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
     "prerelease": "npm run lint && npm test && npm run build",
     "release": "semantic-release -e ../../semantic-release.js"
@@ -30,7 +31,10 @@
     "dist",
     "NOTICE",
     "*.d.ts",
-    "objection"
+    "objection",
+    "mikro-orm",
+    "sequelize",
+    "typeorm"
   ],
   "keywords": [
     "sql",
