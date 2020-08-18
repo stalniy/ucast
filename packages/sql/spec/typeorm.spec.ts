@@ -10,7 +10,7 @@ import { expect } from './specHelper'
 type Depromisify<T extends Promise<any>> = T extends Promise<infer A> ? A : never
 type OrmContext = Depromisify<ReturnType<typeof configureORM>>
 
-describe('Condition interpreter for MikroORM', () => {
+describe('Condition interpreter for TypeORM', () => {
   let conn: OrmContext['conn']
   let User: OrmContext['User']
 
