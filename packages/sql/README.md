@@ -1,7 +1,7 @@
 # UCAST SQL
 
-[![@ucast/objection NPM version](https://badge.fury.io/js/%40ucast%2Fobjection.svg)](https://badge.fury.io/js/%40ucast%2Fobjection)
-[![](https://img.shields.io/npm/dm/%40ucast%2Fobjection.svg)](https://www.npmjs.com/package/%40ucast%2Fobjection)
+[![@ucast/sql NPM version](https://badge.fury.io/js/%40ucast%2Fsql.svg)](https://badge.fury.io/js/%40ucast%2Fsql)
+[![](https://img.shields.io/npm/dm/%40ucast%2Fsql.svg)](https://www.npmjs.com/package/%40ucast%2Fsql)
 
 This package is a part of [ucast] ecosystem. It provides an interpreter that can translates ucast conditions into [SQL query](https://en.wikipedia.org/wiki/SQL).
 
