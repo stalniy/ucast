@@ -1,12 +1,6 @@
 import { Condition } from '@ucast/core';
 import { SelectQueryBuilder } from 'typeorm';
-import {
-  createSqlInterpreter,
-  allInterpreters,
-  SqlOperator,
-  createDialects,
-  mysql
-} from '../index';
+import { createSqlInterpreter, allInterpreters, SqlOperator, createDialects } from '../index';
 
 function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
   const meta = query.expressionMap.mainAlias!.metadata;
@@ -22,7 +16,7 @@ function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<En
 
 const dialects = createDialects({
   joinRelation,
-  paramPlaceholder: mysql.paramPlaceholder,
+  paramPlaceholder: index => `:${index - 1}`
 });
 
 // eslint-disable-next-line no-multi-assign
