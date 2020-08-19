@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.2](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.1...@ucast/sql@1.0.0-alpha.2) (2020-08-19)
+
+
+### Bug Fixes
+
+* **lib:** changes paramPlaceholder for typeorm ([10b5fa8](https://github.com/stalniy/ucast/commit/10b5fa8441ad76adea0c60ae1bd151fce30f9fc2)), closes [#8](https://github.com/stalniy/ucast/issues/8)
+
 # 1.0.0-alpha.1 (2020-08-18)
 
 
