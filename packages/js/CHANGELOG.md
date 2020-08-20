@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.2](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.1...@ucast/js@2.1.2) (2020-08-20)
+
+
+### Bug Fixes
+
+* **get:** ensures that `getObjectField` properly works with numeric fields in path ([ee501a2](https://github.com/stalniy/ucast/commit/ee501a23262c2fc4913906ff09386f39883ab98e))
+
 ## [2.1.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.0...@ucast/js@2.1.1) (2020-08-14)
 
 
