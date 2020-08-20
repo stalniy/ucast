@@ -45,6 +45,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
   npx pnpm add -g pnpm
   cd ucast
   pnpm recursive i
+  pnpm build -r
   ```
 
 * Make your changes in a new git branch (fork master branch):
