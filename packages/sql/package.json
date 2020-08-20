@@ -3,8 +3,30 @@
   "version": "0.0.1",
   "description": "git@github.com:stalniy/ucast.git",
   "main": "dist/es6c/index.js",
-  "es2015": "dist/es6m/index.js",
+  "es2015": "dist/es6m/index.mjs",
   "typings": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/es6m/index.mjs",
+      "require": "./dist/es6c/index.js"
+    },
+    "./mikro-orm": {
+      "import": "./dist/es6m/lib/mikro-orm.mjs",
+      "require": "./dist/es6c/lib/mikro-orm.js"
+    },
+    "./objection": {
+      "import": "./dist/es6m/lib/objection.mjs",
+      "require": "./dist/es6c/lib/objection.js"
+    },
+    "./sequelize": {
+      "import": "./dist/es6m/lib/sequelize.mjs",
+      "require": "./dist/es6c/lib/sequelize.js"
+    },
+    "./typeorm": {
+      "import": "./dist/es6m/lib/typeorm.mjs",
+      "require": "./dist/es6c/lib/typeorm.js"
+    }
+  },
   "scripts": {
     "build.types": "tsc",
     "build": "npm run build.sql && npm run build.objection && npm run build.sequelize && npm run build.mikro-orm && npm run build.typeorm",

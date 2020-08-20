@@ -5,9 +5,15 @@
   "sideEffects": false,
   "main": "dist/es6c/index.js",
   "module": "dist/es5m/index.js",
-  "es2015": "dist/es6m/index.js",
+  "es2015": "dist/es6m/index.mjs",
   "legacy": "dist/umd/index.js",
   "typings": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/es6m/index.mjs",
+      "require": "./dist/es6c/index.js"
+    }
+  },
   "scripts": {
     "build.types": "tsc",
     "prebuild": "rm -rf dist/* && npm run build.types",
