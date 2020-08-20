@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.3](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.2...@ucast/js@2.1.3) (2020-08-20)
+
+
+### Bug Fixes
+
+* **operator:** ensure `exists` can check existance of array item ([3196ec7](https://github.com/stalniy/ucast/commit/3196ec79e5ef190fe113656fc725cb47ab051c57))
+
 ## [2.1.2](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.1...@ucast/js@2.1.2) (2020-08-20)
 
 
