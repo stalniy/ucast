@@ -7,7 +7,7 @@ import {
   ITSELF,
 } from '@ucast/core';
 import { JsInterpreter as Interpret } from './types';
-import { includes, AnyObject, testValueOrArray } from './utils';
+import { includes, AnyObject, testValueOrArray, PROJECTED_FIELD } from './utils';
 
 export const or: Interpret<Compound> = (node, object, { interpret }) => {
   return node.value.some(condition => interpret(condition, object));
@@ -88,7 +88,7 @@ export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, obje
     return false;
   }
 
-  return value.hasOwnProperty('projected')
+  return value.hasOwnProperty(PROJECTED_FIELD)
     ? value.some(v => Array.isArray(v) && v.length === node.value)
     : value.length === node.value;
 };

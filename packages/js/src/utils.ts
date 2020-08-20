@@ -14,10 +14,12 @@ export function includes<T>(items: T[], value: T, equal: JsInterpretationOptions
   return false;
 }
 
+export const PROJECTED_FIELD = typeof Symbol === 'undefined' ? '__projected' : Symbol('projected');
+
 function getField<T extends AnyObject>(object: T | T[], field: string, get: GetField) {
-  if (Array.isArray(object)) {
+  if (Array.isArray(object) && Number.isNaN(Number(field))) {
     const items = object.map(item => get(item, field));
-    return Object.defineProperty(items, 'projected', { value: true });
+    return Object.defineProperty(items, PROJECTED_FIELD, { value: true });
   }
 
   return get(object, field);
