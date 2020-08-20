@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [2.2.0](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.3...@ucast/js@2.2.0) (2020-08-20)
+
+
+### Features
+
+* **esm:** adds ESM support via dual loading in package.json for latest Node.js version ([c730f95](https://github.com/stalniy/ucast/commit/c730f9598a4c62589c612403c0ac59ba4aa1600e)), closes [#10](https://github.com/stalniy/ucast/issues/10)
+
 ## [2.1.3](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.2...@ucast/js@2.1.3) (2020-08-20)
 
 
