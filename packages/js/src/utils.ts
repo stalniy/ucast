@@ -16,8 +16,12 @@ export function includes<T>(items: T[], value: T, equal: JsInterpretationOptions
 
 export const PROJECTED_FIELD = typeof Symbol === 'undefined' ? '__projected' : Symbol('projected');
 
+export function isArrayAndNotNumericField<T>(object: T | T[], field: string): object is T[] {
+  return Array.isArray(object) && Number.isNaN(Number(field));
+}
+
 function getField<T extends AnyObject>(object: T | T[], field: string, get: GetField) {
-  if (Array.isArray(object) && Number.isNaN(Number(field))) {
+  if (isArrayAndNotNumericField(object, field)) {
     const items = object.map(item => get(item, field));
     return Object.defineProperty(items, PROJECTED_FIELD, { value: true });
   }

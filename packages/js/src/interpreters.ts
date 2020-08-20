@@ -7,7 +7,13 @@ import {
   ITSELF,
 } from '@ucast/core';
 import { JsInterpreter as Interpret } from './types';
-import { includes, AnyObject, testValueOrArray, PROJECTED_FIELD } from './utils';
+import {
+  includes,
+  testValueOrArray,
+  isArrayAndNotNumericField,
+  AnyObject,
+  PROJECTED_FIELD
+} from './utils';
 
 export const or: Interpret<Compound> = (node, object, { interpret }) => {
   return node.value.some(condition => interpret(condition, object));
@@ -70,11 +76,7 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
     item = get(object, node.field.slice(0, dotIndex));
   }
 
-  if (!Array.isArray(item)) {
-    return !!item && item.hasOwnProperty(field) === node.value;
-  }
-
-  return Array.isArray(item) ? item.some(test) : test(item);
+  return isArrayAndNotNumericField(item, field) ? item.some(test) : test(item);
 };
 
 export const mod = testValueOrArray<[number, number], number>((node, value) => {

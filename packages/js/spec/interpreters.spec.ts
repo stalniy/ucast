@@ -245,6 +245,13 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { items: [{ age: 1 }] })).to.be.true
       expect(interpret(condition, { items: [{ name: 'test' }, { age: 1 }] })).to.be.true
     })
+
+    it('can check that element item exists', () => {
+      const condition = new Field('exists', 'items.0', false)
+
+      expect(interpret(condition, { items: [] })).to.be.true
+      expect(interpret(condition, { items: [1] })).to.be.false
+    })
   })
 
   describe('mod', () => {
