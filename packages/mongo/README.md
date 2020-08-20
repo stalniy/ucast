@@ -135,4 +135,4 @@ Want to file a bug, contribute some code, or improve documentation? Excellent! R
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
-[contributing]: https://github.com/stalniy/uscast/blob/master/CONTRIBUTING.md
+[contributing]: https://github.com/stalniy/ucast/blob/master/CONTRIBUTING.md
