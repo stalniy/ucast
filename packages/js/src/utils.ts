@@ -4,7 +4,11 @@ import { JsInterpretationOptions, JsInterpreter } from './types';
 export type AnyObject = Record<PropertyKey, unknown>;
 export type GetField = (object: any, field: string) => any;
 
-export function includes<T>(items: T[], value: T, equal: JsInterpretationOptions['equal']): boolean {
+export function includes<T>(
+  items: T[],
+  value: T,
+  equal: JsInterpretationOptions['equal']
+): boolean {
   for (let i = 0, length = items.length; i < length; i++) {
     if (equal(items[i], value)) {
       return true;
@@ -14,16 +18,16 @@ export function includes<T>(items: T[], value: T, equal: JsInterpretationOptions
   return false;
 }
 
-export const PROJECTED_FIELD = typeof Symbol === 'undefined' ? '__projected' : Symbol('projected');
-
 export function isArrayAndNotNumericField<T>(object: T | T[], field: string): object is T[] {
   return Array.isArray(object) && Number.isNaN(Number(field));
 }
 
 function getField<T extends AnyObject>(object: T | T[], field: string, get: GetField) {
   if (isArrayAndNotNumericField(object, field)) {
-    const items = object.map(item => get(item, field));
-    return Object.defineProperty(items, PROJECTED_FIELD, { value: true });
+    return object.reduce((acc, item) => {
+      const value = get(item, field);
+      return value !== undefined ? acc.concat(value) : acc;
+    }, []);
   }
 
   return get(object, field);
