@@ -12,7 +12,6 @@ import {
   testValueOrArray,
   isArrayAndNotNumericField,
   AnyObject,
-  PROJECTED_FIELD
 } from './utils';
 
 export const or: Interpret<Compound> = (node, object, { interpret }) => {
@@ -90,22 +89,14 @@ export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, obje
     return false;
   }
 
-  return value.hasOwnProperty(PROJECTED_FIELD)
-    ? value.some(v => Array.isArray(v) && v.length === node.value)
-    : value.length === node.value;
+  return value.length === node.value;
 };
 
 export const regex = testValueOrArray<RegExp, string>((node, value) => node.value.test(value));
 
-export const within: Interpret<Field<unknown[]>> = (node, object, { equal, get }) => {
-  const value = get(object, node.field);
-
-  if (Array.isArray(value)) {
-    return node.value.some(item => includes(value, item, equal));
-  }
-
-  return includes(node.value, value, equal);
-};
+export const within: Interpret<Field<unknown[]>> = testValueOrArray(
+  (node, object, { equal }) => includes(node.value, object, equal)
+);
 
 export const nin: typeof within = (node, object, context) => {
   return !within(node, object, context);
@@ -114,11 +105,11 @@ export const nin: typeof within = (node, object, context) => {
 export const all: Interpret<Field<unknown[]>> = (node, object, { equal, get }) => {
   const value = get(object, node.field);
 
-  if (Array.isArray(value)) {
-    return node.value.every(v => includes(value, v, equal));
+  if (!Array.isArray(value)) {
+    return false;
   }
 
-  return false;
+  return node.value.every(v => includes(value, v, equal));
 };
 
 export const elemMatch: Interpret<Field<Condition>> = (node, object, { interpret, get }) => {
