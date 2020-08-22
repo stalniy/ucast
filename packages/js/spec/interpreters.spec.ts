@@ -21,7 +21,7 @@ import {
   nor,
   not,
   createJsInterpreter,
-  compare as defaultCompare
+  compare as defaultCompare,
 } from '../src'
 import {
   includeExamplesForFieldCondition,
@@ -361,7 +361,7 @@ describe('Condition Interpreter', () => {
       const condition = new DocumentCondition('where', () => true)
 
       expect(interpret(condition, {})).to.be.true
-      expect(interpret(condition, null as unknown as Record<PropertyKey, unknown>)).to.be.true
+      expect(interpret(condition, (null as unknown) as Record<PropertyKey, unknown>)).to.be.true
     })
 
     it('binds passed in object as "this"', () => {
@@ -423,6 +423,15 @@ describe('Condition Interpreter', () => {
 
       expect(compare).to.have.been.called.with(1, 1)
     })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('within', 'items.specs.age', [1])
+
+      expect(interpret(condition, { items: [] })).to.be.false
+      expect(interpret(condition, { items: [{ specs: [{ age: 2 }] }] })).to.be.false
+      expect(interpret(condition, { items: [{ specs: [{ age: 1 }] }] })).to.be.true
+      expect(interpret(condition, { items: [{ specs: 'test' }, { specs: [{ age: 1 }] }] })).to.be.true
+    })
   })
 
   describe('nin', () => {
@@ -474,6 +483,16 @@ describe('Condition Interpreter', () => {
 
       expect(compare).to.have.been.called.with(1, 1)
     })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field('all', 'items.prices', [1, 2, 3])
+
+      expect(interpret(condition, { items: [] })).to.be.false
+      expect(interpret(condition, { items: [{ prices: [1, 2] }] })).to.be.false
+      expect(interpret(condition, { items: [{ prices: [1, 2, 3] }] })).to.be.true
+      expect(interpret(condition, { items: [{ names: ['test'] }, { prices: [1, 2, 3] }] })).to.be
+        .true
+    })
   })
 
   describe('elemMatch', () => {
@@ -487,15 +506,30 @@ describe('Condition Interpreter', () => {
     })
 
     it('checks that field value item matches all conditions', () => {
-      const condition = new Field('elemMatch', 'items', new CompoundCondition('and', [
-        new Field('eq', 'age', 1),
-        new Field('eq', 'active', true)
-      ]))
+      const condition = new Field(
+        'elemMatch',
+        'items',
+        new CompoundCondition('and', [new Field('eq', 'age', 1), new Field('eq', 'active', true)])
+      )
       const item = (items: object[]) => ({ items })
 
       expect(interpret(condition, item([{ age: 1 }]))).to.be.false
       expect(interpret(condition, item([]))).to.be.false
       expect(interpret(condition, item([{ age: 1 }, { active: true }]))).to.be.false
+      expect(interpret(condition, item([{ age: 1 }, { age: 1, active: true }]))).to.be.true
+    })
+
+    it('checks that at least one item from array satisfies condition', () => {
+      const condition = new Field(
+        'elemMatch',
+        'items.subItems',
+        new CompoundCondition('and', [new Field('eq', 'age', 1), new Field('eq', 'active', true)])
+      )
+      const item = (subItems: object[]) => ({ items: [{ subItems }] })
+
+      expect(interpret(condition, item([{ age: 1 }]))).to.be.false
+      expect(interpret(condition, item([]))).to.be.false
+      expect(interpret(condition, item([{ age: 1, active: true }]))).to.be.true
       expect(interpret(condition, item([{ age: 1 }, { age: 1, active: true }]))).to.be.true
     })
   })
@@ -504,9 +538,7 @@ describe('Condition Interpreter', () => {
     const interpret = createJsInterpreter({ not, eq })
 
     it('inverts nested condition', () => {
-      const condition = new CompoundCondition('not', [
-        new Field('eq', 'age', 12),
-      ])
+      const condition = new CompoundCondition('not', [new Field('eq', 'age', 12)])
 
       expect(interpret(condition, { age: 12 })).to.be.false
       expect(interpret(condition, { age: 13 })).to.be.true
@@ -519,7 +551,7 @@ describe('Condition Interpreter', () => {
     it('combines conditions using logical "and"', () => {
       const condition = new CompoundCondition('and', [
         new Field('eq', 'age', 1),
-        new Field('eq', 'active', true)
+        new Field('eq', 'active', true),
       ])
 
       expect(interpret(condition, { age: 1, active: true })).to.be.true
@@ -533,7 +565,7 @@ describe('Condition Interpreter', () => {
     it('combines conditions using logical "or"', () => {
       const condition = new CompoundCondition('or', [
         new Field('eq', 'age', 1),
-        new Field('eq', 'active', true)
+        new Field('eq', 'active', true),
       ])
 
       expect(interpret(condition, { age: 1, active: true })).to.be.true
@@ -549,7 +581,7 @@ describe('Condition Interpreter', () => {
     it('combines conditions using logical "not or"', () => {
       const condition = new CompoundCondition('nor', [
         new Field('eq', 'age', 1),
-        new Field('eq', 'active', true)
+        new Field('eq', 'active', true),
       ])
 
       expect(interpret(condition, { age: 1, active: true })).to.be.false
