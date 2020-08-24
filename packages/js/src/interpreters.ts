@@ -13,6 +13,7 @@ import {
   isArrayAndNotNumericField,
   AnyObject,
 } from './utils';
+import { getObjectFieldCursor } from './interpreter';
 
 export const or: Interpret<Compound> = (node, object, { interpret }) => {
   return node.value.some(condition => interpret(condition, object));
@@ -65,15 +66,8 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
     return typeof object !== 'undefined';
   }
 
-  let item = object;
-  let field = node.field;
-  const dotIndex = node.field.lastIndexOf('.');
+  const [item, field] = getObjectFieldCursor<{}>(object, node.field, get);
   const test = (value: {}) => !!value && value.hasOwnProperty(field) === node.value;
-
-  if (dotIndex !== -1) {
-    field = node.field.slice(dotIndex + 1);
-    item = get(object, node.field.slice(0, dotIndex));
-  }
 
   return isArrayAndNotNumericField(item, field) ? item.some(test) : test(item);
 };
@@ -83,43 +77,33 @@ export const mod = testValueOrArray<[number, number], number>((node, value) => {
 });
 
 export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, object, { get }) => {
-  const value = get(object, node.field);
+  const [items, field] = getObjectFieldCursor(object as AnyObject, node.field, get);
+  const test = (item: unknown) => {
+    const value = get(item, field);
+    return Array.isArray(value) && value.length === node.value;
+  };
 
-  if (!Array.isArray(value)) {
-    return false;
-  }
-
-  return value.length === node.value;
+  return node.field !== ITSELF && isArrayAndNotNumericField(items, field)
+    ? items.some(test)
+    : test(items);
 };
 
 export const regex = testValueOrArray<RegExp, string>((node, value) => node.value.test(value));
 
-export const within: Interpret<Field<unknown[]>> = testValueOrArray(
-  (node, object, { equal }) => includes(node.value, object, equal)
-);
+export const within = testValueOrArray<unknown[], unknown>((node, object, { equal }) => {
+  return includes(node.value, object, equal);
+});
 
-export const nin: typeof within = (node, object, context) => {
-  return !within(node, object, context);
-};
+export const nin: typeof within = (node, object, context) => !within(node, object, context);
 
 export const all: Interpret<Field<unknown[]>> = (node, object, { equal, get }) => {
   const value = get(object, node.field);
-
-  if (!Array.isArray(value)) {
-    return false;
-  }
-
-  return node.value.every(v => includes(value, v, equal));
+  return Array.isArray(value) && node.value.every(v => includes(value, v, equal));
 };
 
 export const elemMatch: Interpret<Field<Condition>> = (node, object, { interpret, get }) => {
   const value = get(object, node.field);
-
-  if (!Array.isArray(value)) {
-    return false;
-  }
-
-  return value.some(v => interpret(node.value, v));
+  return Array.isArray(value) && value.some(v => interpret(node.value, v));
 };
 
 type WhereFunction = (this: AnyObject) => boolean;

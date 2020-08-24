@@ -321,7 +321,7 @@ describe('Condition Interpreter', () => {
       const condition = new Field('size', 'items.a', 2)
 
       expect(interpret(condition, { items: [{ a: [2, 3] }, { a: [] }, {}] })).to.be.true
-      expect(interpret(condition, { items: [{ a: [2, 3] }, { a: [4] }, {}] })).to.be.true
+      expect(interpret(condition, { items: [{ a: [2, 3] }, { a: [4] }, { a: [2] }] })).to.be.true
       expect(interpret(condition, { items: [5, 4] })).to.be.false
       expect(interpret(condition, { items: { a: [2, 3] } })).to.be.true
     })
@@ -362,7 +362,7 @@ describe('Condition Interpreter', () => {
       const condition = new DocumentCondition('where', () => true)
 
       expect(interpret(condition, {})).to.be.true
-      expect(interpret(condition, (null as unknown) as Record<PropertyKey, unknown>)).to.be.true
+      expect(interpret(condition, null as unknown as Record<PropertyKey, unknown>)).to.be.true
     })
 
     it('binds passed in object as "this"', () => {
@@ -490,9 +490,9 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, { items: [] })).to.be.false
       expect(interpret(condition, { items: [{ prices: [1, 2] }] })).to.be.false
-      expect(interpret(condition, { items: [{ prices: [1, 2, 3] }] })).to.be.true
-      expect(interpret(condition, { items: [{ names: ['test'] }, { prices: [1, 2, 3] }] })).to.be
-        .true
+      expect(interpret(condition, { items: [{ prices: condition.value }] })).to.be.true
+      expect(interpret(condition, { items: [{ names: ['test'] }, { prices: condition.value }] }))
+        .to.be.true
     })
   })
 
