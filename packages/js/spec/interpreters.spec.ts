@@ -321,6 +321,7 @@ describe('Condition Interpreter', () => {
       const condition = new Field('size', 'items.a', 2)
 
       expect(interpret(condition, { items: [{ a: [2, 3] }, { a: [] }, {}] })).to.be.true
+      expect(interpret(condition, { items: [{ a: [2, 3] }, { a: [4] }, {}] })).to.be.true
       expect(interpret(condition, { items: [5, 4] })).to.be.false
       expect(interpret(condition, { items: { a: [2, 3] } })).to.be.true
     })
