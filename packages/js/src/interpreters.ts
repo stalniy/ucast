@@ -88,7 +88,9 @@ export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, obje
     : test(items);
 };
 
-export const regex = testValueOrArray<RegExp, string>((node, value) => node.value.test(value));
+export const regex = testValueOrArray<RegExp, string>(
+  (node, value) => value !== undefined && node.value.test(value)
+);
 
 export const within = testValueOrArray<unknown[], unknown>((node, object, { equal }) => {
   return includes(node.value, object, equal);
