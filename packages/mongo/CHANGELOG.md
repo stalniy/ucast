@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.0...@ucast/mongo@2.3.1) (2020-08-24)
+
+
+### Bug Fixes
+
+* **types:** exports `RegExpFieldContext`, so ts allows to use typeof on object of instructions ([9a4580d](https://github.com/stalniy/ucast/commit/9a4580d054a6988fc41732de96d108ddb55b269f))
+
 # [2.3.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.2.0...@ucast/mongo@2.3.0) (2020-08-20)
 
 
