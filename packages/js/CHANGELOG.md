@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.0...@ucast/js@2.2.1) (2020-08-24)
+
+
+### Bug Fixes
+
+* **get:** ensure `get` returns flat array for deeply nested object of arrays of object arrays ([#13](https://github.com/stalniy/ucast/issues/13)) ([2efeb91](https://github.com/stalniy/ucast/commit/2efeb91213ee4d39deadb59962684392f94fc8cb))
+
 # [2.2.0](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.3...@ucast/js@2.2.0) (2020-08-20)
 
 
