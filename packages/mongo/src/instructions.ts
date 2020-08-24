@@ -123,7 +123,7 @@ export const $eq: FieldInstruction = {
 };
 export const $ne = $eq;
 
-interface RegExpFieldContext extends FieldParsingContext {
+export interface RegExpFieldContext extends FieldParsingContext {
   query: {
     $options?: string
   }
