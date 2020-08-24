@@ -28,6 +28,11 @@ describe('getObjectField', () => {
     expect(getObjectField(object, 'items.price')).to.deep.equal([12, 14])
   })
 
+  it('returns property values from nested array as flat array', () => {
+    const object = { items: [{ specs: [{ price: 12 }] }, { specs: [{ price: 14 }] }] }
+    expect(getObjectField(object, 'items.specs.price')).to.deep.equal([12, 14])
+  })
+
   it('returns array item when specified number as the last path field', () => {
     const object = { items: [{ price: 12 }, { price: 14 }] }
     expect(getObjectField(object, 'items.0')).to.deep.equal({ price: 12 })
