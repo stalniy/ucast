@@ -73,7 +73,7 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
 };
 
 export const mod = testValueOrArray<[number, number], number>((node, value) => {
-  return value % node.value[0] === node.value[1];
+  return typeof value === 'number' && value % node.value[0] === node.value[1];
 });
 
 export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, object, { get }) => {
@@ -88,9 +88,9 @@ export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, obje
     : test(items);
 };
 
-export const regex = testValueOrArray<RegExp, string>(
-  (node, value) => value !== undefined && node.value.test(value)
-);
+export const regex = testValueOrArray<RegExp, string>((node, value) => {
+  return typeof value === 'string' && node.value.test(value);
+});
 
 export const within = testValueOrArray<unknown[], unknown>((node, object, { equal }) => {
   return includes(node.value, object, equal);

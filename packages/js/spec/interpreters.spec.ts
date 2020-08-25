@@ -354,11 +354,12 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, item('some text'))).to.be.false
     })
 
-    it('return false if key doesn\'t exist or if value is undefined', () => {
+    it('return false if key is `undefined` or `null`', () => {
       const condition = new Field('regex', 'email', /i/)
 
       expect(interpret(condition, { email: 'ucast@github.com', })).to.be.true
       expect(interpret(condition, { email: undefined, })).to.be.false
+      expect(interpret(condition, { email: null, })).to.be.false
       expect(interpret(condition, {})).to.be.false
     })
   })
