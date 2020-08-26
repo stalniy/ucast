@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.2](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.1...@ucast/js@2.2.2) (2020-08-26)
+
+
+### Bug Fixes
+
+* **interpreter:** ensure `regexp` correctly works with `null` & `undefined` values ([#14](https://github.com/stalniy/ucast/issues/14)) ([061e5b0](https://github.com/stalniy/ucast/commit/061e5b05474b90998920bb6735add6f676e18989))
+
 ## [2.2.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.0...@ucast/js@2.2.1) (2020-08-24)
 
 
