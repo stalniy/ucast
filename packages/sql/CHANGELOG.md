@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.3](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.2...@ucast/sql@1.0.0-alpha.3) (2020-10-17)
+
+
+### Features
+
+* **esm:** adds ESM support via dual loading in package.json for latest Node.js version ([c730f95](https://github.com/stalniy/ucast/commit/c730f9598a4c62589c612403c0ac59ba4aa1600e)), closes [#10](https://github.com/stalniy/ucast/issues/10)
+
 # [1.0.0-alpha.2](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.1...@ucast/sql@1.0.0-alpha.2) (2020-08-19)
 
 
