@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.1...@ucast/mongo@2.3.2) (2020-10-17)
+
+
+### Bug Fixes
+
+* **README:** updates outdated docs ([550a08e](https://github.com/stalniy/ucast/commit/550a08ec1b0d0cd71b9ef432757cbc80aad88965))
+
 ## [2.3.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.0...@ucast/mongo@2.3.1) (2020-08-24)
 
 
