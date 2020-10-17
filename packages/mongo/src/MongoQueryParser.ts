@@ -24,7 +24,7 @@ export class MongoQueryParser {
 
   constructor(instructions: Record<string, ParsingInstruction>) {
     this._instructions = Object.keys(instructions).reduce((all, name) => {
-      all[name] = { ...instructions[name], name: name.slice(1) };
+      all[name] = { name: name[0] === '$' ? name.slice(1) : name, ...instructions[name] };
       return all;
     }, {} as ParsingInstructions);
     this.parse = this.parse.bind(this);
