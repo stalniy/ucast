@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.3](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.2...@ucast/js@2.2.3) (2020-10-17)
+
+
+### Performance Improvements
+
+* **get:** replaces reduce with for loop in hot function ([e54d86a](https://github.com/stalniy/ucast/commit/e54d86a128b08b3fd936cec67a6ae231c48fa9fc))
+
 ## [2.2.2](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.1...@ucast/js@2.2.2) (2020-08-26)
 
 
