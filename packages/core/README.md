@@ -20,29 +20,39 @@ pnpm add @ucast/core
 
 ### Parser
 
-Parser is a function that translates conditions from any language into conditions AST. For example, `MongoQueryParser` parses MongoQuery into conditions AST which then can be interpreted by `JavaScriptInterpreter` to get a boolean value against object of values.
+Parser is a function that translates conditions from any language into conditions AST. For example, `MongoQueryParser` parses MongoQuery into AST which then can be interpreted by `JavaScriptInterpreter` that returns a boolean value based on passed in object.
 
 ### Conditions AST
 
-Abstract Syntax Tree of any condition. What is condition? `x > 4` is a condition, `x === 4` is a condition as well, `{ x: { $eq: 4 } }` is a [MongoQuery](http://docs.mongodb.org/manual/reference/operator/query/) condition.
+Abstract Syntax Tree of any condition. **What is condition?**
+`x > 4` is a condition, `x === 4` is a condition as well, `{ x: { $eq: 4 } }` is a [MongoQuery](http://docs.mongodb.org/manual/reference/operator/query/) condition.
 
-There are 2 types of conditions:
+There are few types of AST nodes that allow us to represent any condition:
 
-* **DocumentCondition**. Any condition that does not depend on field (e.g., in Mongo Query it's `$where` operator and in SQL it's `EXISTS`). In other words, operates on document or row level.
-* **FieldCondition**. Depends on a field and its value. For example, in condition `x > 4`, `x` is a field, `4` is a value and `>` is operator
-* **CompoundCondition**. Combines other conditions using logical operations like "and", "or", "not".
+* **FieldCondition**. \
+  Depends on a field, operator and its value. For example, in condition `x > 4`, `x` is a field, `4` is a value and `>` is operator
+* **DocumentCondition**. \
+  Any condition that test a document (or a row) as whole (e.g., in MongoDB Query, it's `$where` operator and in SQL it's `EXISTS`).
+* **CompoundCondition**. \
+  Combines other conditions using logical operations like "and", "or", "not".
 
 ### Interpreter
 
-Interpreter is a function that interprets conditions AST in a specific way. For example, it can interpret conditions in JavaScript runtime and return a boolean result, or it can convert conditions into SQL `WHERE` statement, or MongoDB query, or HTTP query string. At this point, I think you got that we can interpret AST in any way we need or want!
+An interpreter is a function that interprets conditions AST in a specific way. For example, it can:
 
+* interpret conditions in JavaScript runtime to return a boolean result
+* or it can convert conditions into SQL `WHERE` statement
+* or MongoDB query,
+* or HTTP/REST query
+* or GraphQL input
+* or anything else you can imagine
 
 ### Translator
 
-Combines Parser and Interpreter and returns a factory function. In other words:
+Combines Parser and Interpreter and returns a factory function:
 
 ```js
-const parse = (query) => /* conditions AST */
+const parse = (query) => /* to conditions AST */
 const interpreter = createInterpreter({ /* condition interpreters */ });
 const translate = (query, ...args) => interpreter.bind(null, parse(query));
 ```
