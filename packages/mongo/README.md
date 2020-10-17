@@ -32,22 +32,36 @@ const ast = parser.parse({
 });
 ```
 
-To create a parser you need to pass in it parsing instruction. Parsing instruction is an object that defines how a particular operator should be parsed. There are 3 types of `ParsingInstruction`, one for each `Condition`:
+To create a parser you need to pass in it parsing instruction. Parsing instruction is an object that defines how a particular operator should be parsed. There are 3 types of `ParsingInstruction`, one for each AST node type:
 
-* `FieldInstruction`\
-  It represents an instruction for an operator which operates in a field context only. For example, operators `$eq`, `$lt`, `$not`, `$regex`
-* `CompoundInstruction`\
-  It represents an instruction for an operator which operates in a document context and contains nested queries. For example, operators `$and`, `$or`, `$nor`
-* `ValueInstruction`\
-  It represents an instruction for an operator which operates in a document context only. For example, `$where`
+* `field` represents an instruction for an operator which operates in a field context only. For example, operators `$eq`, `$lt`, `$not`, `$regex`
+* `compound` represents an instruction for an operator that aggregates nested queries. For example, operators `$and`, `$or`, `$nor`
+* `document` represents an instruction for an operator which operates in a document context only. For example, `$where` or `$jsonSchema`
+
+It's important to understand that it's not required that parsing instruction with type `field` should be parsed into `FieldCondition`. It can be parsed into `CompoundCondition` as it's done for `$not` operator.
+
+### Parsing instruction
+
+A parsing instruction is an object of 3 fields:
+
+```ts
+const parsingInstruction = {
+  type: 'field' | 'document' | 'compound',
+  validate?(instruction, value) { // optional
+    // throw exception if something is wrong
+  },
+  parse?(instruction, schema, context) { // optional
+    /*
+     * custom logic to parse operator,
+     * returns FieldCondition | DocumentCondition | CompoundCondition
+     */
+  }
+}
+```
 
 ### Optimization logic
 
-It's important to understand that it's not required for `FieldInstruction` to be parsed into `FieldCondition`. I can be parsed into `CompoundCondition` as it's done for `$not` operator.
-
-Also some operators like `$and` and `$or` optimize their parsing logic, so if one of that operators contain only one condition it will be resolved to `FieldCondition`.
-
-As said before `$and` and `$or` operators optimize their representation in case they have a single condition but this is not all. They also recursively collapse conditions from nested operators with the same name. Let's see an example to understand what this means:
+Some operators like `$and` and `$or` optimize their parsing logic, so if one of that operators contain a single condition it will be resolved to that condition without additional wrapping. They also recursively collapse conditions from nested operators with the same name. Let's see an example to understand what this means:
 
 ```js
 const ast = parser.parse({
@@ -72,15 +86,15 @@ console.dir(ast, { depth: null })
 
 This optimization logic helps to speed up interpreter's execution time, instead of going deeply over tree-like structure we have a plain structure of all conditions under a single compound condition.
 
-**Pay attention**: parser removes `$` prefix from operator names, so the resulting AST operators doesn't have in its `operator` property!
+**Pay attention**: parser removes `$` prefix from operator names
 
 ### Custom Operator
 
 In order for an operator to be parsed, it needs to define a parsing instruction. Let's implement a custom instruction which checks that object corresponds to a particular [json schema](https://json-schema.org/).
 
-First of all, we need to understand on which level this operator operates (field or document). In this case, `$jsonSchema` clearly operates on document level. It doesn't contain nested MongoDB queries, so it should be defined using `DocumentInstruction`.
+First of all, we need to understand on which level this operator operates (field or document). In this case, `$jsonSchema` clearly operates on document level. It doesn't contain nested MongoDB queries, so it's not a `compound` instruction. So, we are left only with `document` one.
 
-To test that document corresponds to provided json schema, we will use [ajv](https://ajv.js.org/) but it's possible to use any JSON schema validator you want.
+To test that document corresponds to provided json schema, we use [ajv](https://ajv.js.org/) but it's also possible to use a library of your preference.
 
 ```js
 // operators/jsonSchema.js
@@ -101,13 +115,16 @@ export const $jsonSchema: DocumentInstruction = {
 };
 ```
 
-In order to use this operator, we need to pass it into `MongoQueryParser` constructor:
+In order to use this operator, we need to pass this instruction into `MongoQueryParser` constructor:
 
 ```js
 import { MongoQueryParser, allParsingInstructions } from '@ucast/core';
 import { $jsonSchema } from './operators/jsonSchema';
 
-const parser = new MongoQueryParser({ ...allParsingInstructions, $jsonSchema });
+const parser = new MongoQueryParser({
+  ...allParsingInstructions,
+  $jsonSchema
+});
 const ast = parser.parse({
   $jsonSchema: {
     type: 'object',
@@ -125,7 +142,13 @@ console.dir(ast, { depth: null });
  */
 ```
 
-The only thing which is left is to implement a corresponding interpreter.
+The only thing which is left is to implement a corresponding JavaScript interpreter:
+
+```js
+function jsonSchema(condition, object) { // interpreter
+  return condition.value(object);
+}
+```
 
 ## Want to help?
 
