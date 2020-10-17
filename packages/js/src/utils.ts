@@ -23,14 +23,20 @@ export function isArrayAndNotNumericField<T>(object: T | T[], field: string): ob
 }
 
 function getField<T extends AnyObject>(object: T | T[], field: string, get: GetField) {
-  if (isArrayAndNotNumericField(object, field)) {
-    return object.reduce((acc, item) => {
-      const value = get(item, field);
-      return value !== undefined ? acc.concat(value) : acc;
-    }, []);
+  if (!isArrayAndNotNumericField(object, field)) {
+    return get(object, field);
   }
 
-  return get(object, field);
+  let result: unknown[] = [];
+
+  for (let i = 0; i < object.length; i++) {
+    const value = get(object[i], field);
+    if (typeof value !== 'undefined') {
+      result = result.concat(value);
+    }
+  }
+
+  return result;
 }
 
 export function getValueByPath(object: AnyObject, field: string, get: GetField) {
