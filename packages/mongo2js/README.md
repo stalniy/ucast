@@ -25,9 +25,12 @@ pnpm add @ucast/mongo2js
 To check that POJO can be matched by Mongo Query:
 
 ```js
-import { filter } from '@ucast/mongo2js';
+import { guard } from '@ucast/mongo2js';
 
-const test = filter({ lastName: 'Doe', age: { $gt: 18 } });
+const test = guard({
+  lastName: 'Doe',
+  age: { $gt: 18 }
+});
 
 console.log(test({
   firstName: 'John',
@@ -39,9 +42,6 @@ console.log(test({
 You can also get access to parsed Mongo Query AST:
 
 ```js
-import { filter } from '@ucast/mongo2js';
-
-const test = filter({ lastName: 'Doe', age: { $gt: 18 } });
 console.log(test.ast); /*
 {
   operator: 'and',
@@ -53,11 +53,27 @@ console.log(test.ast); /*
 */
 ```
 
+### Testing primitives
+
+For cases, when you need to test primitive elements, you can use `squire` function:
+
+```js
+import { squire } from '@ucast/mongo2js';
+
+const test = squire({
+  $lt: 10,
+  $gt: 18
+});
+
+test(11) // true
+test(9) // false
+```
+
 ### Custom Operator
 
-In order to implement own custom operator, you need to create [custom parsing instruction for `MongoQueryParser`](https://github.com/stalniy/ucast/tree/master/packages/mongo#custom-operator) and [custom `JsInterpreter`](https://github.com/stalniy/ucast/tree/master/packages/js#custom-operator-interpreter) to interpret this operator in JavaScript runtime.
+In order to implement a custom operator, you need to create a [custom parsing instruction for `MongoQueryParser`](https://github.com/stalniy/ucast/tree/master/packages/mongo#custom-operator) and [custom `JsInterpreter`](https://github.com/stalniy/ucast/tree/master/packages/js#custom-operator-interpreter) to interpret this operator in JavaScript runtime.
 
-This package re-exports all public symbols of `@ucast/mongo` and `@ucast/js`, so you don't need to install them separately. For example, to add support for [json-schema](https://json-schema.org/) operator:
+This package re-exports all symbols from `@ucast/mongo` and `@ucast/js`, so you don't need to install them separately. For example, to add support for [json-schema](https://json-schema.org/) operator:
 
 ```ts
 import { createFilter } from '@ucast/mongo2js';
@@ -77,12 +93,12 @@ const $jsonSchema = {
 };
 const jsonSchema = (condition, object) => condition.value(object);
 
-const customFilter = createFilter({
+const customGuard = createFilter({
   $jsonSchema,
 }, {
   jsonSchema
 });
-const test = customFilter({
+const test = customGuard({
   $jsonSchema: {
     type: 'object',
     properties: {
@@ -100,7 +116,7 @@ console.log(test({ firstName: 'John' })); // false, `lastName` is not defined
 This package is written in TypeScript and supports type inference for MongoQuery:
 
 ```ts
-import { filter } from '@ucast/mongo2js';
+import { guard } from '@ucast/mongo2js';
 
 interface Person {
   firstName: string
@@ -108,13 +124,13 @@ interface Person {
   age: number
 }
 
-const test = filter<Person>({ lastName: 'Doe' });
+const test = guard<Person>({ lastName: 'Doe' });
 ```
 
 You can also use dot notation to set conditions on deeply nested fields:
 
 ```ts
-import { filter } from '@ucast/mongo2js';
+import { guard } from '@ucast/mongo2js';
 
 interface Person {
   firstName: string
@@ -130,7 +146,7 @@ type ExtendedPerson = Person & {
   'address.city': Person['address']['city']
 }
 
-const test = filter<ExtendedPerson>({ lastName: 'Doe' });
+const test = guard<ExtendedPerson>({ lastName: 'Doe' });
 ```
 
 ## Want to help?
