@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.3](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.2...@ucast/mongo@2.3.3) (2020-10-17)
+
+
+### Bug Fixes
+
+* **parser:** ensure parser removes only `$` sign from instructions name ([7fda14e](https://github.com/stalniy/ucast/commit/7fda14e5b2f0c7a3120c1b4be22099c3aceff410))
+
 ## [2.3.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.1...@ucast/mongo@2.3.2) (2020-10-17)
 
 
