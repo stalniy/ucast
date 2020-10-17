@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+# [3.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.3...@ucast/js@3.0.0) (2020-10-17)
+
+
+### Bug Fixes
+
+* **api:** removes deprecated `equal` option for interpreter ([9b086b5](https://github.com/stalniy/ucast/commit/9b086b5b5d81cd1cc4471de90945d6a44a1c35dd))
+
+
+### BREAKING CHANGES
+
+* **api:** removes deprecated `equal` option. It's complitely replaced by `compare` function
+
+  **Before**
+
+  ```js
+  import { createJsInterpreter, allInterpreters } from '@ucast/js';
+
+  const interpret = createJsInterpreter(allInterpreters, {
+    equal: (a, b) => /* custom equality check */
+  });
+  ```
+
+  **After**
+
+  ```js
+  import { createJsInterpreter, allInterpreters, compare } from '@ucast/js';
+
+  const interpret = createJsInterpreter(allInterpreters, {
+    compare: (a, b) => {
+      if (/* custom equality check */) {
+        return 0;
+      }
+
+      return compare(a, b);
+    }
+  });
+  ```
+
 ## [2.2.3](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.2...@ucast/js@2.2.3) (2020-10-17)
 
 
