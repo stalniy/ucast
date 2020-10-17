@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.3.0...@ucast/mongo2js@1.3.1) (2020-10-17)
+
+
+### Bug Fixes
+
+* **package:** upgrades to the latest @ucast/js ([4d387d3](https://github.com/stalniy/ucast/commit/4d387d3c22e9f4682f32c246111f69c2f92f3964))
+
 # [1.3.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.2.0...@ucast/mongo2js@1.3.0) (2020-08-20)
 
 
