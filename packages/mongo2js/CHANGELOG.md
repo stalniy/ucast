@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.3.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.2.0...@ucast/mongo2js@1.3.0) (2020-08-20)
+
+
+### Features
+
+* **esm:** adds ESM support via dual loading in package.json for latest Node.js version ([c730f95](https://github.com/stalniy/ucast/commit/c730f9598a4c62589c612403c0ac59ba4aa1600e)), closes [#10](https://github.com/stalniy/ucast/issues/10)
+
 # [1.2.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.1.1...@ucast/mongo2js@1.2.0) (2020-08-18)
 
 

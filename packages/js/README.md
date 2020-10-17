@@ -62,12 +62,20 @@ The default `interpret` function:
   interpret(condition, { address: { street: 'another street' } }); // false
   ```
 
-* compare values by strict equality, so variables that reference objects are equal only if they are references to the same object
+* compare values by strict equality, so variables that reference objects are equal only if they are references to the same object:
+
+  ```js
+  const address = { street: 'test' };
+  const condition = new FieldCondition('eq', 'address', address);
+
+  interpret(condition, { address }) // true
+  interpret(condition, { address: { street: 'test' } }) // false, objects are compared by strict equality
+  ```
 
 
 ### Custom interpreter
 
-Sometimes you may want to reduce (or restrict) amount of supported operators (e.g., to utilize tree-shaking and reduce bundle size). To do this you can create interpreter manually:
+Sometimes you may want to reduce (or restrict) amount of supported operators (e.g., to utilize tree-shaking and reduce bundle size). To do this you can create a custom interpreter manually:
 
 ```js
 import { FieldCondition } from '@ucast/core';
@@ -80,7 +88,10 @@ const condition = new FieldCondition('in', 'x', [1, 2]);
 interpret(condition, { x: 1 }) // throws Error, `$in` is not supported
 ```
 
-You can also provide a custom `get` or `compare` function. So, you can implement custom logic to get object's property or to compare values. `compare` is used everywhere equality or comparison is required (e.g., in `$in`, `$lt`, `$gt`). This function must return `1` if `a > b`, `-1` if `a < b` and `0` if `a === b`
+### Custom object matching
+
+You can also provide a custom `get` or `compare` function. So, you can implement custom logic to get object's property or to compare values. `compare` is used everywhere equality or comparison is required (e.g., in `$in`, `$lt`, `$gt`). This function must return `1` if `a > b`, `-1` if `a < b` and `0` if `a === b`.
+
 Let's enhance our interpreter to support deep object comparison using [lodash]:
 
 ```js
@@ -128,4 +139,4 @@ Want to file a bug, contribute some code, or improve documentation? Excellent! R
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
-[contributing]: https://github.com/stalniy/uscast/blob/master/CONTRIBUTING.md
+[contributing]: https://github.com/stalniy/ucast/blob/master/CONTRIBUTING.md

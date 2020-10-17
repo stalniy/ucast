@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.3](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.2...@ucast/mongo@2.3.3) (2020-10-17)
+
+
+### Bug Fixes
+
+* **parser:** ensure parser removes only `$` sign from instructions name ([7fda14e](https://github.com/stalniy/ucast/commit/7fda14e5b2f0c7a3120c1b4be22099c3aceff410))
+
+## [2.3.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.1...@ucast/mongo@2.3.2) (2020-10-17)
+
+
+### Bug Fixes
+
+* **README:** updates outdated docs ([550a08e](https://github.com/stalniy/ucast/commit/550a08ec1b0d0cd71b9ef432757cbc80aad88965))
+
+## [2.3.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.0...@ucast/mongo@2.3.1) (2020-08-24)
+
+
+### Bug Fixes
+
+* **types:** exports `RegExpFieldContext`, so ts allows to use typeof on object of instructions ([9a4580d](https://github.com/stalniy/ucast/commit/9a4580d054a6988fc41732de96d108ddb55b269f))
+
+# [2.3.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.2.0...@ucast/mongo@2.3.0) (2020-08-20)
+
+
+### Features
+
+* **esm:** adds ESM support via dual loading in package.json for latest Node.js version ([c730f95](https://github.com/stalniy/ucast/commit/c730f9598a4c62589c612403c0ac59ba4aa1600e)), closes [#10](https://github.com/stalniy/ucast/issues/10)
+
 # [2.2.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.1.2...@ucast/mongo@2.2.0) (2020-08-18)
 
 

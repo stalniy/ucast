@@ -2,6 +2,86 @@
 
 All notable changes to this project will be documented in this file.
 
+# [3.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.3...@ucast/js@3.0.0) (2020-10-17)
+
+
+### Bug Fixes
+
+* **api:** removes deprecated `equal` option for interpreter ([9b086b5](https://github.com/stalniy/ucast/commit/9b086b5b5d81cd1cc4471de90945d6a44a1c35dd))
+
+
+### BREAKING CHANGES
+
+* **api:** removes deprecated `equal` option. It's complitely replaced by `compare` function
+
+  **Before**
+
+  ```js
+  import { createJsInterpreter, allInterpreters } from '@ucast/js';
+
+  const interpret = createJsInterpreter(allInterpreters, {
+    equal: (a, b) => /* custom equality check */
+  });
+  ```
+
+  **After**
+
+  ```js
+  import { createJsInterpreter, allInterpreters, compare } from '@ucast/js';
+
+  const interpret = createJsInterpreter(allInterpreters, {
+    compare: (a, b) => {
+      if (/* custom equality check */) {
+        return 0;
+      }
+
+      return compare(a, b);
+    }
+  });
+  ```
+
+## [2.2.3](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.2...@ucast/js@2.2.3) (2020-10-17)
+
+
+### Performance Improvements
+
+* **get:** replaces reduce with for loop in hot function ([e54d86a](https://github.com/stalniy/ucast/commit/e54d86a128b08b3fd936cec67a6ae231c48fa9fc))
+
+## [2.2.2](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.1...@ucast/js@2.2.2) (2020-08-26)
+
+
+### Bug Fixes
+
+* **interpreter:** ensure `regexp` correctly works with `null` & `undefined` values ([#14](https://github.com/stalniy/ucast/issues/14)) ([061e5b0](https://github.com/stalniy/ucast/commit/061e5b05474b90998920bb6735add6f676e18989))
+
+## [2.2.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.2.0...@ucast/js@2.2.1) (2020-08-24)
+
+
+### Bug Fixes
+
+* **get:** ensure `get` returns flat array for deeply nested object of arrays of object arrays ([#13](https://github.com/stalniy/ucast/issues/13)) ([2efeb91](https://github.com/stalniy/ucast/commit/2efeb91213ee4d39deadb59962684392f94fc8cb))
+
+# [2.2.0](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.3...@ucast/js@2.2.0) (2020-08-20)
+
+
+### Features
+
+* **esm:** adds ESM support via dual loading in package.json for latest Node.js version ([c730f95](https://github.com/stalniy/ucast/commit/c730f9598a4c62589c612403c0ac59ba4aa1600e)), closes [#10](https://github.com/stalniy/ucast/issues/10)
+
+## [2.1.3](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.2...@ucast/js@2.1.3) (2020-08-20)
+
+
+### Bug Fixes
+
+* **operator:** ensure `exists` can check existance of array item ([3196ec7](https://github.com/stalniy/ucast/commit/3196ec79e5ef190fe113656fc725cb47ab051c57))
+
+## [2.1.2](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.1...@ucast/js@2.1.2) (2020-08-20)
+
+
+### Bug Fixes
+
+* **get:** ensures that `getObjectField` properly works with numeric fields in path ([ee501a2](https://github.com/stalniy/ucast/commit/ee501a23262c2fc4913906ff09386f39883ab98e))
+
 ## [2.1.1](https://github.com/stalniy/ucast/compare/@ucast/js@2.1.0...@ucast/js@2.1.1) (2020-08-14)
 
 
