@@ -31,14 +31,14 @@ export const not: Interpret<Compound> = (node, object, { interpret }) => {
   return !interpret(node.value[0], object);
 };
 
-export const eq: Interpret<Field> = (node, object, { equal, get }) => {
+export const eq: Interpret<Field> = (node, object, { compare, get }) => {
   const value = get(object, node.field);
 
   if (Array.isArray(value) && !Array.isArray(node.value)) {
-    return includes(value, node.value, equal);
+    return includes(value, node.value, compare);
   }
 
-  return equal(value, node.value);
+  return compare(value, node.value) === 0;
 };
 
 export const ne: typeof eq = (node, object, context) => {
@@ -92,15 +92,15 @@ export const regex = testValueOrArray<RegExp, string>((node, value) => {
   return typeof value === 'string' && node.value.test(value);
 });
 
-export const within = testValueOrArray<unknown[], unknown>((node, object, { equal }) => {
-  return includes(node.value, object, equal);
+export const within = testValueOrArray<unknown[], unknown>((node, object, { compare }) => {
+  return includes(node.value, object, compare);
 });
 
 export const nin: typeof within = (node, object, context) => !within(node, object, context);
 
-export const all: Interpret<Field<unknown[]>> = (node, object, { equal, get }) => {
+export const all: Interpret<Field<unknown[]>> = (node, object, { compare, get }) => {
   const value = get(object, node.field);
-  return Array.isArray(value) && node.value.every(v => includes(value, v, equal));
+  return Array.isArray(value) && node.value.every(v => includes(value, v, compare));
 };
 
 export const elemMatch: Interpret<Field<Condition>> = (node, object, { interpret, get }) => {

@@ -7,10 +7,10 @@ export type GetField = (object: any, field: string) => any;
 export function includes<T>(
   items: T[],
   value: T,
-  equal: JsInterpretationOptions['equal']
+  compare: JsInterpretationOptions['compare']
 ): boolean {
   for (let i = 0, length = items.length; i < length; i++) {
-    if (equal(items[i], value)) {
+    if (compare(items[i], value) === 0) {
       return true;
     }
   }

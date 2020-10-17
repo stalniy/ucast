@@ -34,7 +34,6 @@ export function createGetter<T extends GetField>(get: T) {
   return (object: Parameters<T>[0], field: Parameters<T>[1]) => getObjectField(object, field, get);
 }
 
-export const equal = <T>(a: T, b: T) => a === b;
 export function compare<T>(a: T, b: T): 0 | 1 | -1 {
   if (a === b) {
     return 0;
@@ -50,11 +49,9 @@ export function createJsInterpreter<
   operators: Record<string, T>,
   options: O = {} as O
 ) {
-  const compareValues = options.compare || compare;
   return createInterpreter(operators, {
     get: getObjectField,
     compare,
-    equal: <T>(a: T, b: T): boolean => compareValues(a, b) === 0,
     ...options,
   });
 }
