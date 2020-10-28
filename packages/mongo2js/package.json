@@ -1,6 +1,6 @@
 {
   "name": "@ucast/mongo2js",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "git@github.com:stalniy/ucast.git",
   "main": "dist/es6c/index.js",
   "module": "dist/es5m/index.js",
@@ -81,7 +81,7 @@
   },
   "dependencies": {
     "@ucast/core": "^1.2.1",
-    "@ucast/js": "^2.0.1",
+    "@ucast/js": "^3.0.0",
     "@ucast/mongo": "^2.2.0"
   }
 }
