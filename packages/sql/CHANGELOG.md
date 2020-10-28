@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.4](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.3...@ucast/sql@1.0.0-alpha.4) (2020-10-28)
+
+
+### Features
+
+* **interpreter:** adds support for local and foreign field name interception ([0b563c8](https://github.com/stalniy/ucast/commit/0b563c8b1c8a61d698a969223ebc9125820d500e))
+
 # [1.0.0-alpha.3](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.2...@ucast/sql@1.0.0-alpha.3) (2020-10-17)
 
 
