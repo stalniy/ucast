@@ -7,6 +7,8 @@ import { DialectOptions } from './dialects';
 
 export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string
+  foreignField?(field: string, relationName: string): string
+  localField?(field: string): string
 }
 
 export class Query {
@@ -24,6 +26,14 @@ export class Query {
     this._fieldPrefix = fieldPrefix;
     this._targetQuery = targetQuery;
     this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
+
+    if (this.options.foreignField) {
+      this.foreignField = this.options.foreignField;
+    }
+
+    if (this.options.localField) {
+      this.localField = this.options.localField;
+    }
   }
 
   field(rawName: string) {
@@ -31,17 +41,25 @@ export class Query {
     const relationNameIndex = name.indexOf('.');
 
     if (relationNameIndex === -1) {
-      return this._rootAlias + this.options.escapeField(name);
+      return this._rootAlias + this.localField(name);
     }
 
     const relationName = name.slice(0, relationNameIndex);
     const field = name.slice(relationNameIndex + 1);
 
     if (!this.options.joinRelation(relationName, this._targetQuery)) {
-      return this.options.escapeField(field);
+      return this._rootAlias + this.localField(field);
     }
 
     this._joins.push(relationName);
+    return this.foreignField(field, relationName);
+  }
+
+  private localField(field: string) {
+    return this.options.escapeField(field);
+  }
+
+  private foreignField(field: string, relationName: string) {
     return `${this.options.escapeField(relationName)}.${this.options.escapeField(field)}`;
   }
 
