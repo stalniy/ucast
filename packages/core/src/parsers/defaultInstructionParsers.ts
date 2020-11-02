@@ -1,23 +1,24 @@
 import {
+  Condition,
   FieldCondition,
   CompoundCondition,
   DocumentCondition,
+} from '../Condition';
+import {
   DocumentInstruction,
   CompoundInstruction,
   FieldInstruction,
   NamedInstruction,
-  Condition,
   ParsingContext,
-} from '@ucast/core';
-import { MongoQuery } from './types';
+} from '../types';
 
 interface DefaultParsers {
-  compound: Exclude<CompoundInstruction<MongoQuery[]>['parse'], undefined>,
+  compound: Exclude<CompoundInstruction['parse'], undefined>,
   field: Exclude<FieldInstruction['parse'], undefined>,
   document: Exclude<DocumentInstruction['parse'], undefined>
 }
 
-export const defaultParsers: DefaultParsers = {
+export const defaultInstructionParsers: DefaultParsers = {
   compound(instruction, value, context) {
     const queries = Array.isArray(value) ? value : [value];
     const conditions = queries.map(query => context.parse(query));
@@ -41,6 +42,6 @@ export function parseInstruction(
   }
 
   const parse: typeof instruction.parse = instruction.parse
-    || defaultParsers[instruction.type as keyof DefaultParsers];
+    || defaultInstructionParsers[instruction.type as keyof DefaultParsers];
   return parse(instruction, value, context);
 }
