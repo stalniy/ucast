@@ -57,7 +57,7 @@ export class ObjectQueryParser<
     this._fieldInstructionContext.parse = parse;
   }
 
-  protected _parseField(field: string, operator: string, value: unknown, parentQuery: unknown) {
+  protected parseField(field: string, operator: string, value: unknown, parentQuery: unknown) {
     const instruction = this._instructions[operator];
 
     if (!instruction) {
@@ -74,7 +74,7 @@ export class ObjectQueryParser<
     return parseInstruction(instruction, value, this._fieldInstructionContext);
   }
 
-  protected _parseFieldOperators(field: string, value: U) {
+  protected parseFieldOperators(field: string, value: U) {
     const conditions: Condition[] = [];
     const keys = Object.keys(value);
 
@@ -86,7 +86,7 @@ export class ObjectQueryParser<
         throw new Error(`Field query for "${field}" may contain only operators or a plain object as a value`);
       }
 
-      const condition = this._parseField(field, op, value[op as keyof U], value);
+      const condition = this.parseField(field, op, value[op as keyof U], value);
 
       if (condition !== NULL_CONDITION) {
         conditions.push(condition);
@@ -113,9 +113,9 @@ export class ObjectQueryParser<
 
         conditions.push(parseInstruction(instruction, value, defaultContext));
       } else if (hasOperators<FQ>(value, this._instructions)) {
-        conditions.push(...this._parseFieldOperators(key, value));
+        conditions.push(...this.parseFieldOperators(key, value));
       } else {
-        conditions.push(this._parseField(key, this._options.defaultOperatorName, value, query));
+        conditions.push(this.parseField(key, this._options.defaultOperatorName, value, query));
       }
     }
 

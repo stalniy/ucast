@@ -24,7 +24,7 @@ export class MongoQueryParser extends ObjectQueryParser<MongoQuery<any>> {
     options?: ParseOptions
   ): Condition {
     if (options && options.field) {
-      return and(this._parseFieldOperators(options.field, query as FQ));
+      return and(this.parseFieldOperators(options.field, query as FQ));
     }
 
     return super.parse(query);
