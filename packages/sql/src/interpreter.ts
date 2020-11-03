@@ -20,7 +20,7 @@ export class Query {
   private _fieldPrefix!: string;
   private _params: unknown[] = [];
   private _sql: string[] = [];
-  private _joins: string[] = [];
+  private _joins = new Set<string>();
   private _lastPlaceholderIndex: number = 1;
   private _targetQuery!: unknown;
   private _rootAlias!: string;
@@ -55,7 +55,7 @@ export class Query {
       return this._rootAlias + this.localField(field);
     }
 
-    this._joins.push(relationName);
+    this._joins.add(relationName);
     return this.foreignField(field, relationName);
   }
 
@@ -82,6 +82,7 @@ export class Query {
 
     if (options && options.linkParams) {
       query._params = this._params;
+      query._joins = this._joins; // TODO: investigate case of referencing relations of relations
     } else {
       query._lastPlaceholderIndex = this._lastPlaceholderIndex + this._params.length;
     }
@@ -108,6 +109,9 @@ export class Query {
 
     if (this._params !== query._params) {
       this._params.push(...query._params);
+      for (const relation of query._joins) { // eslint-disable-line
+        this._joins.add(relation);
+      }
     }
     return this;
   }
@@ -125,7 +129,7 @@ export class Query {
   }
 
   toJSON(): [string, unknown[], string[]] {
-    return [this._sql.join(' and '), this._params, this._joins];
+    return [this._sql.join(' and '), this._params, Array.from(this._joins)];
   }
 }
 
