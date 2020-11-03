@@ -11,6 +11,10 @@ export interface SqlQueryOptions extends Required<DialectOptions> {
   localField?(field: string): string
 }
 
+interface ChildOptions {
+  linkParams?: boolean
+}
+
 export class Query {
   public readonly options!: SqlQueryOptions;
   private _fieldPrefix!: string;
@@ -63,33 +67,33 @@ export class Query {
     return `${this.options.escapeField(relationName)}.${this.options.escapeField(field)}`;
   }
 
-  param() {
-    return this.options.paramPlaceholder(this._lastPlaceholderIndex + this._params.length);
+  param(value: unknown) {
+    const index = this._lastPlaceholderIndex + this._params.length;
+    this._params.push(value);
+    return this.options.paramPlaceholder(index);
   }
 
   manyParams(items: unknown[]) {
-    const startIndex = this._lastPlaceholderIndex + this._params.length;
-    return items.map((_, i) => this.options.paramPlaceholder(startIndex + i));
+    return items.map(item => this.param(item));
   }
 
-  child() {
+  child(options?: ChildOptions) {
     const query = new Query(this.options, this._fieldPrefix, this._targetQuery);
-    query._lastPlaceholderIndex = this._lastPlaceholderIndex + this._params.length;
+
+    if (options && options.linkParams) {
+      query._params = this._params;
+    } else {
+      query._lastPlaceholderIndex = this._lastPlaceholderIndex + this._params.length;
+    }
     return query;
   }
 
-  where(field: string, operator: string, value?: unknown) {
-    const sql = `${this.field(field)} ${operator} ${this.param()}`;
-    return this.whereRaw(sql, value);
+  where(field: string, operator: string, value: unknown) {
+    return this.whereRaw(`${this.field(field)} ${operator} ${this.param(value)}`);
   }
 
-  whereRaw(sql: string, ...values: unknown[]) {
+  whereRaw(sql: string) {
     this._sql.push(sql);
-
-    if (values) {
-      this._params.push(...values);
-    }
-
     return this;
   }
 
@@ -101,7 +105,10 @@ export class Query {
     }
 
     this._sql.push(`${isInverted ? 'not ' : ''}${sql}`);
-    this._params.push(...query._params);
+
+    if (this._params !== query._params) {
+      this._params.push(...query._params);
+    }
     return this;
   }
 
