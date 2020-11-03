@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.6](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.5...@ucast/sql@1.0.0-alpha.6) (2020-11-03)
+
+
+### Bug Fixes
+
+* copies collected relations from child to parent query ([9325219](https://github.com/stalniy/ucast/commit/9325219a4f0d25a56695ea2a97c6bb0618467b0c))
+
 # [1.0.0-alpha.5](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.4...@ucast/sql@1.0.0-alpha.5) (2020-11-03)
 
 
