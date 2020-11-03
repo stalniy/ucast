@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.5](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.4...@ucast/sql@1.0.0-alpha.5) (2020-11-03)
+
+
+### Features
+
+* **sql:** reduce amount of array operations ([584a01a](https://github.com/stalniy/ucast/commit/584a01ab2d7d3b89932affa615acc352f1da3b79))
+
 # [1.0.0-alpha.4](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.3...@ucast/sql@1.0.0-alpha.4) (2020-10-28)
 
 
