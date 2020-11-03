@@ -10,8 +10,8 @@ import {
   NULL_CONDITION,
   FieldParsingContext,
   optimizedCompoundCondition,
+  ObjectQueryFieldParsingContext,
 } from '@ucast/core';
-import { hasOperators } from './utils';
 import { MongoQuery } from './types';
 
 function ensureIsArray(instruction: NamedInstruction, value: unknown) {
@@ -73,14 +73,14 @@ export const $not: FieldInstruction<MongoQuery<any> | RegExp> = {
     return new CompoundCondition(instruction.name, [condition]);
   },
 };
-export const $elemMatch: FieldInstruction<MongoQuery<any>> = {
+export const $elemMatch: FieldInstruction<MongoQuery<any>, ObjectQueryFieldParsingContext> = {
   type: 'field',
   validate(instruction, value) {
     if (!value || value.constructor !== Object) {
       throw new Error(`"${instruction.name}" expects to receive an object with nested query or field level operators`);
     }
   },
-  parse(instruction, value, { parse, field }) {
+  parse(instruction, value, { parse, field, hasOperators }) {
     const condition = hasOperators(value) ? parse(value, { field: ITSELF }) : parse(value);
     return new FieldCondition(instruction.name, field, condition);
   }

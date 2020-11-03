@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.6.0...@ucast/core@1.6.1) (2020-11-02)
+
+
+### Bug Fixes
+
+* **parser:** prevents mangling of `parseField` and `parseFieldOperators` methods of `ObjectQueryParser` ([3b4734b](https://github.com/stalniy/ucast/commit/3b4734b8ac46514aa46855f169e48708d5a9a4b3))
+
+# [1.6.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.5.0...@ucast/core@1.6.0) (2020-11-02)
+
+
+### Features
+
+* **parser:** extracts `ObjectQueryParser` out of `MongoQueryParser` into reusable piece ([38941dd](https://github.com/stalniy/ucast/commit/38941dd003dfb0ac9d9f7c867d49b0bbd0b5e716))
+
 # [1.5.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.4.1...@ucast/core@1.5.0) (2020-08-20)
 
 

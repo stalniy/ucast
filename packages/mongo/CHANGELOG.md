@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+# [2.4.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.3...@ucast/mongo@2.4.0) (2020-11-02)
+
+
+### Bug Fixes
+
+* **parser:** prevents mangling of `parseField` and `parseFieldOperators` methods of `ObjectQueryParser` ([3b4734b](https://github.com/stalniy/ucast/commit/3b4734b8ac46514aa46855f169e48708d5a9a4b3))
+
+
+### Features
+
+* **parser:** extracts `ObjectQueryParser` out of `MongoQueryParser` into reusable piece ([38941dd](https://github.com/stalniy/ucast/commit/38941dd003dfb0ac9d9f7c867d49b0bbd0b5e716))
+
 ## [2.3.3](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.2...@ucast/mongo@2.3.3) (2020-10-17)
 
 

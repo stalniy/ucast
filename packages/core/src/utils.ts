@@ -31,3 +31,19 @@ export function optimizedCompoundCondition<T extends Condition>(operator: string
 
   return new CompoundCondition(operator, flattenConditions(operator, conditions));
 }
+
+export const identity = <T>(x: T) => x;
+
+export function hasOperators<T>(value: any, instructions: Record<string, unknown>): value is T {
+  if (!value || value && value.constructor !== Object) {
+    return false;
+  }
+
+  for (const prop in value) { // eslint-disable-line no-restricted-syntax
+    if (value.hasOwnProperty(prop) && instructions.hasOwnProperty(prop)) {
+      return true;
+    }
+  }
+
+  return false;
+}
