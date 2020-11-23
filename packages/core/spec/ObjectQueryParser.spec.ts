@@ -43,6 +43,31 @@ describe('ObjectQueryParser', () => {
     expect(conditions.every(c => c instanceof FieldCondition && c.operator === 'eq')).to.be.true
   })
 
+  it('passes additional field context details during processing field level operators', () => {
+    const my = { type: 'field', parse: spy(defaultInstructionParsers.field) }
+    const parser = new ObjectQueryParser({ my }, {
+      fieldContext: { check: true }
+    })
+    parser.parse({ field: { my: 1 } })
+    const context = spy.calls(my.parse)[0][2] as { check: boolean }
+
+    expect(context.check).to.be.true
+  })
+
+  it('passes additional document context details during processing document level and compound operators', () => {
+    const document = { type: 'document', parse: spy(defaultInstructionParsers.document) }
+    const compound = { type: 'compound', parse: spy(defaultInstructionParsers.compound) }
+    const parser = new ObjectQueryParser({ document, compound }, {
+      documentContext: { check: true }
+    })
+    parser.parse({ document: true, compound: [] })
+    const documentContext = spy.calls(document.parse)[0][2] as { check: boolean }
+    const compoundContext = spy.calls(compound.parse)[0][2] as { check: boolean }
+
+    expect(documentContext.check).to.be.true
+    expect(compoundContext.check).to.be.true
+  })
+
   describe('when "field" level parsing instruction is specified', () => {
     it('parses it to `FieldCondition`', () => {
       const my = { type: 'field' }

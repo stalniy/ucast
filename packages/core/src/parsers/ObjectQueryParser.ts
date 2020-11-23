@@ -7,7 +7,7 @@ import {
 } from '../types';
 import { buildAnd as and } from '../builder';
 import { parseInstruction } from './defaultInstructionParsers';
-import { identity, hasOperators } from '../utils';
+import { identity, hasOperators, object } from '../utils';
 
 export type FieldQueryOperators<T extends {}> = {
   [K in keyof T]: T[K] extends {} ? T[K] : never
@@ -18,10 +18,12 @@ type ParsingInstructions = Record<string, NamedInstruction>;
 export interface QueryOptions {
   operatorToConditionName?(name: string): string
   defaultOperatorName?: string
+  fieldContext?: Record<string, unknown>
+  documentContext?: Record<string, unknown>
 }
 
 export type ObjectQueryFieldParsingContext = ParsingContext<FieldParsingContext & {
-  query: unknown,
+  query: {},
   hasOperators<T>(value: unknown): value is T
 }>;
 
@@ -29,35 +31,44 @@ export class ObjectQueryParser<
   T extends Record<any, any>,
   U extends FieldQueryOperators<T> = FieldQueryOperators<T>
 > {
-  protected readonly _instructions: ParsingInstructions;
-  protected _fieldInstructionContext: ObjectQueryFieldParsingContext;
-  protected readonly _options: Required<QueryOptions>;
+  private readonly _instructions: ParsingInstructions;
+  private _fieldInstructionContext: ObjectQueryFieldParsingContext;
+  private _documentInstructionContext: ParsingContext<{ query: {} }>;
+  private readonly _options: Required<
+  Pick<QueryOptions, 'operatorToConditionName' | 'defaultOperatorName'>
+  >;
 
-  constructor(instructions: Record<string, ParsingInstruction>, options?: QueryOptions) {
+  constructor(instructions: Record<string, ParsingInstruction>, options: QueryOptions = object()) {
     this.parse = this.parse.bind(this);
     this._options = {
-      operatorToConditionName: identity,
-      defaultOperatorName: 'eq',
-      ...options
+      operatorToConditionName: options.operatorToConditionName || identity,
+      defaultOperatorName: options.defaultOperatorName || 'eq',
     };
     this._instructions = Object.keys(instructions).reduce((all, name) => {
       all[name] = { name: this._options.operatorToConditionName(name), ...instructions[name] };
       return all;
     }, {} as ParsingInstructions);
     this._fieldInstructionContext = {
+      ...options.fieldContext,
       field: '',
       query: {},
       parse: this.parse,
       hasOperators: <T>(value: unknown): value is T => hasOperators(value, this._instructions),
+    };
+    this._documentInstructionContext = {
+      ...options.documentContext,
+      parse: this.parse,
+      query: {}
     };
   }
 
   setParse(parse: this['parse']) {
     this.parse = parse;
     this._fieldInstructionContext.parse = parse;
+    this._documentInstructionContext.parse = parse;
   }
 
-  protected parseField(field: string, operator: string, value: unknown, parentQuery: unknown) {
+  protected parseField(field: string, operator: string, value: unknown, parentQuery: {}) {
     const instruction = this._instructions[operator];
 
     if (!instruction) {
@@ -96,10 +107,11 @@ export class ObjectQueryParser<
     return conditions;
   }
 
-  parse<Q extends T, FQ extends U = U>(query: Q): Condition {
-    const defaultContext = { query, parse: this.parse };
+  parse<Q extends T>(query: Q): Condition {
     const conditions = [];
     const keys = Object.keys(query);
+
+    this._documentInstructionContext.query = query;
 
     for (let i = 0, length = keys.length; i < length; i++) {
       const key = keys[i];
@@ -111,8 +123,8 @@ export class ObjectQueryParser<
           throw new Error(`Cannot use parsing instruction for operator "${key}" in "document" context as it is supposed to be used in  "${instruction.type}" context`);
         }
 
-        conditions.push(parseInstruction(instruction, value, defaultContext));
-      } else if (hasOperators<FQ>(value, this._instructions)) {
+        conditions.push(parseInstruction(instruction, value, this._documentInstructionContext));
+      } else if (hasOperators<U>(value, this._instructions)) {
         conditions.push(...this.parseFieldOperators(key, value));
       } else {
         conditions.push(this.parseField(key, this._options.defaultOperatorName, value, query));

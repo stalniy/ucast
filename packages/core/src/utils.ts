@@ -47,3 +47,5 @@ export function hasOperators<T>(value: any, instructions: Record<string, unknown
 
   return false;
 }
+
+export const object = () => Object.create(null);
