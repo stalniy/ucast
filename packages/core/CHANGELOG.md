@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.7.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.6.1...@ucast/core@1.7.0) (2020-11-23)
+
+
+### Features
+
+* **parser:** adds possibility to pass additional field and document level context ([5f32321](https://github.com/stalniy/ucast/commit/5f323219fd960ad764546182b8b54899830de389))
+
 ## [1.6.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.6.0...@ucast/core@1.6.1) (2020-11-02)
 
 
