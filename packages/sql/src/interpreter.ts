@@ -11,9 +11,12 @@ export interface SqlQueryOptions extends Required<DialectOptions> {
   localField?(field: string): string
 }
 
-interface ChildOptions {
+type ChildOptions = Partial<Pick<
+SqlQueryOptions,
+'foreignField' | 'localField' | 'joinRelation'
+>> & {
   linkParams?: boolean
-}
+};
 
 export class Query {
   public readonly options!: SqlQueryOptions;
@@ -78,9 +81,18 @@ export class Query {
   }
 
   child(options?: ChildOptions) {
-    const query = new Query(this.options, this._fieldPrefix, this._targetQuery);
+    let queryOptions: SqlQueryOptions = this.options;
+    let canLinkParams = false;
 
-    if (options && options.linkParams) {
+    if (options) {
+      const { linkParams, ...overrideOptions } = options;
+      queryOptions = { ...this.options, ...overrideOptions };
+      canLinkParams = !!linkParams;
+    }
+
+    const query = new Query(queryOptions, this._fieldPrefix, this._targetQuery);
+
+    if (canLinkParams) {
       query._params = this._params;
       query._joins = this._joins; // TODO: investigate case of referencing relations of relations
     } else {
