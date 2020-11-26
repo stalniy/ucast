@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.7](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.6...@ucast/sql@1.0.0-alpha.7) (2020-11-26)
+
+
+### Features
+
+* **query:** adds possibility to provide custom query options when creating child query ([16b3844](https://github.com/stalniy/ucast/commit/16b38449ac58ccc1578dcbf56da33856d1a57c2b))
+
 # [1.0.0-alpha.6](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.5...@ucast/sql@1.0.0-alpha.6) (2020-11-03)
 
 
