@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.8](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.7...@ucast/sql@1.0.0-alpha.8) (2020-11-26)
+
+
+### Features
+
+* **interpreter:** ignores dots in property name if `joinRelation` is not provided ([6682c2a](https://github.com/stalniy/ucast/commit/6682c2a4e25b8d99e55f47f200d75432029cca70))
+
 # [1.0.0-alpha.7](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.6...@ucast/sql@1.0.0-alpha.7) (2020-11-26)
 
 
