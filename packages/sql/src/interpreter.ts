@@ -9,6 +9,7 @@ export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string
   foreignField?(field: string, relationName: string): string
   localField?(field: string): string
+  joinRelation?(relationName: string, context: unknown): boolean
 }
 
 type ChildOptions = Partial<Pick<
@@ -35,38 +36,43 @@ export class Query {
     this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
 
     if (this.options.foreignField) {
-      this.foreignField = this.options.foreignField;
+      this._foreignField = this.options.foreignField;
     }
 
     if (this.options.localField) {
-      this.localField = this.options.localField;
+      this._localField = this.options.localField;
     }
   }
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
+
+    if (!this.options.joinRelation) {
+      return this._rootAlias + this._localField(name);
+    }
+
     const relationNameIndex = name.indexOf('.');
 
     if (relationNameIndex === -1) {
-      return this._rootAlias + this.localField(name);
+      return this._rootAlias + this._localField(name);
     }
 
     const relationName = name.slice(0, relationNameIndex);
     const field = name.slice(relationNameIndex + 1);
 
     if (!this.options.joinRelation(relationName, this._targetQuery)) {
-      return this._rootAlias + this.localField(field);
+      return this._rootAlias + this._localField(name);
     }
 
     this._joins.add(relationName);
-    return this.foreignField(field, relationName);
+    return this._foreignField(field, relationName);
   }
 
-  private localField(field: string) {
+  private _localField(field: string) {
     return this.options.escapeField(field);
   }
 
-  private foreignField(field: string, relationName: string) {
+  private _foreignField(field: string, relationName: string) {
     return `${this.options.escapeField(relationName)}.${this.options.escapeField(field)}`;
   }
 
