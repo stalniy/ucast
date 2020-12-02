@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.8.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.7.0...@ucast/core@1.8.0) (2020-12-02)
+
+
+### Features
+
+* **condition:** adds possibility to associate notes with parsed condition ([4468773](https://github.com/stalniy/ucast/commit/4468773fcd156feba2fa5f9b6d45d36d56edad20))
+* **interpreter:** adds possibility to customize interpreter name detection ([39b0bc5](https://github.com/stalniy/ucast/commit/39b0bc52015ef794fb6d7360082a378ec2b9bdfe))
+
 # [1.7.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.6.1...@ucast/core@1.7.0) (2020-11-23)
 
 
