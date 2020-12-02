@@ -1,7 +1,8 @@
 import {
   createInterpreter,
   Condition,
-  InterpretationContext
+  InterpretationContext,
+  InterpreterOptions
 } from '@ucast/core';
 import { DialectOptions } from './dialects';
 
@@ -26,13 +27,13 @@ export class Query {
   private _sql: string[] = [];
   private _joins = new Set<string>();
   private _lastPlaceholderIndex: number = 1;
-  private _targetQuery!: unknown;
+  private _relationContext!: unknown;
   private _rootAlias!: string;
 
-  constructor(options: SqlQueryOptions, fieldPrefix: string = '', targetQuery?: unknown) {
+  constructor(options: SqlQueryOptions, fieldPrefix: string = '', relationContext?: unknown) {
     this.options = options;
     this._fieldPrefix = fieldPrefix;
-    this._targetQuery = targetQuery;
+    this._relationContext = relationContext;
     this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
 
     if (this.options.foreignField) {
@@ -60,7 +61,7 @@ export class Query {
     const relationName = name.slice(0, relationNameIndex);
     const field = name.slice(relationNameIndex + 1);
 
-    if (!this.options.joinRelation(relationName, this._targetQuery)) {
+    if (!this.options.joinRelation(relationName, this._relationContext)) {
       return this._rootAlias + this._localField(name);
     }
 
@@ -96,7 +97,7 @@ export class Query {
       canLinkParams = !!linkParams;
     }
 
-    const query = new Query(queryOptions, this._fieldPrefix, this._targetQuery);
+    const query = new Query(queryOptions, this._fieldPrefix, this._relationContext);
 
     if (canLinkParams) {
       query._params = this._params;
@@ -157,9 +158,16 @@ export type SqlOperator<C extends Condition> = (
   context: InterpretationContext<SqlOperator<C>>,
 ) => Query;
 
-export function createSqlInterpreter(operators: Record<string, SqlOperator<any>>) {
-  const interpret = createInterpreter<SqlOperator<any>>(operators);
-  return (condition: Condition, options: SqlQueryOptions, targetQuery?: unknown) => {
-    return interpret(condition, new Query(options, '', targetQuery)).toJSON();
+interface SqlInterpreterOptions {
+  getInterpreterName?: InterpreterOptions['getInterpreterName']
+}
+
+export function createSqlInterpreter(
+  operators: Record<string, SqlOperator<any>>,
+  options?: SqlInterpreterOptions
+) {
+  const interpret = createInterpreter<SqlOperator<any>>(operators, options);
+  return (condition: Condition, sqlOptions: SqlQueryOptions, relationContext?: unknown) => {
+    return interpret(condition, new Query(sqlOptions, '', relationContext)).toJSON();
   };
 }
