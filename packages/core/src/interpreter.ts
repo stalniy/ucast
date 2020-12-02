@@ -33,6 +33,11 @@ function getInterpreter<T extends Record<string, AnyInterpreter>>(
 
 export interface InterpreterOptions {
   numberOfArguments?: 1 | 2 | 3
+  getInterpreterName?(condition: Condition, context: this): string
+}
+
+function defaultInterpreterName(condition: Condition) {
+  return condition.operator;
 }
 
 export function createInterpreter<T extends AnyInterpreter, U extends {} = {}>(
@@ -40,24 +45,28 @@ export function createInterpreter<T extends AnyInterpreter, U extends {} = {}>(
   rawOptions?: U
 ) {
   const options = rawOptions as U & InterpreterOptions;
+  const getInterpreterName = options && options.getInterpreterName || defaultInterpreterName;
   let interpret;
 
   switch (options ? options.numberOfArguments : 0) {
     case 1:
       interpret = ((condition) => {
-        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        const interpreterName = getInterpreterName(condition, options);
+        const interpretOperator = getInterpreter(interpreters, interpreterName);
         return interpretOperator(condition, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
       }) as InterpretationContext<T>['interpret'];
       break;
     case 3:
       interpret = ((condition, value, params) => {
-        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        const interpreterName = getInterpreterName(condition, options);
+        const interpretOperator = getInterpreter(interpreters, interpreterName);
         return interpretOperator(condition, value, params, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
       }) as InterpretationContext<T>['interpret'];
       break;
     default:
       interpret = ((condition, value) => {
-        const interpretOperator = getInterpreter(interpreters, condition.operator);
+        const interpreterName = getInterpreterName(condition, options);
+        const interpretOperator = getInterpreter(interpreters, interpreterName);
         return interpretOperator(condition, value, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
       }) as InterpretationContext<T>['interpret'];
       break;
