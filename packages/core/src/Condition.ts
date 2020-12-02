@@ -1,22 +1,31 @@
-export interface Condition<T = unknown> {
-  readonly operator: string;
-  readonly value: T;
+export interface Note<T> {
+  type: string
+  message?: string
+  originalValue?: T
 }
 
-export class DocumentCondition<T> implements Condition<T> {
-  public readonly operator!: string;
+export abstract class Condition<T = unknown> {
+  private _notes?: Note<T>[];
 
-  public readonly value!: T;
+  constructor(
+    public readonly operator: string,
+    public readonly value: T
+  ) {}
 
-  constructor(operator: string, value: T) {
-    this.operator = operator;
-    this.value = value;
+  get notes(): ReadonlyArray<Note<T>> | undefined {
+    return this._notes;
+  }
+
+  addNote(note: Note<T>) {
+    this._notes = this._notes || [];
+    this._notes.push(note);
   }
 }
 
-export class CompoundCondition<T extends Condition = Condition> extends DocumentCondition<T[]> {
-  public readonly operator!: string;
+export class DocumentCondition<T> extends Condition<T> {
+}
 
+export class CompoundCondition<T extends Condition = Condition> extends DocumentCondition<T[]> {
   constructor(operator: string, conditions: T[]) {
     if (!Array.isArray(conditions)) {
       throw new Error(`"${operator}" operator expects to receive an array of conditions`);
@@ -27,16 +36,11 @@ export class CompoundCondition<T extends Condition = Condition> extends Document
 }
 
 export const ITSELF = '__itself__';
-export class FieldCondition<T = unknown> implements Condition<T> {
-  public readonly operator!: string;
-
+export class FieldCondition<T = unknown> extends Condition<T> {
   public readonly field!: string | typeof ITSELF;
 
-  public readonly value!: T;
-
   constructor(operator: string, field: string | typeof ITSELF, value: T) {
-    this.operator = operator;
-    this.value = value;
+    super(operator, value);
     this.field = field;
   }
 }
