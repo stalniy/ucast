@@ -1,6 +1,6 @@
 {
   "name": "@ucast/sql",
-  "version": "1.0.0-alpha.8",
+  "version": "1.0.0-alpha.9",
   "description": "git@github.com:stalniy/ucast.git",
   "main": "dist/es6c/index.js",
   "es2015": "dist/es6m/index.mjs",

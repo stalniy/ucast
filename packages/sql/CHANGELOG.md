@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.9](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.8...@ucast/sql@1.0.0-alpha.9) (2020-12-02)
+
+
+### Features
+
+* **interpreter:** adds possibility to specify interpreter options ([701e951](https://github.com/stalniy/ucast/commit/701e951c6b004ab6c7f88d1221b7e4bcc73bc285))
+
 # [1.0.0-alpha.8](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.7...@ucast/sql@1.0.0-alpha.8) (2020-11-26)
 
 
