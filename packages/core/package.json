@@ -1,6 +1,6 @@
 {
   "name": "@ucast/core",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "git@github.com:stalniy/ucast.git",
   "sideEffects": false,
   "main": "dist/es6c/index.js",
