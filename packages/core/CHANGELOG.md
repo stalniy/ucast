@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.1-alpha.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.0...@ucast/core@1.8.1-alpha.1) (2021-01-10)
+
+
+### Bug Fixes
+
+* marks packages as commonjs by default with a separate ESM entry ([6f869d1](https://github.com/stalniy/ucast/commit/6f869d1f3b14134a2c3d48511b7a7ca8aed05132))
+
 # [1.8.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.7.0...@ucast/core@1.8.0) (2020-12-02)
 
 
