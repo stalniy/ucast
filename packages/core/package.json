@@ -2,6 +2,7 @@
   "name": "@ucast/core",
   "version": "1.8.0",
   "description": "git@github.com:stalniy/ucast.git",
+  "type": "commonjs",
   "sideEffects": false,
   "main": "dist/es6c/index.js",
   "module": "dist/es5m/index.js",
