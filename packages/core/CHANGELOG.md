@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.1...@ucast/core@1.8.2) (2021-01-10)
+
+
+### Bug Fixes
+
+* **ast:** makes `_notes` to be non-enumerable on `Condition` ([57acee9](https://github.com/stalniy/ucast/commit/57acee91f0bd3c4eaa859461f026f6f6bd159d7b))
+
 ## [1.8.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.0...@ucast/core@1.8.1) (2021-01-10)
 
 
