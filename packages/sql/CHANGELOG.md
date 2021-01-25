@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.10](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.9...@ucast/sql@1.0.0-alpha.10) (2021-01-25)
+
+
+### Bug Fixes
+
+* **sql:** adds brackets to SQL chunks during query merge in all cases ([ae65655](https://github.com/stalniy/ucast/commit/ae65655c77b8b9bf9938c81eb42231db052c3a1d))
+
 # [1.0.0-alpha.9](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.8...@ucast/sql@1.0.0-alpha.9) (2020-12-02)
 
 
