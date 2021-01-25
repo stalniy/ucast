@@ -30,7 +30,7 @@ importers:
       nyc: 15.1.0
       rollup: 2.18.2
       rollup-plugin-terser: 6.1.0_rollup@2.18.2
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
       ts-node: 8.10.2_typescript@3.9.6
       typescript: 3.9.6
     specifiers:
@@ -95,7 +95,7 @@ importers:
       nyc: 15.1.0
       rollup: 2.18.2
       rollup-plugin-terser: 6.1.0_rollup@2.18.2
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
       ts-node: 8.10.2_typescript@3.9.6
       typescript: 3.9.6
     specifiers:
@@ -131,7 +131,7 @@ importers:
       typescript: ^3.9.5
   packages/js:
     dependencies:
-      '@ucast/core': 'link:../core'
+      '@ucast/core': 1.8.2
     devDependencies:
       '@babel/core': 7.10.2
       '@babel/plugin-proposal-class-properties': 7.10.4_@babel+core@7.10.2
@@ -159,7 +159,7 @@ importers:
       nyc: 15.1.0
       rollup: 2.15.0
       rollup-plugin-terser: 6.1.0_rollup@2.15.0
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
       ts-node: 8.10.2_typescript@3.9.5
       typescript: 3.9.5
     specifiers:
@@ -195,7 +195,7 @@ importers:
       typescript: ^3.9.5
   packages/mongo:
     dependencies:
-      '@ucast/core': 'link:../core'
+      '@ucast/core': 1.8.2
     devDependencies:
       '@babel/core': 7.10.2
       '@babel/plugin-proposal-class-properties': 7.10.4_@babel+core@7.10.2
@@ -223,7 +223,7 @@ importers:
       nyc: 15.1.0
       rollup: 2.15.0
       rollup-plugin-terser: 6.1.0_rollup@2.15.0
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
       ts-node: 8.10.2_typescript@3.9.5
       typescript: 3.9.5
     specifiers:
@@ -259,9 +259,9 @@ importers:
       typescript: ^3.9.5
   packages/mongo2js:
     dependencies:
-      '@ucast/core': 'link:../core'
-      '@ucast/js': 'link:../js'
-      '@ucast/mongo': 'link:../mongo'
+      '@ucast/core': 1.8.2
+      '@ucast/js': 3.0.1
+      '@ucast/mongo': 2.4.1
     devDependencies:
       '@babel/core': 7.12.3
       '@babel/plugin-proposal-class-properties': 7.12.1_@babel+core@7.12.3
@@ -289,7 +289,7 @@ importers:
       nyc: 15.1.0
       rollup: 2.33.1
       rollup-plugin-terser: 6.1.0_rollup@2.33.1
-      semantic-release: 17.2.2_semantic-release@17.2.2
+      semantic-release: 17.2.2
       ts-node: 8.10.2_typescript@3.9.7
       typescript: 3.9.7
     specifiers:
@@ -327,7 +327,7 @@ importers:
       typescript: ^3.9.7
   packages/sql:
     dependencies:
-      '@ucast/core': 'link:../core'
+      '@ucast/core': 1.8.2
     devDependencies:
       '@babel/core': 7.11.1
       '@babel/plugin-proposal-class-properties': 7.10.4_@babel+core@7.11.1
@@ -359,7 +359,7 @@ importers:
       objection: 2.2.1_knex@0.21.2
       rollup: 2.23.1
       rollup-plugin-terser: 6.1.0_rollup@2.23.1
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
       sequelize: 6.3.4_sqlite3@5.0.0
       sqlite3: 5.0.0
       ts-node: 8.10.2_typescript@3.9.7
@@ -403,7 +403,7 @@ importers:
       ts-node: ^8.10.2
       typeorm: ^0.2.25
       typescript: ^3.9.5
-lockfileVersion: 5.1
+lockfileVersion: 5.2
 packages:
   /@babel/code-frame/7.10.1:
     dependencies:
@@ -4375,7 +4375,7 @@ packages:
       aggregate-error: 3.0.1
       fs-extra: 9.0.1
       lodash: 4.17.19
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
     dev: true
     engines:
       node: '>=10.18'
@@ -4389,7 +4389,7 @@ packages:
       aggregate-error: 3.0.1
       fs-extra: 9.0.1
       lodash: 4.17.19
-      semantic-release: 17.2.2_semantic-release@17.2.2
+      semantic-release: 17.2.2
     dev: true
     engines:
       node: '>=10.18'
@@ -4406,7 +4406,7 @@ packages:
       import-from: 3.0.0
       lodash: 4.17.19
       micromatch: 4.0.2
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
     dev: true
     engines:
       node: '>=10.18'
@@ -4423,7 +4423,7 @@ packages:
       import-from: 3.0.0
       lodash: 4.17.19
       micromatch: 4.0.2
-      semantic-release: 17.2.2_semantic-release@17.2.2
+      semantic-release: 17.2.2
     dev: true
     engines:
       node: '>=10.18'
@@ -4445,7 +4445,7 @@ packages:
       lodash: 4.17.19
       micromatch: 4.0.2
       p-reduce: 2.1.0
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
     dev: true
     engines:
       node: '>=10.18'
@@ -4463,7 +4463,7 @@ packages:
       lodash: 4.17.19
       micromatch: 4.0.2
       p-reduce: 2.1.0
-      semantic-release: 17.2.2_semantic-release@17.2.2
+      semantic-release: 17.2.2
     dev: true
     engines:
       node: '>=10.18'
@@ -4488,7 +4488,7 @@ packages:
       mime: 2.4.6
       p-filter: 2.1.0
       p-retry: 4.2.0
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
       url-join: 4.0.1
     dev: true
     engines:
@@ -4514,7 +4514,7 @@ packages:
       mime: 2.4.6
       p-filter: 2.1.0
       p-retry: 4.2.0
-      semantic-release: 17.2.2_semantic-release@17.2.2
+      semantic-release: 17.2.2
       url-join: 4.0.1
     dev: true
     engines:
@@ -4536,7 +4536,7 @@ packages:
       rc: 1.2.8
       read-pkg: 5.2.0
       registry-auth-token: 4.2.0
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
       semver: 7.3.2
       tempy: 0.5.0
     dev: true
@@ -4559,7 +4559,7 @@ packages:
       rc: 1.2.8
       read-pkg: 5.2.0
       registry-auth-token: 4.2.0
-      semantic-release: 17.2.2_semantic-release@17.2.2
+      semantic-release: 17.2.2
       semver: 7.3.2
       tempy: 0.5.0
     dev: true
@@ -4581,7 +4581,7 @@ packages:
       into-stream: 5.1.1
       lodash: 4.17.19
       read-pkg-up: 7.0.1
-      semantic-release: 17.1.1_semantic-release@17.1.1
+      semantic-release: 17.1.1
     dev: true
     engines:
       node: '>=10.18'
@@ -4601,7 +4601,7 @@ packages:
       into-stream: 5.1.1
       lodash: 4.17.19
       read-pkg-up: 7.0.1
-      semantic-release: 17.2.2_semantic-release@17.2.2
+      semantic-release: 17.2.2
     dev: true
     engines:
       node: '>=10.18'
@@ -5143,6 +5143,22 @@ packages:
       node: ^8.10.0 || ^10.13.0 || >=11.10.1
     resolution:
       integrity: sha512-O1qeoGqDbu0EZUC/MZ6F1WHTIzcBVhGqDj3LhTnj65WUA548RXVxUHbYhAW9bZWfb2rnX9QsbbP5nmeJ5Z4+ng==
+  /@ucast/core/1.8.2:
+    dev: false
+    resolution:
+      integrity: sha512-pc+XGjJmZkfypJIIRo38el/FUDtBXBlGQbXafWwRwInocXVwNbJ56efECKLgAQSyI7OCJFSaEeqpf3SrR3D6cw==
+  /@ucast/js/3.0.1:
+    dependencies:
+      '@ucast/core': 1.8.2
+    dev: false
+    resolution:
+      integrity: sha512-sabiuYsM5VUg4EaCwlDxnqcrHPFvbZcXvBu+P/o4pqK2q046RLTdo0bM7iVCn5Ro4HpCiRv3QzxtW8epcluY1g==
+  /@ucast/mongo/2.4.1:
+    dependencies:
+      '@ucast/core': 1.8.2
+    dev: false
+    resolution:
+      integrity: sha512-l/hc3TxjWO9inBrgM5iMCAcsIeV2DToppRlabQa5xB/6uHYtCXfm3TPaJgr8TU1OFxqPlaXEnNQhaV0sVHGsoQ==
   /@ungap/promise-all-settled/1.1.2:
     dev: true
     resolution:
@@ -6343,7 +6359,7 @@ packages:
     resolution:
       integrity: sha512-7ItTKOhOZbznhXAQ2g/slGg1PJV5zDO/WdkTwi7UEOJmkvsE32PWvx6mKtDjiMpjnR2CNf6BAD6sSxIlv7ptng==
   /core-js/2.6.11:
-    deprecated: 'core-js@<3 is no longer maintained and not recommended for usage due to the number of issues. Please, upgrade your dependencies to the actual version of core-js@3.'
+    deprecated: core-js@<3 is no longer maintained and not recommended for usage due to the number of issues. Please, upgrade your dependencies to the actual version of core-js@3.
     dev: true
     requiresBuild: true
     resolution:
@@ -7612,7 +7628,7 @@ packages:
   /flat/4.1.0:
     dependencies:
       is-buffer: 2.0.4
-    deprecated: 'Fixed a prototype pollution security issue in 4.1.0, please upgrade to ^4.1.1 or ^5.0.1.'
+    deprecated: Fixed a prototype pollution security issue in 4.1.0, please upgrade to ^4.1.1 or ^5.0.1.
     dev: true
     hasBin: true
     resolution:
@@ -11065,7 +11081,7 @@ packages:
       tough-cookie: 2.5.0
       tunnel-agent: 0.6.0
       uuid: 3.4.0
-    deprecated: 'request has been deprecated, see https://github.com/request/request/issues/3142'
+    deprecated: request has been deprecated, see https://github.com/request/request/issues/3142
     dev: true
     engines:
       node: '>= 6'
@@ -11104,7 +11120,7 @@ packages:
     resolution:
       integrity: sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw==
   /resolve-url/0.2.1:
-    deprecated: 'https://github.com/lydell/resolve-url#deprecated'
+    deprecated: https://github.com/lydell/resolve-url#deprecated
     dev: true
     resolution:
       integrity: sha1-LGN/53yJOv0qZj/iGqkIAGjiBSo=
@@ -11294,7 +11310,7 @@ packages:
     dev: true
     resolution:
       integrity: sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==
-  /semantic-release/17.1.1_semantic-release@17.1.1:
+  /semantic-release/17.1.1:
     dependencies:
       '@semantic-release/commit-analyzer': 8.0.1_semantic-release@17.1.1
       '@semantic-release/error': 2.2.0
@@ -11328,11 +11344,9 @@ packages:
     engines:
       node: '>=10.18'
     hasBin: true
-    peerDependencies:
-      semantic-release: '*'
     resolution:
       integrity: sha512-9H+207eynBJElrQBHySZm+sIEoJeUhPA2zU4cdlY1QSInd2lnE8GRD2ALry9EassE22c9WW+aCREwBhro5AIIg==
-  /semantic-release/17.2.2_semantic-release@17.2.2:
+  /semantic-release/17.2.2:
     dependencies:
       '@semantic-release/commit-analyzer': 8.0.1_semantic-release@17.2.2
       '@semantic-release/error': 2.2.0
@@ -11366,8 +11380,6 @@ packages:
     engines:
       node: '>=10.18'
     hasBin: true
-    peerDependencies:
-      semantic-release: '*'
     resolution:
       integrity: sha512-LNU68ud3a3oU46H11OThXaKAK430jGGGTIF4VsiP843kRmS6s8kVCceLRdi7yWWz/sCCMD0zygPTQV2Jw79J5g==
   /semver-compare/1.0.0:
@@ -12579,7 +12591,7 @@ packages:
     resolution:
       integrity: sha512-B0yRTzYdUCCn9n+F4+Gh4yIDtMQcaJsmYBDsTSG8g/OejKBodLQ2IHfN3bM7jUsRXndopT7OIXWdYqc1fjmV6g==
   /urix/0.1.0:
-    deprecated: 'Please see https://github.com/lydell/urix#deprecated'
+    deprecated: Please see https://github.com/lydell/urix#deprecated
     dev: true
     resolution:
       integrity: sha1-2pN/emLiH+wf0Y1Js1wpNQZ6bHI=

@@ -118,13 +118,9 @@ export class Query {
   }
 
   merge(query: Query, operator: 'and' | 'or' = 'and', isInverted: boolean = false) {
-    let sql = query._sql.join(` ${operator} `);
+    const sql = query._sql.join(` ${operator} `);
 
-    if (sql[0] !== '(') {
-      sql = `(${sql})`;
-    }
-
-    this._sql.push(`${isInverted ? 'not ' : ''}${sql}`);
+    this._sql.push(`${isInverted ? 'not ' : ''}(${sql})`);
 
     if (this._params !== query._params) {
       this._params.push(...query._params);
