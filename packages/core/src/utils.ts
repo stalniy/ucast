@@ -1,4 +1,4 @@
-import { Condition, CompoundCondition } from './Condition';
+import { Condition, CompoundCondition, NULL_CONDITION } from './Condition';
 
 export function isCompound(operator: string, condition: Condition): condition is CompoundCondition {
   return condition instanceof CompoundCondition && condition.operator === operator;
@@ -49,3 +49,9 @@ export function hasOperators<T>(value: any, instructions: Record<string, unknown
 }
 
 export const object = () => Object.create(null);
+
+export function pushIfNonNullCondition(conditions: Condition[], condition: Condition) {
+  if (condition !== NULL_CONDITION) {
+    conditions.push(condition);
+  }
+}

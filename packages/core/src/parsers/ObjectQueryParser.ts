@@ -1,4 +1,4 @@
-import { Condition, NULL_CONDITION } from '../Condition';
+import { Condition } from '../Condition';
 import {
   NamedInstruction,
   ParsingInstruction,
@@ -6,8 +6,8 @@ import {
   ParsingContext,
 } from '../types';
 import { buildAnd as and } from '../builder';
-import { parseInstruction } from './defaultInstructionParsers';
-import { identity, hasOperators, object } from '../utils';
+import { defaultInstructionParsers } from './defaultInstructionParsers';
+import { identity, hasOperators, object, pushIfNonNullCondition } from '../utils';
 
 export type FieldQueryOperators<T extends {}> = {
   [K in keyof T]: T[K] extends {} ? T[K] : never
@@ -82,7 +82,22 @@ export class ObjectQueryParser<
     this._fieldInstructionContext.field = field;
     this._fieldInstructionContext.query = parentQuery;
 
-    return parseInstruction(instruction, value, this._fieldInstructionContext);
+    return this.parseInstruction(instruction, value, this._fieldInstructionContext);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  protected parseInstruction(
+    instruction: NamedInstruction,
+    value: unknown,
+    context: ParsingContext<{}>
+  ) {
+    if (typeof instruction.validate === 'function') {
+      instruction.validate(instruction, value);
+    }
+
+    const parse: typeof instruction.parse = instruction.parse
+      || defaultInstructionParsers[instruction.type as keyof typeof defaultInstructionParsers];
+    return parse(instruction, value, context);
   }
 
   protected parseFieldOperators(field: string, value: U) {
@@ -98,10 +113,7 @@ export class ObjectQueryParser<
       }
 
       const condition = this.parseField(field, op, value[op as keyof U], value);
-
-      if (condition !== NULL_CONDITION) {
-        conditions.push(condition);
-      }
+      pushIfNonNullCondition(conditions, condition);
     }
 
     return conditions;
@@ -123,11 +135,17 @@ export class ObjectQueryParser<
           throw new Error(`Cannot use parsing instruction for operator "${key}" in "document" context as it is supposed to be used in  "${instruction.type}" context`);
         }
 
-        conditions.push(parseInstruction(instruction, value, this._documentInstructionContext));
+        pushIfNonNullCondition(
+          conditions,
+          this.parseInstruction(instruction, value, this._documentInstructionContext)
+        );
       } else if (hasOperators<U>(value, this._instructions)) {
         conditions.push(...this.parseFieldOperators(key, value));
       } else {
-        conditions.push(this.parseField(key, this._options.defaultOperatorName, value, query));
+        pushIfNonNullCondition(
+          conditions,
+          this.parseField(key, this._options.defaultOperatorName, value, query)
+        );
       }
     }
 
