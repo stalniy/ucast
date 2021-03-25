@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.9.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.2...@ucast/core@1.9.0) (2021-03-25)
+
+
+### Features
+
+* **parser:** moves `parseInstruction` under `ObjectQueryParser`. Skips `NULL_CONDITION` for all other operators and cases ([bec352e](https://github.com/stalniy/ucast/commit/bec352e3b98447da0d2b704b76446964025c34c9))
+
 ## [1.8.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.1...@ucast/core@1.8.2) (2021-01-10)
 
 
