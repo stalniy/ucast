@@ -5,7 +5,8 @@ import {
   DocumentCondition,
   ObjectQueryParser,
   defaultInstructionParsers,
-  ObjectQueryFieldParsingContext
+  ObjectQueryFieldParsingContext,
+  ignoreValue
 } from '../src'
 
 describe('ObjectQueryParser', () => {
@@ -174,6 +175,69 @@ describe('ObjectQueryParser', () => {
       expect(my.parse).to.have.been.called.with({ ...my, name: 'my' }, 2, {
         parse: parser.parse,
         query: { my: 2 },
+      })
+    })
+  })
+
+  describe('when "useIgnoreValue" is enabled', () => {
+    describe('field level operators', () => {
+      it('ignores properties that equals to `ignoreValue`', () => {
+        const parser = new ObjectQueryParser({ eq }, { useIgnoreValue: true })
+        const result = parser.parse({ id: ignoreValue, name: 'test' })
+
+        expect(result).to.deep.equal(new FieldCondition('eq', 'name', 'test'))
+      })
+
+      it('returns empty "AND" condition if all properties equals to `ignoreValue`', () => {
+        const parser = new ObjectQueryParser({ eq }, { useIgnoreValue: true })
+        const result = parser.parse({ id: ignoreValue, name: ignoreValue })
+
+        expect(result).to.deep.equal(new CompoundCondition('and', [
+        ]))
+      })
+    })
+
+    describe('multiple field level operators per field', () => {
+      it('ignores operators that equals to `ignoreValue`', () => {
+        const parser = new ObjectQueryParser({ eq, ne: eq }, { useIgnoreValue: true })
+        const result = parser.parse({
+          id: { eq: ignoreValue, ne: 5 },
+          name: ignoreValue
+        })
+
+        expect(result).to.deep.equal(new FieldCondition('ne', 'id', 5))
+      })
+
+      it('interprets multiple field level operators as equality operator if all properties inside equal `ignoreValue`', () => {
+        const parser = new ObjectQueryParser({ eq }, { useIgnoreValue: true })
+        const result = parser.parse({ id: { eq: ignoreValue } })
+
+        expect(result).to.deep.equal(new FieldCondition('eq', 'id', { eq: ignoreValue }))
+      })
+    })
+
+    describe('document level operators', () => {
+      it('ignores operators that equals to `ignoreValue`', () => {
+        const parser = new ObjectQueryParser({ and, eq }, { useIgnoreValue: true })
+        const result = parser.parse({ and: ignoreValue, id: 5 })
+
+        expect(result).to.deep.equal(new FieldCondition('eq', 'id', 5))
+      })
+
+      it('interprets single operator as empty "AND" condition if it equals to `ignoreValue`', () => {
+        const parser = new ObjectQueryParser({ and, eq }, { useIgnoreValue: true })
+        const result = parser.parse({ and: ignoreValue })
+
+        expect(result).to.deep.equal(new CompoundCondition('and', []))
+      })
+
+      it('interprets `ignoreValue` inside compound operator as empty "AND"', () => {
+        const parser = new ObjectQueryParser({ and, eq }, { useIgnoreValue: true })
+        const result = parser.parse({ and: [ignoreValue] })
+
+        expect(result).to.deep.equal(new CompoundCondition('and', [
+          new CompoundCondition('and', [])
+        ]))
       })
     })
   })
