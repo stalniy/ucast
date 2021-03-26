@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.10.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.9.0...@ucast/core@1.10.0) (2021-03-26)
+
+
+### Features
+
+* **parser:** adds support for `ignoreValue` at parser level ([49f8f3a](https://github.com/stalniy/ucast/commit/49f8f3a7221b718326ae125868f0ed24b9c93528))
+
 # [1.9.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.2...@ucast/core@1.9.0) (2021-03-25)
 
 
