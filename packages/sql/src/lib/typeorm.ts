@@ -4,8 +4,7 @@ import {
   createSqlInterpreter,
   allInterpreters,
   SqlOperator,
-  createDialects,
-  mysql
+  createDialects
 } from '../index';
 
 function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
@@ -20,9 +19,11 @@ function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<En
   return false;
 }
 
+const typeormPlaceholder = (index: number) => `:${index - 1}`;
+
 const dialects = createDialects({
   joinRelation,
-  paramPlaceholder: mysql.paramPlaceholder,
+  paramPlaceholder: typeormPlaceholder,
 });
 
 // eslint-disable-next-line no-multi-assign

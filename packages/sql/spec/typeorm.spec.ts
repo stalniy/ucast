@@ -32,8 +32,9 @@ describe('Condition interpreter for TypeORM', () => {
     expect(query.getQuery()).to.equal([
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
-      'WHERE "name" = ?'
+      'WHERE "name" = :0'
     ].join(' '))
+    expect(query.getParameters()).to.eql({ 0: 'test' })
   })
 
   it('properly binds parameters for "IN" operator', () => {
@@ -43,8 +44,14 @@ describe('Condition interpreter for TypeORM', () => {
     expect(query.getQuery()).to.equal([
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
-      'WHERE "age" in(?, ?, ?)'
+      'WHERE "age" in(:0, :1, :2)'
     ].join(' '))
+
+    expect(query.getParameters()).to.eql({
+      0: 1,
+      1: 2,
+      2: 3
+    })
   })
 
   it('automatically inner joins relation when condition is set on relation field', () => {
@@ -55,8 +62,9 @@ describe('Condition interpreter for TypeORM', () => {
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'INNER JOIN "project" "projects" ON "projects"."userId"="u"."id"',
-      'WHERE "projects"."name" = ?'
+      'WHERE "projects"."name" = :0'
     ].join(' '))
+    expect(query.getParameters()).to.eql({ 0: 'test' })
   })
 })
 
