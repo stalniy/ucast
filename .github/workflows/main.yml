@@ -23,9 +23,9 @@ jobs:
           - latest
     steps:
     - uses: actions/checkout@v2
-    - uses: pnpm/action-setup@v1.2.0
+    - uses: pnpm/action-setup@v2.0.1
       with:
-        version: 4.14.4
+        version: 6.0.1
     - name: Cache dependencies
       uses: actions/cache@v2
       env:
