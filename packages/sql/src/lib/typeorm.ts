@@ -9,8 +9,15 @@ import {
 
 function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
   const meta = query.expressionMap.mainAlias!.metadata;
-  const relation = meta.findRelationWithPropertyPath(relationName);
 
+  const joinAlreadyExists = query.expressionMap.joinAttributes.find((j) => {
+    return j.alias.name === relationName;
+  });
+  if (joinAlreadyExists) {
+    return true;
+  }
+
+  const relation = meta.findRelationWithPropertyPath(relationName);
   if (relation) {
     query.innerJoin(`${query.alias}.${relationName}`, relationName);
     return true;

@@ -1,4 +1,4 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, CompoundCondition } from '@ucast/core'
 import { MikroORM, Collection, EntitySchema, QueryBuilder } from 'mikro-orm'
 import { interpret } from '../src/lib/mikro-orm'
 import { expect } from './specHelper'
@@ -46,6 +46,21 @@ describe('Condition interpreter for MikroORM', () => {
       'where (`projects`.`name` = ?)'
     ].join(' '))
   })
+
+  it('should join the same relation exactly one time', () => {
+    const condition = new CompoundCondition('and', [
+      new FieldCondition('eq', 'projects.name', 'test'),
+      new FieldCondition('eq', 'projects.active', true),
+    ])
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+
+    expect(query.getQuery()).to.equal([
+      'select *',
+      'from `user` as `e0`',
+      'inner join `project` as `projects` on `e0`.`id` = `projects`.`user_id`',
+      'where ((`projects`.`name` = ? and `projects`.`active` = ?))'
+    ].join(' '))
+  })
 })
 
 async function configureORM() {
@@ -63,7 +78,8 @@ async function configureORM() {
     constructor(
       public id: number,
       public name: string,
-      public user: User
+      public user: User,
+      public active: boolean
     ) {}
   }
 
@@ -85,6 +101,7 @@ async function configureORM() {
       id: { type: 'number', primary: true },
       name: { type: 'string' },
       user: { type: 'User', reference: 'm:1' },
+      active: { type: 'boolean' }
     }
   })
 
