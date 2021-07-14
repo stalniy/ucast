@@ -4,6 +4,7 @@ import {
   createSqlInterpreter,
   allInterpreters,
   SqlOperator,
+  SqlQueryOptions,
   createDialects,
   mysql,
 } from '../index';
@@ -24,7 +25,11 @@ const dialects = createDialects({
 
 export function createInterpreter(interpreters: Record<string, SqlOperator<any>>) {
   const interpretSQL = createSqlInterpreter(interpreters);
-  return <T extends Model>(condition: Condition, query: QueryBuilder<T>) => {
+  return <T extends Model>(
+    condition: Condition,
+    query: QueryBuilder<T>,
+    sqlOptions?: Partial<SqlQueryOptions>,
+  ) => {
     const dialect = query.modelClass().knex().client.config.client as keyof typeof dialects;
     const options = dialects[dialect];
 
@@ -32,7 +37,7 @@ export function createInterpreter(interpreters: Record<string, SqlOperator<any>>
       throw new Error('Unsupported database dialect');
     }
 
-    const [sql, params] = interpretSQL(condition, options, query);
+    const [sql, params] = interpretSQL(condition, { ...options, ...sqlOptions }, query);
     return query.whereRaw(sql, params);
   };
 }
