@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.11](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.10...@ucast/sql@1.0.0-alpha.11) (2021-07-15)
+
+
+### Bug Fixes
+
+* adds commas to readme example ([cae1db2](https://github.com/stalniy/ucast/commit/cae1db2239fc17cc02d9ad704a998f40ff92192c))
+
 # [1.0.0-alpha.10](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.9...@ucast/sql@1.0.0-alpha.10) (2021-01-25)
 
 
