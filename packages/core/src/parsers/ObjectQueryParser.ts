@@ -1,13 +1,19 @@
-import { Condition, NULL_CONDITION } from '../Condition';
+import { Condition } from '../Condition';
 import {
   NamedInstruction,
   ParsingInstruction,
   FieldParsingContext,
   ParsingContext,
 } from '../types';
-import { buildAnd as and } from '../builder';
-import { parseInstruction } from './defaultInstructionParsers';
-import { identity, hasOperators, object } from '../utils';
+import { buildAnd } from '../builder';
+import { defaultInstructionParsers } from './defaultInstructionParsers';
+import {
+  identity,
+  hasOperators,
+  object,
+  pushIfNonNullCondition,
+  objectKeysSkipIgnore,
+} from '../utils';
 
 export type FieldQueryOperators<T extends {}> = {
   [K in keyof T]: T[K] extends {} ? T[K] : never
@@ -20,6 +26,8 @@ export interface QueryOptions {
   defaultOperatorName?: string
   fieldContext?: Record<string, unknown>
   documentContext?: Record<string, unknown>
+  useIgnoreValue?: boolean
+  mergeFinalConditions?(conditions: Condition[]): Condition
 }
 
 export type ObjectQueryFieldParsingContext = ParsingContext<FieldParsingContext & {
@@ -35,14 +43,17 @@ export class ObjectQueryParser<
   private _fieldInstructionContext: ObjectQueryFieldParsingContext;
   private _documentInstructionContext: ParsingContext<{ query: {} }>;
   private readonly _options: Required<
-  Pick<QueryOptions, 'operatorToConditionName' | 'defaultOperatorName'>
+  Pick<QueryOptions, 'operatorToConditionName' | 'defaultOperatorName' | 'mergeFinalConditions'>
   >;
+
+  private readonly _objectKeys: typeof Object.keys;
 
   constructor(instructions: Record<string, ParsingInstruction>, options: QueryOptions = object()) {
     this.parse = this.parse.bind(this);
     this._options = {
       operatorToConditionName: options.operatorToConditionName || identity,
       defaultOperatorName: options.defaultOperatorName || 'eq',
+      mergeFinalConditions: options.mergeFinalConditions || buildAnd,
     };
     this._instructions = Object.keys(instructions).reduce((all, name) => {
       all[name] = { name: this._options.operatorToConditionName(name), ...instructions[name] };
@@ -53,13 +64,18 @@ export class ObjectQueryParser<
       field: '',
       query: {},
       parse: this.parse,
-      hasOperators: <T>(value: unknown): value is T => hasOperators(value, this._instructions),
+      hasOperators: <T>(value: unknown): value is T => hasOperators(
+        value,
+        this._instructions,
+        options.useIgnoreValue
+      ),
     };
     this._documentInstructionContext = {
       ...options.documentContext,
       parse: this.parse,
       query: {}
     };
+    this._objectKeys = options.useIgnoreValue ? objectKeysSkipIgnore : Object.keys;
   }
 
   setParse(parse: this['parse']) {
@@ -82,12 +98,27 @@ export class ObjectQueryParser<
     this._fieldInstructionContext.field = field;
     this._fieldInstructionContext.query = parentQuery;
 
-    return parseInstruction(instruction, value, this._fieldInstructionContext);
+    return this.parseInstruction(instruction, value, this._fieldInstructionContext);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  protected parseInstruction(
+    instruction: NamedInstruction,
+    value: unknown,
+    context: ParsingContext<{}>
+  ) {
+    if (typeof instruction.validate === 'function') {
+      instruction.validate(instruction, value);
+    }
+
+    const parse: typeof instruction.parse = instruction.parse
+      || defaultInstructionParsers[instruction.type as keyof typeof defaultInstructionParsers];
+    return parse(instruction, value, context);
   }
 
   protected parseFieldOperators(field: string, value: U) {
     const conditions: Condition[] = [];
-    const keys = Object.keys(value);
+    const keys = this._objectKeys(value);
 
     for (let i = 0, length = keys.length; i < length; i++) {
       const op = keys[i];
@@ -98,10 +129,7 @@ export class ObjectQueryParser<
       }
 
       const condition = this.parseField(field, op, value[op as keyof U], value);
-
-      if (condition !== NULL_CONDITION) {
-        conditions.push(condition);
-      }
+      pushIfNonNullCondition(conditions, condition);
     }
 
     return conditions;
@@ -109,7 +137,7 @@ export class ObjectQueryParser<
 
   parse<Q extends T>(query: Q): Condition {
     const conditions = [];
-    const keys = Object.keys(query);
+    const keys = this._objectKeys(query);
 
     this._documentInstructionContext.query = query;
 
@@ -123,14 +151,20 @@ export class ObjectQueryParser<
           throw new Error(`Cannot use parsing instruction for operator "${key}" in "document" context as it is supposed to be used in  "${instruction.type}" context`);
         }
 
-        conditions.push(parseInstruction(instruction, value, this._documentInstructionContext));
-      } else if (hasOperators<U>(value, this._instructions)) {
+        pushIfNonNullCondition(
+          conditions,
+          this.parseInstruction(instruction, value, this._documentInstructionContext)
+        );
+      } else if (this._fieldInstructionContext.hasOperators<U>(value)) {
         conditions.push(...this.parseFieldOperators(key, value));
       } else {
-        conditions.push(this.parseField(key, this._options.defaultOperatorName, value, query));
+        pushIfNonNullCondition(
+          conditions,
+          this.parseField(key, this._options.defaultOperatorName, value, query)
+        );
       }
     }
 
-    return and(conditions);
+    return this._options.mergeFinalConditions(conditions);
   }
 }

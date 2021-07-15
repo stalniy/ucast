@@ -1,5 +1,4 @@
 import {
-  Condition,
   FieldCondition,
   CompoundCondition,
   DocumentCondition,
@@ -8,8 +7,6 @@ import {
   DocumentInstruction,
   CompoundInstruction,
   FieldInstruction,
-  NamedInstruction,
-  ParsingContext,
 } from '../types';
 
 interface DefaultParsers {
@@ -31,17 +28,3 @@ export const defaultInstructionParsers: DefaultParsers = {
     return new DocumentCondition(instruction.name, value);
   }
 };
-
-export function parseInstruction(
-  instruction: NamedInstruction,
-  value: unknown,
-  context: ParsingContext<{}>
-): Condition {
-  if (typeof instruction.validate === 'function') {
-    instruction.validate(instruction, value);
-  }
-
-  const parse: typeof instruction.parse = instruction.parse
-    || defaultInstructionParsers[instruction.type as keyof DefaultParsers];
-  return parse(instruction, value, context);
-}

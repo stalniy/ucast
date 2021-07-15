@@ -2,12 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.8.1-alpha.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.0...@ucast/core@1.8.1-alpha.1) (2021-01-10)
+## [1.10.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.0...@ucast/core@1.10.1) (2021-07-15)
 
 
 ### Bug Fixes
 
-* marks packages as commonjs by default with a separate ESM entry ([6f869d1](https://github.com/stalniy/ucast/commit/6f869d1f3b14134a2c3d48511b7a7ca8aed05132))
+* remove type commonjs from package.json to improve webpack compat ([#28](https://github.com/stalniy/ucast/issues/28)) ([6b1ad28](https://github.com/stalniy/ucast/commit/6b1ad289d7b4f9945f08f29efd952069efd6c8c9))
+
+# [1.10.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.9.0...@ucast/core@1.10.0) (2021-03-26)
+
+
+### Features
+
+* **parser:** adds support for `ignoreValue` at parser level ([49f8f3a](https://github.com/stalniy/ucast/commit/49f8f3a7221b718326ae125868f0ed24b9c93528))
+
+# [1.9.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.2...@ucast/core@1.9.0) (2021-03-25)
+
+
+### Features
+
+* **parser:** moves `parseInstruction` under `ObjectQueryParser`. Skips `NULL_CONDITION` for all other operators and cases ([bec352e](https://github.com/stalniy/ucast/commit/bec352e3b98447da0d2b704b76446964025c34c9))
+
+## [1.8.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.1...@ucast/core@1.8.2) (2021-01-10)
+
+
+### Bug Fixes
+
+* **ast:** makes `_notes` to be non-enumerable on `Condition` ([57acee9](https://github.com/stalniy/ucast/commit/57acee91f0bd3c4eaa859461f026f6f6bd159d7b))
+
+## [1.8.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.1...@ucast/core@1.8.2) (2021-01-10)
+
+
+### Bug Fixes
+
+* **ast:** makes `_notes` to be non-enumerable on `Condition` ([57acee9](https://github.com/stalniy/ucast/commit/57acee91f0bd3c4eaa859461f026f6f6bd159d7b))
+
+## [1.8.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.8.0...@ucast/core@1.8.1) (2021-01-10)
+
+
+### Bug Fixes
+
+* marks packages as commonjs by default with a separate ESM entry ([a3f4896](https://github.com/stalniy/ucast/commit/a3f48961a93b5951cb92d9954297cd12754d3ff1))
 
 # [1.8.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.7.0...@ucast/core@1.8.0) (2020-12-02)
 

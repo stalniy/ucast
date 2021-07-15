@@ -1,6 +1,6 @@
 {
   "name": "@ucast/js",
-  "version": "3.0.0",
+  "version": "3.0.2",
   "description": "git@github.com:stalniy/ucast.git",
   "type": "commonjs",
   "sideEffects": false,

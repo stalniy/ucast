@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.2](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.4.1...@ucast/mongo@2.4.2) (2021-07-15)
+
+
+### Bug Fixes
+
+* remove type commonjs from package.json to improve webpack compat ([#28](https://github.com/stalniy/ucast/issues/28)) ([6b1ad28](https://github.com/stalniy/ucast/commit/6b1ad289d7b4f9945f08f29efd952069efd6c8c9))
+
+## [2.4.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.4.0...@ucast/mongo@2.4.1) (2021-01-10)
+
+
+### Bug Fixes
+
+* marks packages as commonjs by default with a separate ESM entry ([a3f4896](https://github.com/stalniy/ucast/commit/a3f48961a93b5951cb92d9954297cd12754d3ff1))
+
+## [2.4.1](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.4.0...@ucast/mongo@2.4.1) (2021-01-10)
+
+
+### Bug Fixes
+
+* marks packages as commonjs by default with a separate ESM entry ([a3f4896](https://github.com/stalniy/ucast/commit/a3f48961a93b5951cb92d9954297cd12754d3ff1))
+
 # [2.4.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.3.3...@ucast/mongo@2.4.0) (2020-11-02)
 
 

@@ -5,12 +5,16 @@ export interface Note<T> {
 }
 
 export abstract class Condition<T = unknown> {
-  private _notes?: Note<T>[];
+  private _notes!: Note<T>[];
 
   constructor(
     public readonly operator: string,
     public readonly value: T
-  ) {}
+  ) {
+    Object.defineProperty(this, '_notes', {
+      writable: true
+    });
+  }
 
   get notes(): ReadonlyArray<Note<T>> | undefined {
     return this._notes;

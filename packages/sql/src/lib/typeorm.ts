@@ -1,6 +1,11 @@
 import { Condition } from '@ucast/core';
 import { SelectQueryBuilder } from 'typeorm';
-import { createSqlInterpreter, allInterpreters, SqlOperator, createDialects } from '../index';
+import {
+  createSqlInterpreter,
+  allInterpreters,
+  SqlOperator,
+  createDialects
+} from '../index';
 
 function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
   const meta = query.expressionMap.mainAlias!.metadata;

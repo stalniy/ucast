@@ -34,6 +34,7 @@ describe('Condition interpreter for TypeORM', () => {
       'FROM "user" "u"',
       'WHERE "name" = :0'
     ].join(' '))
+    expect(query.getParameters()).to.eql({ 0: 'test' })
   })
 
   it('properly binds parameters for "IN" operator', () => {
@@ -45,6 +46,12 @@ describe('Condition interpreter for TypeORM', () => {
       'FROM "user" "u"',
       'WHERE "age" in(:0, :1, :2)'
     ].join(' '))
+
+    expect(query.getParameters()).to.eql({
+      0: 1,
+      1: 2,
+      2: 3
+    })
   })
 
   it('automatically inner joins relation when condition is set on relation field', () => {
@@ -57,6 +64,7 @@ describe('Condition interpreter for TypeORM', () => {
       'INNER JOIN "project" "projects" ON "projects"."userId"="u"."id"',
       'WHERE "projects"."name" = :0'
     ].join(' '))
+    expect(query.getParameters()).to.eql({ 0: 'test' })
   })
 })
 
