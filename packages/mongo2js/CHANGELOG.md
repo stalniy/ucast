@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.3.2...@ucast/mongo2js@1.3.3) (2021-07-15)
+
+
+### Bug Fixes
+
+* remove type commonjs from package.json to improve webpack compat ([#28](https://github.com/stalniy/ucast/issues/28)) ([6b1ad28](https://github.com/stalniy/ucast/commit/6b1ad289d7b4f9945f08f29efd952069efd6c8c9))
+
 ## [1.3.2](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.3.1...@ucast/mongo2js@1.3.2) (2021-01-10)
 
 
