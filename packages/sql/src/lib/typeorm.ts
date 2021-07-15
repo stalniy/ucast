@@ -9,10 +9,9 @@ import {
 
 function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
   const meta = query.expressionMap.mainAlias!.metadata;
+  const joinAlreadyExists = query.expressionMap.joinAttributes
+    .some(j => j.alias.name === relationName);
 
-  const joinAlreadyExists = query.expressionMap.joinAttributes.find((j) => {
-    return j.alias.name === relationName;
-  });
   if (joinAlreadyExists) {
     return true;
   }
