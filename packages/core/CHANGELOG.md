@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.0...@ucast/core@1.10.1) (2021-07-15)
+
+
+### Bug Fixes
+
+* remove type commonjs from package.json to improve webpack compat ([#28](https://github.com/stalniy/ucast/issues/28)) ([6b1ad28](https://github.com/stalniy/ucast/commit/6b1ad289d7b4f9945f08f29efd952069efd6c8c9))
+
 # [1.10.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.9.0...@ucast/core@1.10.0) (2021-03-26)
 
 
