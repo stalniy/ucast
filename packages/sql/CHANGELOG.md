@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.0-alpha.12](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.11...@ucast/sql@1.0.0-alpha.12) (2021-07-15)
+
+
+### Bug Fixes
+
+* **sql:** Interpreters should add one join per relation at most ([#24](https://github.com/stalniy/ucast/issues/24)) ([d725e35](https://github.com/stalniy/ucast/commit/d725e3528f0da11e27207ca8db7e1b6bf669fc34))
+
 # [1.0.0-alpha.11](https://github.com/stalniy/ucast/compare/@ucast/sql@1.0.0-alpha.10...@ucast/sql@1.0.0-alpha.11) (2021-07-15)
 
 
