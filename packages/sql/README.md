@@ -74,7 +74,7 @@ const [sql, replacements] = interpret(condition, {
 })
 
 console.log(sql) // ("x" > $1 and "y < $2)
-console.log(params) // [5, 10]
+console.log(replacements) // [5, 10]
 ```
 
 ### Conditions on related table
