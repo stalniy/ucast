@@ -1,0 +1,82 @@
+{
+  "name": "ucast-dynamodb",
+  "version": "0.0.1",
+  "description": "git@github.com:stalniy/ucast.git",
+  "main": "dist/es6c/index.js",
+  "es2015": "dist/es6m/index.mjs",
+  "typings": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/es6m/index.mjs",
+      "require": "./dist/es6c/index.js"
+    }
+  },
+  "scripts": {
+    "build.types": "tsc",
+    "prebuild": "rm -rf dist/* && npm run build.types",
+    "build": "rollup -c ../../rollup.config.js -n ucast.dynamo -g @ucast/core:ucast.core",
+    "lint": "eslint --ext .js,.ts src/ spec/",
+    "test": "mocha -r ts-node/register spec/*",
+    "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
+    "prerelease": "npm run lint && npm test && npm run build",
+    "release": "semantic-release -e ../../semantic-release.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stalniy/ucast.git"
+  },
+  "keywords": [
+    "conditions",
+    "query",
+    "builder",
+    "ast"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "NOTICE",
+    "*.d.ts"
+  ],
+  "author": "Maxim Sukharev <max@smacker.ru>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/stalniy/ucast/issues"
+  },
+  "homepage": "https://github.com/stalniy/ucast/tree/master/packages/mongo2js#readme",
+  "dependencies": {
+    "@ucast/core": "^1.10.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.10.2",
+    "@babel/plugin-proposal-class-properties": "^7.10.4",
+    "@babel/plugin-proposal-object-rest-spread": "^7.10.4",
+    "@babel/plugin-transform-typescript": "^7.10.1",
+    "@babel/preset-env": "^7.10.2",
+    "@rollup/plugin-babel": "^5.0.3",
+    "@rollup/plugin-node-resolve": "^8.0.1",
+    "@semantic-release/changelog": "^5.0.1",
+    "@semantic-release/git": "^9.0.0",
+    "@semantic-release/github": "^7.0.7",
+    "@semantic-release/npm": "^7.0.5",
+    "@types/chai": "^4.2.11",
+    "@types/chai-spies": "^1.0.1",
+    "@types/mocha": "^7.0.2",
+    "@types/validator": "^13.1.0",
+    "@typescript-eslint/eslint-plugin": "^3.6.0",
+    "chai": "^4.2.0",
+    "chai-spies": "^1.0.0",
+    "eslint": "^7.4.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-config-airbnb-typescript": "^8.0.2",
+    "eslint-plugin-import": "^2.22.0",
+    "mocha": "^8.0.1",
+    "nyc": "^15.1.0",
+    "rollup": "^2.15.0",
+    "rollup-plugin-terser": "^6.1.0",
+    "semantic-release": "^17.1.1",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.5"
+  }
+}
