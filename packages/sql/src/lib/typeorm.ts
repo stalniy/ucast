@@ -4,30 +4,42 @@ import {
   createSqlInterpreter,
   allInterpreters,
   SqlOperator,
-  createDialects
+  createDialects,
+  SqlQueryOptions
 } from '../index';
 
-function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
-  const meta = query.expressionMap.mainAlias!.metadata;
-  const joinAlreadyExists = query.expressionMap.joinAttributes
-    .some(j => j.alias.name === relationName);
+function joinRelation<Entity>(relation: string, query: SelectQueryBuilder<Entity>) {
+  const relationParts = relation.split('.');
+  let meta = query.expressionMap.mainAlias!.metadata;
 
-  if (joinAlreadyExists) {
-    return true;
+  // eslint-disable-next-line no-restricted-syntax
+  for (const part of relationParts) {
+    const relationData = meta.findRelationWithPropertyPath(part);
+    if (!relationData) {
+      return false;
+    }
+    meta = relationData.inverseRelation!.entityMetadata;
   }
 
-  const relation = meta.findRelationWithPropertyPath(relationName);
-  if (relation) {
-    query.innerJoin(`${query.alias}.${relationName}`, relationName);
-    return true;
-  }
+  relationParts.forEach((part, i) => {
+    const alias = (i > 0) ? relationParts.slice(0, i).join('_') : query.expressionMap.mainAlias!.name;
+    const nextJoinAlias = relationParts.slice(0, i + 1).join('_');
+    if (!query.expressionMap.joinAttributes.some(j => j.alias.name === nextJoinAlias)) {
+      query.leftJoin(`${alias}.${part}`, nextJoinAlias);
+    }
+  });
+  return true;
+}
 
-  return false;
+function foreignField<Entity>(field: string, relationName: string) {
+  return `${relationName.replace(/\./g, '_')}.${field}`;
 }
 
 const dialects = createDialects({
   joinRelation,
-  paramPlaceholder: index => `:${index - 1}`
+  paramPlaceholder: index => `:${index - 1}`,
+  escapeField: (field: string) => field,
+  foreignField
 });
 
 // eslint-disable-next-line no-multi-assign
@@ -38,11 +50,14 @@ export function createInterpreter(interpreters: Record<string, SqlOperator<any>>
 
   return <Entity>(condition: Condition, query: SelectQueryBuilder<Entity>) => {
     const dialect = query.connection.options.type as keyof typeof dialects;
-    const options = dialects[dialect];
-
-    if (!options) {
+    if (!dialects[dialect]) {
       throw new Error(`Unsupported database dialect: ${dialect}`);
     }
+
+    const options: SqlQueryOptions = {
+      rootAlias: query.alias,
+      ...dialects[dialect],
+    };
 
     const [sql, params] = interpretSQL(condition, options, query);
     return query.where(sql, params);

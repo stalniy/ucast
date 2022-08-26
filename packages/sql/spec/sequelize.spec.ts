@@ -44,6 +44,19 @@ describe('Condition interpreter for Sequelize', () => {
     ])
     expect(query.where.val).to.equal('(`projects`.`name` = \'test\' and `projects`.`active` = 1)')
   })
+
+  it('should treat fields with nested relations as simple fields', () => {
+    const condition = new CompoundCondition('and', [
+      new FieldCondition('eq', 'projects.reviews.rating', 5),
+      new FieldCondition('eq', 'projects.active', true),
+    ])
+    const query = interpret(condition, User)
+
+    expect(query.include).to.deep.equal([
+      { association: 'projects', required: true },
+    ])
+    expect(query.where.val).to.equal('(`projects.reviews.rating` = 5 and `projects`.`active` = 1)')
+  })
 })
 
 function configureORM() {
@@ -51,6 +64,7 @@ function configureORM() {
 
   class User extends Model {}
   class Project extends Model {}
+  class Review extends Model {}
 
   User.init({
     name: { type: DataTypes.STRING },
@@ -62,6 +76,13 @@ function configureORM() {
     active: { type: DataTypes.BOOLEAN }
   }, { sequelize, modelName: 'project' })
 
+  Review.init({
+    rating: { type: DataTypes.INTEGER },
+    comment: { type: DataTypes.STRING },
+  }, { sequelize, modelName: 'review' })
+
+  Project.hasMany(Review)
+  Review.belongsTo(Project)
   Project.belongsTo(User)
   User.hasMany(Project)
 
