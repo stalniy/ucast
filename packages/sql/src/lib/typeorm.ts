@@ -24,7 +24,7 @@ function joinRelation<Entity>(relation: string, query: SelectQueryBuilder<Entity
     const alias = (i > 0) ? relationParts.slice(0, i).join('_') : query.expressionMap.mainAlias!.name;
     const nextJoinAlias = relationParts.slice(0, i + 1).join('_');
     if (!query.expressionMap.joinAttributes.some(j => j.alias.name === nextJoinAlias)) {
-      query.innerJoin(`${alias}.${part}`, nextJoinAlias);
+      query.leftJoin(`${alias}.${part}`, nextJoinAlias);
     }
   });
   return true;

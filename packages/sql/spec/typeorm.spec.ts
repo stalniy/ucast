@@ -54,14 +54,14 @@ describe('Condition interpreter for TypeORM', () => {
     })
   })
 
-  it('automatically inner joins relation when condition is set on relation field', () => {
+  it('automatically left joins relation when condition is set on relation field', () => {
     const condition = new FieldCondition('eq', 'projects.name', 'test')
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
-      'INNER JOIN "project" "projects" ON "projects"."userId"="u"."id"',
+      'LEFT JOIN "project" "projects" ON "projects"."userId"="u"."id"',
       'WHERE "projects"."name" = :0'
     ].join(' '))
     expect(query.getParameters()).to.eql({ 0: 'test' })
@@ -77,7 +77,7 @@ describe('Condition interpreter for TypeORM', () => {
     expect(query.getQuery()).to.equal([
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
-      'INNER JOIN "project" "projects" ON "projects"."userId"="u"."id"',
+      'LEFT JOIN "project" "projects" ON "projects"."userId"="u"."id"',
       'WHERE ("projects"."name" = :0 and "projects"."active" = :1)'
     ].join(' '))
     expect(query.getParameters()).to.eql({ 0: 'test', 1: true })
@@ -93,8 +93,8 @@ describe('Condition interpreter for TypeORM', () => {
     expect(query.getQuery()).to.equal([
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
-      'INNER JOIN "project" "projects" ON "projects"."userId"="u"."id"',
-      ' INNER JOIN "review" "projects_reviews" ON "projects_reviews"."projectId"="projects"."id"',
+      'LEFT JOIN "project" "projects" ON "projects"."userId"="u"."id"',
+      ' LEFT JOIN "review" "projects_reviews" ON "projects_reviews"."projectId"="projects"."id"',
       'WHERE ("projects_reviews"."rating" = :0 and "projects"."active" = :1)'
     ].join(' '))
     expect(query.getParameters()).to.eql({ 0: 5, 1: true })
