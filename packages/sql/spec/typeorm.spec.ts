@@ -32,7 +32,7 @@ describe('Condition interpreter for TypeORM', () => {
     expect(query.getQuery()).to.equal([
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
-      'WHERE "name" = :0'
+      'WHERE "u"."name" = :0'
     ].join(' '))
     expect(query.getParameters()).to.eql({ 0: 'test' })
   })
@@ -44,7 +44,7 @@ describe('Condition interpreter for TypeORM', () => {
     expect(query.getQuery()).to.equal([
       'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
-      'WHERE "age" in(:0, :1, :2)'
+      'WHERE "u"."age" in(:0, :1, :2)'
     ].join(' '))
 
     expect(query.getParameters()).to.eql({

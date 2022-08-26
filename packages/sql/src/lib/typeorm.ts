@@ -4,7 +4,8 @@ import {
   createSqlInterpreter,
   allInterpreters,
   SqlOperator,
-  createDialects
+  createDialects,
+  SqlQueryOptions
 } from '../index';
 
 function joinRelation<Entity>(relation: string, query: SelectQueryBuilder<Entity>) {
@@ -48,11 +49,14 @@ export function createInterpreter(interpreters: Record<string, SqlOperator<any>>
 
   return <Entity>(condition: Condition, query: SelectQueryBuilder<Entity>) => {
     const dialect = query.connection.options.type as keyof typeof dialects;
-    const options = dialects[dialect];
-
-    if (!options) {
+    if (!dialects[dialect]) {
       throw new Error(`Unsupported database dialect: ${dialect}`);
     }
+
+    const options: SqlQueryOptions = {
+      rootAlias: query.alias,
+      ...dialects[dialect],
+    };
 
     const [sql, params] = interpretSQL(condition, options, query);
     return query.where(sql, params);
