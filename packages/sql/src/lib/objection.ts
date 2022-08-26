@@ -9,7 +9,9 @@ import {
 } from '../index';
 
 function joinRelation(relationName: string, query: QueryBuilder<Model>) {
-  if (!query.modelClass().getRelation(relationName)) {
+  try {
+    query.modelClass().getRelation(relationName);
+  } catch (e) {
     return false;
   }
 

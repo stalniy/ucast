@@ -59,6 +59,21 @@ describe('Condition interpreter for Objection', () => {
       where ("projects"."name" = 'test' and "projects"."active" = true)
     `.trim())
   })
+
+  it('should treat fields with nested relations as simple fields', () => {
+    const condition = new CompoundCondition('and', [
+      new FieldCondition('eq', 'projects.reviews.rating', 5),
+      new FieldCondition('eq', 'projects.active', true),
+    ])
+    const query = interpret(condition, User.query())
+
+    expect(query.toKnexQuery().toString()).to.equal(linearize`
+      select "users".*
+      from "users"
+        inner join "projects" on "projects"."user_id" = "users"."id"
+      where ("projects.reviews.rating" = 5 and "projects"."active" = true)
+    `.trim())
+  })
 })
 
 function configureORM() {
@@ -88,10 +103,30 @@ function configureORM() {
           modelClass: User,
           join: { from: 'users.id', to: 'projects.user_id' },
           active: Boolean
+        },
+        projects: {
+          relation: Model.HasManyRelation,
+          modelClass: Review,
+          join: { from: 'projects.id', to: 'review.project_id' }
         }
       }
     }
   }
 
-  return { User, Project }
+  class Review extends Model {
+    static tableName = 'reviews'
+
+    static get relationMappings() {
+      return {
+        project: {
+          relation: Model.BelongsToOneRelation,
+          modelClass: Project,
+          join: { from: 'projects.id', to: 'review.project_id' },
+          active: Boolean
+        }
+      }
+    }
+  }
+
+  return { User, Project, Review }
 }

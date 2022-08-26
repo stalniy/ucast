@@ -61,6 +61,21 @@ describe('Condition interpreter for MikroORM', () => {
       'where ((`projects`.`name` = ? and `projects`.`active` = ?))'
     ].join(' '))
   })
+
+  it('should treat fields with nested relations as simple fields', () => {
+    const condition = new CompoundCondition('and', [
+      new FieldCondition('eq', 'projects.reviews.rating', 5),
+      new FieldCondition('eq', 'projects.active', true),
+    ])
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+
+    expect(query.getQuery()).to.equal([
+      'select *',
+      'from `user` as `e0`',
+      'inner join `project` as `projects` on `e0`.`id` = `projects`.`user_id`',
+      'where ((`projects.reviews.rating` = ? and `projects`.`active` = ?))'
+    ].join(' '))
+  })
 })
 
 async function configureORM() {
@@ -79,7 +94,17 @@ async function configureORM() {
       public id: number,
       public name: string,
       public user: User,
+      public reviews: Collection<Review>,
       public active: boolean
+    ) {}
+  }
+
+  class Review {
+    constructor(
+      public id: number,
+      public rating: number,
+      public comment: string,
+      public project: Project
     ) {}
   }
 
@@ -101,12 +126,22 @@ async function configureORM() {
       id: { type: 'number', primary: true },
       name: { type: 'string' },
       user: { type: 'User', reference: 'm:1' },
+      reviews: { type: 'Review', reference: '1:m', inversedBy: 'project' },
       active: { type: 'boolean' }
+    }
+  })
+  const ReviewSchema = new EntitySchema({
+    class: Review,
+    properties: {
+      id: { type: 'number', primary: true },
+      rating: { type: 'number' },
+      project: { type: 'Project', reference: 'm:1' },
+      comment: { type: 'string' }
     }
   })
 
   const orm = await MikroORM.init({
-    entities: [UserSchema, ProjectSchema],
+    entities: [UserSchema, ProjectSchema, ReviewSchema],
     dbName: ':memory:',
     type: 'sqlite',
   })
