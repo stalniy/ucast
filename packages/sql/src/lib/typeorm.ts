@@ -38,6 +38,7 @@ function foreignField<Entity>(field: string, relationName: string) {
 const dialects = createDialects({
   joinRelation,
   paramPlaceholder: index => `:${index - 1}`,
+  escapeField: (field: string) => field,
   foreignField
 });
 

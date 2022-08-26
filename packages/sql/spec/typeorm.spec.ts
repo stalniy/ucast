@@ -30,7 +30,7 @@ describe('Condition interpreter for TypeORM', () => {
 
     expect(query).to.be.instanceof(SelectQueryBuilder)
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name", "u"."age" AS "u_age"',
       'FROM "user" "u"',
       'WHERE "u"."name" = :0'
     ].join(' '))
@@ -42,7 +42,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name", "u"."age" AS "u_age"',
       'FROM "user" "u"',
       'WHERE "u"."age" in(:0, :1, :2)'
     ].join(' '))
@@ -59,7 +59,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name", "u"."age" AS "u_age"',
       'FROM "user" "u"',
       'LEFT JOIN "project" "projects" ON "projects"."userId"="u"."id"',
       'WHERE "projects"."name" = :0'
@@ -75,7 +75,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name", "u"."age" AS "u_age"',
       'FROM "user" "u"',
       'LEFT JOIN "project" "projects" ON "projects"."userId"="u"."id"',
       'WHERE ("projects"."name" = :0 and "projects"."active" = :1)'
@@ -91,7 +91,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name", "u"."age" AS "u_age"',
       'FROM "user" "u"',
       'LEFT JOIN "project" "projects" ON "projects"."userId"="u"."id"',
       ' LEFT JOIN "review" "projects_reviews" ON "projects_reviews"."projectId"="projects"."id"',
@@ -105,6 +105,7 @@ async function configureORM() {
   class User {
     id!: number
     name!: string
+    age!: string
     projects!: Project[]
   }
 
@@ -129,6 +130,7 @@ async function configureORM() {
     columns: {
       id: { primary: true, type: 'int', generated: true },
       name: { type: 'varchar' },
+      age: { type: 'int' },
     },
     relations: {
       projects: {
