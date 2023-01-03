@@ -84,6 +84,7 @@ export class Query {
 
     this._sql.push(`${isInverted ? 'not ' : ''}${sql}`);
     this._params.push(...query._params);
+    this._joins.push(...query._joins);
     return this;
   }
 

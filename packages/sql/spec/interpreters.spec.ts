@@ -59,6 +59,32 @@ describe('Condition Interpreter', () => {
     })
   })
 
+  describe('auto join on multiple relations', () => {
+    const interpret = createSqlInterpreter({ eq, lte, and })
+    const date = new Date()
+    const condition = new CompoundCondition('and', [
+      new Field('eq', 'projects.name', 'test'),
+      new Field('eq', 'users.deleted', false),
+      new Field('lte', 'posts.created_at', date),
+    ])
+
+    before(() => {
+      spy.on(options, 'joinRelation')
+    })
+
+    after(() => {
+      spy.restore(options, 'joinRelation')
+    })
+
+    it('generates query with multiple relations', () => {
+      const [sql, params, joins] = interpret(condition, options)
+
+      expect(sql).to.equal('("projects"."name" = $1 and "users"."deleted" = $2 and "posts"."created_at" <= $3)')
+      expect(params).to.deep.equal(['test', false, date])
+      expect(joins).to.deep.equal(['projects', 'users', 'posts'])
+    })
+  })
+
   describe('primitive operators', () => {
     const interpret = createSqlInterpreter({ eq, ne, lt, lte, gt, gte, mod })
 
