@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.3](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.2...@ucast/js@3.0.3) (2023-02-15)
+
+
+### Bug Fixes
+
+* adds typings to ESM exports in package.json ([1ffb703](https://github.com/stalniy/ucast/commit/1ffb7033a6d70ee4eb5f9d3178bcb4df37da835e))
+* updates metadata in package.json ([2fa89f5](https://github.com/stalniy/ucast/commit/2fa89f573eeb033c657b7c54b4640a856859f766))
+
 ## [3.0.2](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.1...@ucast/js@3.0.2) (2021-07-15)
 
 
