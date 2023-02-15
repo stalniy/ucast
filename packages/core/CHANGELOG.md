@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.1...@ucast/core@1.10.2) (2023-02-15)
+
+
+### Bug Fixes
+
+* updates metadata in package.json ([2fa89f5](https://github.com/stalniy/ucast/commit/2fa89f573eeb033c657b7c54b4640a856859f766))
+
+## [1.10.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.1...@ucast/core@1.10.2) (2023-02-15)
+
+
+### Bug Fixes
+
+* updates metadata in package.json ([2fa89f5](https://github.com/stalniy/ucast/commit/2fa89f573eeb033c657b7c54b4640a856859f766))
+
 ## [1.10.1](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.0...@ucast/core@1.10.1) (2021-07-15)
 
 
