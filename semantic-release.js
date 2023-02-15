@@ -17,24 +17,27 @@ module.exports = {
   tagFormat: `${process.env.npm_package_name}@\${version}`,
   branches: [
     'master',
-    { name: 'alpha', channel: 'alpha', prerelease: true }
+    { name: 'next', channel: 'next', prerelease: true },
+    { name: 'alpha', channel: 'alpha', prerelease: true },
   ],
-  verifyConditions: [
-    '@semantic-release/changelog',
-    '@semantic-release/npm',
-    '@semantic-release/git',
-    '@semantic-release/github'
-  ],
-  prepare: [
-    {
-      path: '@semantic-release/changelog',
+  plugins: [
+    ['@semantic-release/commit-analyzer', {
+      releaseRules: [
+        { type: 'chore', scope: 'deps', release: 'patch' },
+        { type: 'docs', scope: 'README', release: 'patch' },
+      ]
+    }],
+    '@semantic-release/release-notes-generator',
+    ['@semantic-release/changelog', {
       changelogTitle: '# Change Log\n\nAll notable changes to this project will be documented in this file.'
-    },
+    }],
     '@semantic-release/npm',
-    {
-      path: '@semantic-release/git',
+    ['@semantic-release/git', {
       message: `chore(release): ${process.env.npm_package_name}@\${nextRelease.version} [skip ci]`
-    }
+    }],
+    ["@semantic-release/github", {
+      releasedLabels: false,
+      successComment: false,
+    }]
   ],
-  success: []
 };
