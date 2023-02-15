@@ -7,22 +7,27 @@
   "typings": "dist/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/es6m/index.mjs",
       "require": "./dist/es6c/index.js"
     },
     "./mikro-orm": {
+      "types": "./dist/types/lib/mikro-orm.d.ts",
       "import": "./dist/es6m/lib/mikro-orm.mjs",
       "require": "./dist/es6c/lib/mikro-orm.js"
     },
     "./objection": {
+      "types": "./dist/types/lib/objection.d.ts",
       "import": "./dist/es6m/lib/objection.mjs",
       "require": "./dist/es6c/lib/objection.js"
     },
     "./sequelize": {
+      "types": "./dist/types/lib/sequelize.d.ts",
       "import": "./dist/es6m/lib/sequelize.mjs",
       "require": "./dist/es6c/lib/sequelize.js"
     },
     "./typeorm": {
+      "types": "./dist/types/lib/typeorm.d.ts",
       "import": "./dist/es6m/lib/typeorm.mjs",
       "require": "./dist/es6c/lib/typeorm.js"
     }
