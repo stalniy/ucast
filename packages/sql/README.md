@@ -19,6 +19,8 @@ pnpm add @ucast/sql
 
 ## Getting Started
 
+Latest code is in `alpha` branch and in the latest [npm install @ucast/sql@alpha](https://www.npmjs.com/package/@ucast/sql/v/1.0.0-alpha.12)
+
 ### Interpret conditions AST
 
 In order to interpret something, we need 2 things: interpreter and AST. It's really easy to create interpreter just pick operators you want to use or pass all of them:
