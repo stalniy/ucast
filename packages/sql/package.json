@@ -108,7 +108,7 @@
     "rollup": "^2.15.0",
     "rollup-plugin-terser": "^6.1.0",
     "semantic-release": "^17.4.7",
-    "sequelize": "6.3.4",
+    "sequelize": "6.29.0",
     "sqlite3": "^5.0.0",
     "ts-node": "^8.10.2",
     "typeorm": "^0.2.25",
