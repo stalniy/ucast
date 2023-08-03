@@ -100,7 +100,7 @@
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-config-airbnb-typescript": "^8.0.2",
     "eslint-plugin-import": "^2.22.0",
-    "knex": "^0.21.2",
+    "knex": "^2.4.0",
     "mikro-orm": "^3.6.15",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
