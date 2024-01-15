@@ -67,7 +67,10 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
   }
 
   const [item, field] = getObjectFieldCursor<{}>(object, node.field, get);
-  const test = (value: {}) => !!value && value.hasOwnProperty(field) === node.value;
+  const test = (value: {}) => {
+    if (value == null) return Boolean(value) === node.value;
+    return value.hasOwnProperty(field) === node.value;
+  }
 
   return isArrayAndNotNumericField(item, field) ? item.some(test) : test(item);
 };

@@ -238,6 +238,15 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { address: { building: 1 } })).to.be.true
     })
 
+    it('can check that nested property does not exist', () => {
+      const condition = new Field('exists', 'group.objectId', false)
+
+      expect(interpret(condition, {})).to.be.true
+      expect(interpret(condition, { group: {} })).to.be.true
+      expect(interpret(condition, { group: null })).to.be.true
+      expect(interpret(condition, { group: { objectId: 1 } })).to.be.false
+    })
+
     it('checks that at least one item from array satisfies condition', () => {
       const condition = new Field('exists', 'items.age', true)
 
