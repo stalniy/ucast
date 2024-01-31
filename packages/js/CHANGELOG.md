@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.4](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.3...@ucast/js@3.0.4) (2024-01-31)
+
+
+### Bug Fixes
+
+* ensure "exists" js interpreter returns value depends on parent field existance for nested fields ([ec1c7d6](https://github.com/stalniy/ucast/commit/ec1c7d6a82bee22dd5c26779f92ff2b5aaf2efb5))
+
+## [3.0.4](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.3...@ucast/js@3.0.4) (2024-01-31)
+
+
+### Bug Fixes
+
+* ensure "exists" js interpreter returns value depends on parent field existance for nested fields ([ec1c7d6](https://github.com/stalniy/ucast/commit/ec1c7d6a82bee22dd5c26779f92ff2b5aaf2efb5))
+
 ## [3.0.3](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.2...@ucast/js@3.0.3) (2023-02-15)
 
 
