@@ -70,7 +70,7 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
   const test = (value: {}) => {
     if (value == null) return Boolean(value) === node.value;
     return value.hasOwnProperty(field) === node.value;
-  }
+  };
 
   return isArrayAndNotNumericField(item, field) ? item.some(test) : test(item);
 };
