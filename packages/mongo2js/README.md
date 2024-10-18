@@ -76,10 +76,17 @@ In order to implement a custom operator, you need to create a [custom parsing in
 This package re-exports all symbols from `@ucast/mongo` and `@ucast/js`, so you don't need to install them separately. For example, to add support for [json-schema](https://json-schema.org/) operator:
 
 ```ts
-import { createFilter } from '@ucast/mongo2js';
+import {
+  createFactory,
+  DocumentCondition,
+  ParsingInstruction,
+  JsInterpreter,
+} from '@ucast/mongo2js';
 import Ajv from 'ajv';
 
-const $jsonSchema = {
+type JSONSchema = object;
+const ajv = new Ajv();
+const $jsonSchema: ParsingInstruction<JSONSchema> = {
   type: 'document',
   validate(instruction, value) {
     if (!value || typeof value !== 'object') {
@@ -87,13 +94,15 @@ const $jsonSchema = {
     }
   },
   parse(instruction, schema) {
-    const ajv = new Ajv();
     return new DocumentCondition(instruction.name, ajv.compile(schema));
   }
 };
-const jsonSchema = (condition, object) => condition.value(object);
+const jsonSchema: JsInterpreter<DocumentCondition<Ajv.ValidateFunction>> = (
+  condition,
+  object
+) => condition.value(object) as boolean;
 
-const customGuard = createFilter({
+const customGuard = createFactory({
   $jsonSchema,
 }, {
   jsonSchema
@@ -105,10 +114,28 @@ const test = customGuard({
       firstName: { type: 'string' },
       lastName: { type: 'string' },
     },
+    required: ['firstName', 'lastName'],
   }
 });
 
 console.log(test({ firstName: 'John' })); // false, `lastName` is not defined
+```
+
+To create a custom operator which tests primitives (as `squire` does), use the
+`forPrimitives` option:
+
+```ts
+const customSquire = createFactory({
+  $custom: {
+    type: 'field',
+  }
+}, {
+  custom: (condition, value) => value === (condition.value ? 'on' : 'off')
+}, {
+  forPrimitives: true
+});
+const test = customGuard({ $custom: true });
+console.log(test('on')) // true
 ```
 
 ## TypeScript support
