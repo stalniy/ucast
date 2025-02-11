@@ -31,4 +31,11 @@ describe('guard', () => {
     expect(test({ id: id(1) })).to.be.true
     expect(test({ id: id(2) })).to.be.false
   })
+
+  it('supports bigint', () => {
+    const test = guard({ id: { $eq: 1n } })
+
+    expect(test({ id: 1n })).to.be.true
+    expect(test({ id: 1 })).to.be.false
+  })
 })
