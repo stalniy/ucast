@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.4.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.3.4...@ucast/mongo2js@1.4.0) (2025-02-26)
+
+
+### Features
+
+* ensures that `toJSON` is not called on primitives ([#54](https://github.com/stalniy/ucast/issues/54)) ([cc70754](https://github.com/stalniy/ucast/commit/cc707543119ba4278e63b2ee7894460756f3e61d))
+
 ## [1.3.4](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.3.3...@ucast/mongo2js@1.3.4) (2023-02-15)
 
 
