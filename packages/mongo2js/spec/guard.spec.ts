@@ -38,4 +38,56 @@ describe('guard', () => {
     expect(test({ id: 1n })).to.be.true
     expect(test({ id: 1 })).to.be.false
   })
+
+  it('processes primitive values without attempting to call its `toJSON` method', () => {
+    const test = guard({
+      number: 42,
+      bigint: BigInt(42),
+      string: 'test',
+      boolean: true,
+      null: null,
+      undefined
+    })
+
+    const restoreOriginalToJSON = [
+      overwriteProperty(Number.prototype, 'toJSON', () => 'number'),
+      overwriteProperty(BigInt.prototype, 'toJSON', () => 'bigint'),
+      overwriteProperty(String.prototype, 'toJSON', () => 'string'),
+      overwriteProperty(Boolean.prototype, 'toJSON', () => 'boolean'),
+    ]
+
+    try {
+      expect(test({
+        number: 42,
+        bigint: BigInt(42),
+        string: 'test',
+        boolean: true,
+        null: null,
+        undefined
+      })).to.be.true
+      expect(test({
+        number: 43,
+        string: 'test',
+        boolean: true,
+        null: null,
+        undefined
+      })).to.be.false
+    } finally {
+      restoreOriginalToJSON.forEach(restore => restore())
+    }
+  })
+
+  it('compares objects by value', () => {
+    const value = { b: 1 }
+    const test = guard({ prop: value })
+
+    expect(test({ prop: value })).to.be.true
+    expect(test({ prop: { b: 1 } })).to.be.false
+  })
+
+  function overwriteProperty(obj: any, prop: string, value: unknown) {
+    const original = obj[prop]
+    obj[prop] = value
+    return () => { obj[prop] = original }
+  }
 })

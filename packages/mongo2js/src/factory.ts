@@ -24,6 +24,10 @@ interface HasToJSON {
 }
 
 function toPrimitive(value: unknown) {
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+
   if (value instanceof Date) {
     return value.getTime();
   }
