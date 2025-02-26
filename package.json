@@ -3,19 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "description": "git@github.com:stalniy/ucast.git",
-  "main": "index.js",
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
     "**/*.{js,ts}": [
       "eslint --fix --ext .js,.ts"
     ]
   },
   "scripts": {
-    "coverage.submit": "codecov --disable=gcov"
+    "coverage.submit": "codecov --disable=gcov",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -60,8 +55,8 @@
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-config-airbnb-typescript": "^8.0.2",
     "eslint-plugin-import": "^2.22.0",
-    "husky": "^4.2.5",
-    "lint-staged": "^10.2.11",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
     "rollup": "^2.15.0",
