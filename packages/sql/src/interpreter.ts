@@ -28,14 +28,16 @@ export class Query {
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
-    const relationNameIndex = name.indexOf('.');
 
-    if (relationNameIndex === -1) {
+    const parts = name.split('.')
+      .reverse();
+
+    if (parts.length <= 1) {
       return this._rootAlias + this.options.escapeField(name);
     }
 
-    const relationName = name.slice(0, relationNameIndex);
-    const field = name.slice(relationNameIndex + 1);
+    const field = parts.shift() as string;
+    const relationName = parts.shift() as string;
 
     if (!this.options.joinRelation(relationName, this._targetQuery)) {
       return this.options.escapeField(field);
