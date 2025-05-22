@@ -59,6 +59,33 @@ describe('Condition Interpreter', () => {
     })
   })
 
+  describe('auto join nested relations', () => {
+    const interpret = createSqlInterpreter({ eq })
+    const condition = new Field('eq', 'projects.user.name', 'test')
+
+    before(() => {
+      spy.on(options, 'joinRelation')
+    })
+
+    after(() => {
+      spy.restore(options, 'joinRelation')
+    })
+
+    it('calls `joinRelation` function passing relation name when using dot notation', () => {
+      interpret(condition, options)
+      expect(options.joinRelation).to.have.been.called.with('user')
+    })
+
+    it('escapes relation name with `options.escapeField`', () => {
+      spy.on(options, 'escapeField')
+      const [sql] = interpret(condition, options)
+
+      expect(sql).to.equal('"user"."name" = $1')
+      expect(options.escapeField).to.have.been.called.with('user')
+      spy.restore(options, 'escapeField')
+    })
+  })
+
   describe('primitive operators', () => {
     const interpret = createSqlInterpreter({ eq, ne, lt, lte, gt, gte, mod })
 
