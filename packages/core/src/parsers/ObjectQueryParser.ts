@@ -151,29 +151,28 @@ export class ObjectQueryParser<
 
     this._documentInstructionContext.query = query;
 
+    const nextKey = (key: string) => {
+      if (options.parent) {
+        return `${options.parent}.${key}`;
+      }
+
+      return key;
+    };
+
     for (let i = 0, length = keys.length; i < length; i++) {
       const key = keys[i];
       const value = query[key];
 
-      if (this._options.useIgnoreValue && value === ignoreValue) {
-        if (options.parent) {
-          pushIfNonNullCondition(
-            conditions,
-            this.parseField(
-              options.parent ? `${options.parent}.${key}` : key,
-              this._options.defaultOperatorName,
-              value,
-              query
-            )
-          );
-        }
+      const skip = this._options.useIgnoreValue
+          && value === ignoreValue;
 
+      if (skip) {
         // eslint-disable-next-line no-continue
         continue;
       }
 
       const instruction = this._instructions[key];
-      if (instruction) {
+      if (instruction && !options.parent) {
         if (instruction.type !== 'document' && instruction.type !== 'compound') {
           throw new Error(`Cannot use parsing instruction for operator "${key}" in "document" context as it is supposed to be used in  "${instruction.type}" context`);
         }
@@ -183,17 +182,19 @@ export class ObjectQueryParser<
           this.parseInstruction(instruction, value, this._documentInstructionContext)
         );
       } else if (this._fieldInstructionContext.hasOperators<U>(value)) {
-        conditions.push(...this.parseFieldOperators(key, value));
+        conditions.push(...this.parseFieldOperators(nextKey(key), value));
       } else if (isObject(value)) {
         conditions.push(this.parse(
           value as T,
-          { parent: options.parent ? `${options.parent}.${key}` : key }
+          {
+            parent: nextKey(key)
+          }
         ));
       } else {
         pushIfNonNullCondition(
           conditions,
           this.parseField(
-            options.parent ? `${options.parent}.${key}` : key,
+            nextKey(key),
             this._options.defaultOperatorName,
             value,
             query

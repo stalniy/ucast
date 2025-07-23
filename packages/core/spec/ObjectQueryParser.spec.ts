@@ -126,16 +126,13 @@ describe('ObjectQueryParser', () => {
     })
 
     it('parses value as nested condition', () => {
-      const my = { type: 'compound' }
-      const parser = new ObjectQueryParser({ my, eq })
-      const ast = parser.parse({ my: { a: 1 } }) as CompoundCondition
-      const childAst = ast.value[0] as FieldCondition
+      const parser = new ObjectQueryParser({ eq })
+      const ast = parser.parse({ my: { a: 1 } }) as FieldCondition
 
-      expect(ast.value).to.have.length(1)
-      expect(childAst).to.be.instanceOf(FieldCondition)
-      expect(childAst.operator).to.equal('eq')
-      expect(childAst.value).to.equal(1)
-      expect(childAst.field).to.equal('a')
+      expect(ast).to.be.instanceOf(FieldCondition)
+      expect(ast.operator).to.equal('eq')
+      expect(ast.value).to.equal(1)
+      expect(ast.field).to.equal('my.a')
     })
 
     it('uses its "validate" hook to validate operator value', () => {
@@ -222,7 +219,7 @@ describe('ObjectQueryParser', () => {
         const parser = new ObjectQueryParser({ eq }, { useIgnoreValue: true })
         const result = parser.parse({ id: { eq: ignoreValue } })
 
-        expect(result).to.deep.equal(new FieldCondition('eq', 'id.eq', ignoreValue))
+        expect(result).to.deep.equal(new CompoundCondition('and', []))
       })
     })
 
@@ -245,9 +242,7 @@ describe('ObjectQueryParser', () => {
         const parser = new ObjectQueryParser({ and, eq }, { useIgnoreValue: true })
         const result = parser.parse({ and: [ignoreValue] })
 
-        expect(result).to.deep.equal(new CompoundCondition('and', [
-          new CompoundCondition('and', [])
-        ]))
+        expect(result).to.deep.equal(new CompoundCondition('and', []))
       })
     })
   })

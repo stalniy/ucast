@@ -26,12 +26,25 @@ function flattenConditions<T extends Condition>(
   return flatConditions;
 }
 
-export function optimizedCompoundCondition<T extends Condition>(operator: string, conditions: T[]) {
+export function optimizedCompoundCondition<T extends Condition>(
+  operator: string,
+  conditions: T[]
+) : T | CompoundCondition<T> {
   if (conditions.length === 1) {
-    return conditions[0];
+    const [first] = conditions;
+    if (first instanceof CompoundCondition) {
+      return optimizedCompoundCondition(first.operator, first.value);
+    }
+
+    return first;
   }
 
-  return new CompoundCondition(operator, flattenConditions(operator, conditions));
+  const flattened = flattenConditions(operator, conditions);
+  if (flattened.length === 1) {
+    return flattened[0];
+  }
+
+  return new CompoundCondition(operator, flattened);
 }
 
 export const identity = <T>(x: T) => x;
