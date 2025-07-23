@@ -6,23 +6,16 @@ import {
   SqlOperator,
   createDialects
 } from '../index';
+import { splitRelationName } from './utils';
 
 function joinRelation<Entity>(input: string, query: SelectQueryBuilder<Entity>) {
-  let relationFullName = input;
+  let relationFullName : string | undefined = input;
   let meta = query.expressionMap.mainAlias!.metadata;
   let alias : string | undefined = query.alias;
 
-  while (relationFullName.length) {
-    const separatorIndex = relationFullName.indexOf('.');
-
+  while (relationFullName) {
     let relationName : string;
-    if (separatorIndex === -1) {
-      relationName = relationFullName;
-      relationFullName = '';
-    } else {
-      relationName = relationFullName.substring(0, separatorIndex);
-      relationFullName = relationFullName.substring(separatorIndex + 1);
-    }
+    [relationName, relationFullName] = splitRelationName(relationFullName);
 
     const relation = meta.findRelationWithPropertyPath(relationName);
     if (relation) {
