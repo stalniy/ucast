@@ -7,13 +7,26 @@ import {
   createDialects,
   mysql,
 } from '../index';
+import { splitRelationName } from './utils';
 
-function joinRelation(relationName: string, query: QueryBuilder<Model>) {
-  if (!query.modelClass().getRelation(relationName)) {
-    return false;
+function joinRelation(input: string, query: QueryBuilder<Model>) {
+  let relationFullName : string | undefined = input;
+  let modelClass = query.modelClass();
+
+  while (relationFullName) {
+    let relationName : string;
+    [relationName, relationFullName] = splitRelationName(relationFullName);
+
+    const relation = modelClass.getRelation(relationName);
+    if (relation) {
+      query.joinRelated(relationName);
+
+      modelClass = relation.joinModelClass;
+    } else {
+      return false;
+    }
   }
 
-  query.joinRelated(relationName);
   return true;
 }
 
