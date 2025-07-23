@@ -47,16 +47,14 @@ export class Query {
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
+    let separator = name.lastIndexOf('.');
 
-    const parts = name.split('.')
-      .reverse();
-
-    if (parts.length <= 1 || !this.options.joinRelation) {
-      return this._rootAlias + this.options.escapeField(name);
+    if (separator === -1 || !this.options.joinRelation) {
+      return this._rootAlias + this._localField(name);
     }
 
-    const field = parts.shift() as string;
-    const relationName = parts.shift() as string;
+    const field = name.slice(separator + 1);
+    const relationName = name.slice(0, separator);
 
     if (!this.options.joinRelation(relationName, this._relationContext)) {
       return this._rootAlias + this._localField(name);
