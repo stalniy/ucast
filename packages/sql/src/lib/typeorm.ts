@@ -7,16 +7,35 @@ import {
   createDialects
 } from '../index';
 
-function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
-  const meta = query.expressionMap.mainAlias!.metadata;
-  const relation = meta.findRelationWithPropertyPath(relationName);
+function joinRelation<Entity>(input: string, query: SelectQueryBuilder<Entity>) {
+  let relationFullName = input;
+  let meta = query.expressionMap.mainAlias!.metadata;
+  let alias : string | undefined = query.alias;
 
-  if (relation) {
-    query.innerJoin(`${query.alias}.${relationName}`, relationName);
-    return true;
+  while (relationFullName.length) {
+    const separatorIndex = relationFullName.indexOf('.');
+
+    let relationName : string;
+    if (separatorIndex === -1) {
+      relationName = relationFullName;
+      relationFullName = '';
+    } else {
+      relationName = relationFullName.substring(0, separatorIndex);
+      relationFullName = relationFullName.substring(separatorIndex + 1);
+    }
+
+    const relation = meta.findRelationWithPropertyPath(relationName);
+    if (relation) {
+      query.innerJoin(`${alias}.${relationName}`, relationName);
+
+      meta = relation.entityMetadata;
+      alias = relationName;
+    } else {
+      return false;
+    }
   }
 
-  return false;
+  return true;
 }
 
 const typeormPlaceholder = (index: number) => `:${index - 1}`;
