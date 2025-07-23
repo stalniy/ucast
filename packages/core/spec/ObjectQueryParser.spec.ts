@@ -33,6 +33,16 @@ describe('ObjectQueryParser', () => {
     }).to.throw(/Unexpected document operator/)
   })
 
+  it('parsed nested object "eq" condition', () => {
+    const parser = new ObjectQueryParser({ eq })
+    const ast = parser.parse({ foo: { bar: true } }) as FieldCondition
+
+    expect(ast).to.be.instanceOf(FieldCondition)
+    expect(ast.field).to.equal('foo.bar')
+    expect(ast.value).to.equal(true)
+    expect(ast.operator).to.equal('eq')
+  })
+
   it('parses object value pairs as "and" of "eq" conditions', () => {
     const parser = new ObjectQueryParser({ and, eq })
     const ast = parser.parse({ a: 1, b: 2 }) as CompoundCondition
@@ -212,7 +222,7 @@ describe('ObjectQueryParser', () => {
         const parser = new ObjectQueryParser({ eq }, { useIgnoreValue: true })
         const result = parser.parse({ id: { eq: ignoreValue } })
 
-        expect(result).to.deep.equal(new FieldCondition('eq', 'id', { eq: ignoreValue }))
+        expect(result).to.deep.equal(new FieldCondition('eq', 'id.eq', ignoreValue))
       })
     })
 
