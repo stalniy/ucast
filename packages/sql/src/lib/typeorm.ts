@@ -7,25 +7,35 @@ import {
   createDialects
 } from '../index';
 
-function joinRelation<Entity extends ObjectLiteral>(
-  relationName: string,
-  query: SelectQueryBuilder<Entity>,
-) {
-  const meta = query.expressionMap.mainAlias!.metadata;
-  const joinAlreadyExists = query.expressionMap.joinAttributes
-    .some(j => j.alias.name === relationName);
+function joinRelation<Entity extends ObjectLiteral>(relationPath: string, query: SelectQueryBuilder<Entity>) {
+  let relationFullName = relationPath;
+  let meta = query.expressionMap.mainAlias!.metadata;
+  let alias : string | undefined = query.alias;
 
-  if (joinAlreadyExists) {
-    return true;
+  while (relationFullName.length) {
+    const separatorIndex = relationFullName.indexOf('.');
+
+    let relationName : string;
+    if (separatorIndex === -1) {
+      relationName = relationFullName;
+      relationFullName = '';
+    } else {
+      relationName = relationFullName.slice(0, separatorIndex);
+      relationFullName = relationFullName.slice(separatorIndex + 1);
+    }
+
+    const relation = meta.findRelationWithPropertyPath(relationName);
+    if (relation) {
+      query.innerJoin(`${alias}.${relationName}`, relationName);
+
+      meta = relation.entityMetadata;
+      alias = relationName;
+    } else {
+      return false;
+    }
   }
 
-  const relation = meta.findRelationWithPropertyPath(relationName);
-  if (relation) {
-    query.innerJoin(`${query.alias}.${relationName}`, relationName);
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 const dialects = createDialects({
