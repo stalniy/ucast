@@ -7,18 +7,35 @@ import {
   mysql,
   type SqlOperator
 } from '../index';
+import { splitRelationName } from './utils';
 
-function joinRelation(relationName: string, query: QueryBuilder) {
+function joinRelation(relationPath: string, query: QueryBuilder) {
+  let relationFullName = relationPath;
   const privateQuery = query as any;
-  const meta = privateQuery.mainAlias.metadata as EntityMetadata;
-  const prop = meta.properties[relationName];
+  let meta = privateQuery.mainAlias.metadata as EntityMetadata;
+  let alias = query.alias;
 
-  if (prop?.ref) {
-    query.join(`${query.alias}.${relationName}`, relationName);
-    return true;
+  while (relationFullName) {
+    let relationName: string;
+    [relationName, relationFullName] = splitRelationName(relationFullName);
+
+    const relation = meta.properties[relationName];
+
+    if (relation?.ref) {
+      query.join(`${alias}.${relationName}`, relationName);
+
+      if (!relation.targetMeta) {
+        return false;
+      }
+
+      meta = relation.targetMeta;
+      alias = relationName;
+    } else {
+      return false;
+    }
   }
 
-  return false;
+  return true;
 }
 
 const dialects = createDialects({
