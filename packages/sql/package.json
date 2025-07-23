@@ -101,7 +101,8 @@
     "eslint-config-airbnb-typescript": "^8.0.2",
     "eslint-plugin-import": "^2.22.0",
     "knex": "^0.21.2",
-    "mikro-orm": "^3.6.15",
+    "@mikro-orm/sqlite": "^6.4.16",
+    "@mikro-orm/knex": "^6.4.16",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
     "objection": "^2.2.1",
@@ -115,7 +116,8 @@
     "typescript": "^3.9.5"
   },
   "peerDependencies": {
-    "mikro-orm": "^3.0.0",
+    "@mikro-orm/sqlite": "^6.0.0",
+    "@mikro-orm/knex": "^6.0.0",
     "objection": "^2.0.0",
     "sequelize": "^5.0.0 || ^6.0.0",
     "typeorm": "^0.2.0"
@@ -127,7 +129,10 @@
     "sequelize": {
       "optional": true
     },
-    "mikro-orm": {
+    "@mikro-orm/sqlite": {
+      "optional": true
+    },
+    "@mikro-orm/knex": {
       "optional": true
     },
     "typeorm": {
