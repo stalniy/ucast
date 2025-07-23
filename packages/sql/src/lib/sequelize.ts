@@ -7,12 +7,21 @@ import {
   createDialects,
   mysql
 } from '../index';
+import { splitRelationName, hasOwn } from './utils';
 
-const hasOwn = Object.hasOwn ||
-  Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
+function joinRelation(relationPath: string, Model: ModelStatic<any>) {
+  let relationFullName = relationPath;
 
-function joinRelation(relationName: string, Model: ModelStatic<any>) {
-  return hasOwn(Model.associations, relationName);
+  while (relationFullName) {
+    let relationName: string;
+    [relationName, relationFullName] = splitRelationName(relationFullName);
+
+    if (!hasOwn(Model.associations, relationName)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 const dialects = createDialects({

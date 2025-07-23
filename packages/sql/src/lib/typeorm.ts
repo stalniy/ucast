@@ -6,26 +6,21 @@ import {
   type SqlOperator,
   createDialects
 } from '../index';
+import { splitRelationName } from './utils';
 
 function joinRelation<Entity extends ObjectLiteral>(relationPath: string, query: SelectQueryBuilder<Entity>) {
   let relationFullName = relationPath;
   let meta = query.expressionMap.mainAlias!.metadata;
-  let alias : string | undefined = query.alias;
+  let alias = query.alias;
 
-  while (relationFullName.length) {
-    const separatorIndex = relationFullName.indexOf('.');
-
-    let relationName : string;
-    if (separatorIndex === -1) {
-      relationName = relationFullName;
-      relationFullName = '';
-    } else {
-      relationName = relationFullName.slice(0, separatorIndex);
-      relationFullName = relationFullName.slice(separatorIndex + 1);
-    }
+  while (relationFullName) {
+    let relationName: string;
+    [relationName, relationFullName] = splitRelationName(relationFullName);
 
     const relation = meta.findRelationWithPropertyPath(relationName);
     if (relation) {
+      // BUGALERT: query is modified but if some relation doesn't exist, and joinRelation returns false,
+      // then query will join relations which are not needed
       query.innerJoin(`${alias}.${relationName}`, relationName);
 
       meta = relation.entityMetadata;
