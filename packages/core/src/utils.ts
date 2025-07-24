@@ -32,19 +32,11 @@ export function optimizedCompoundCondition<T extends Condition>(
 ) : T | CompoundCondition<T> {
   if (conditions.length === 1) {
     const [first] = conditions;
-    if (first instanceof CompoundCondition) {
-      return optimizedCompoundCondition(first.operator, first.value);
-    }
 
     return first;
   }
 
-  const flattened = flattenConditions(operator, conditions);
-  if (flattened.length === 1) {
-    return flattened[0];
-  }
-
-  return new CompoundCondition(operator, flattened);
+  return new CompoundCondition(operator, flattenConditions(operator, conditions));
 }
 
 export const identity = <T>(x: T) => x;

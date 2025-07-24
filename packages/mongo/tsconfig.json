@@ -5,5 +5,8 @@
   ],
   "compilerOptions": {
     "outDir": "dist/types",
+    "paths": {
+      "@ucast/core": ["./packages/core/src"],
+    }
   }
 }

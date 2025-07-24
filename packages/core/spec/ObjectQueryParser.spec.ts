@@ -242,7 +242,9 @@ describe('ObjectQueryParser', () => {
         const parser = new ObjectQueryParser({ and, eq }, { useIgnoreValue: true })
         const result = parser.parse({ and: [ignoreValue] })
 
-        expect(result).to.deep.equal(new CompoundCondition('and', []))
+        expect(result).to.deep.equal(new CompoundCondition('and', [
+          new CompoundCondition('and', [])
+        ]))
       })
     })
   })

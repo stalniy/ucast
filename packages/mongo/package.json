@@ -82,6 +82,6 @@
     "typescript": "^3.9.5"
   },
   "dependencies": {
-    "@ucast/core": "^1.4.1"
+    "@ucast/core": "workspace:*"
   }
 }

@@ -315,8 +315,8 @@ describe('Built-in instructions', () => {
 
       expect(ast).to.be.instanceOf(FieldCondition)
       expect(ast.operator).to.equal('eq')
-      expect(ast.value).to.equal(query.foo.bar.$eq)
-      expect(ast.field).to.equal('boz')
+      expect(ast.value).to.equal('boz')
+      expect(ast.field).to.equal('foo.bar')
     })
   })
 

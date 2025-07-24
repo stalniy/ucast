@@ -12,7 +12,7 @@ import {
   hasOperators,
   object,
   pushIfNonNullCondition,
-  objectKeysSkipIgnore, isObject, ignoreValue,
+  objectKeysSkipIgnore, isObject,
 } from '../utils';
 
 export type FieldQueryOperators<T extends {}> = {
@@ -35,7 +35,7 @@ export type ObjectQueryFieldParsingContext = ParsingContext<FieldParsingContext 
   hasOperators<T>(value: unknown): value is T
 }>;
 
-type ParseOptions = {
+export type ParseOptions = {
   parent?: string
 };
 
@@ -147,7 +147,7 @@ export class ObjectQueryParser<
 
   parse<Q extends T>(query: Q, options: ParseOptions = {}): Condition {
     const conditions = [];
-    const keys = Object.keys(query);
+    const keys = this._objectKeys(query);
 
     this._documentInstructionContext.query = query;
 
@@ -163,16 +163,9 @@ export class ObjectQueryParser<
       const key = keys[i];
       const value = query[key];
 
-      const skip = this._options.useIgnoreValue
-          && value === ignoreValue;
-
-      if (skip) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-
       const instruction = this._instructions[key];
-      if (instruction && !options.parent) {
+
+      if (instruction) {
         if (instruction.type !== 'document' && instruction.type !== 'compound') {
           throw new Error(`Cannot use parsing instruction for operator "${key}" in "document" context as it is supposed to be used in  "${instruction.type}" context`);
         }
@@ -187,6 +180,7 @@ export class ObjectQueryParser<
         conditions.push(this.parse(
           value as T,
           {
+            ...options,
             parent: nextKey(key)
           }
         ));
