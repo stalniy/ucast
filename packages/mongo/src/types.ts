@@ -1,4 +1,4 @@
-import { Comparable } from '@ucast/core';
+import { Comparable, NestedKeys, TypeFromNestedKeyPath } from '@ucast/core';
 
 export interface MongoQueryTopLevelOperators<Value> {
   $and?: MongoQuery<Value>[],
@@ -41,6 +41,8 @@ type ItemOf<T, AdditionalArrayTypes = never> = T extends any[]
 type OperatorValues<T> = null | T | Partial<ItemOf<T, []>> | MongoQueryFieldOperators<ItemOf<T>>;
 type Query<T extends Record<PropertyKey, any>, FieldOperators> = {
   [K in keyof T]?: OperatorValues<T[K]> | FieldOperators
+} & {
+  [K in NestedKeys<T>]: OperatorValues<TypeFromNestedKeyPath<T[K]>> | FieldOperators
 };
 
 export interface DefaultOperators<T> {

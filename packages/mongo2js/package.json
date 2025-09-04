@@ -51,12 +51,6 @@
   },
   "homepage": "https://github.com/stalniy/ucast/tree/master/packages/mongo2js#readme",
   "devDependencies": {
-    "@babel/core": "^7.12.3",
-    "@babel/plugin-proposal-class-properties": "^7.12.1",
-    "@babel/plugin-proposal-object-rest-spread": "^7.12.1",
-    "@babel/plugin-transform-typescript": "^7.12.1",
-    "@babel/preset-env": "^7.12.1",
-    "@rollup/plugin-babel": "^5.2.1",
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-node-resolve": "^8.4.0",
     "@semantic-release/changelog": "^5.0.1",
@@ -79,11 +73,11 @@
     "rollup-plugin-terser": "^6.1.0",
     "semantic-release": "^17.4.7",
     "ts-node": "^8.10.2",
-    "typescript": "^3.9.7"
+    "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@ucast/core": "^1.6.1",
-    "@ucast/js": "^3.0.0",
-    "@ucast/mongo": "^2.4.0"
+    "@ucast/core": "workspace:*",
+    "@ucast/js": "workspace:*",
+    "@ucast/mongo": "workspace:*"
   }
 }

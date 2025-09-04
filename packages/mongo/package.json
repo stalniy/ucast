@@ -51,12 +51,6 @@
   },
   "homepage": "https://github.com/stalniy/ucast#readme",
   "devDependencies": {
-    "@babel/core": "^7.10.2",
-    "@babel/plugin-proposal-class-properties": "^7.10.4",
-    "@babel/plugin-proposal-object-rest-spread": "^7.10.4",
-    "@babel/plugin-transform-typescript": "^7.10.1",
-    "@babel/preset-env": "^7.10.2",
-    "@rollup/plugin-babel": "^5.0.3",
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-node-resolve": "^8.0.1",
     "@semantic-release/changelog": "^5.0.1",
@@ -79,9 +73,9 @@
     "rollup-plugin-terser": "^6.1.0",
     "semantic-release": "^17.4.7",
     "ts-node": "^8.10.2",
-    "typescript": "^3.9.5"
+    "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@ucast/core": "^1.4.1"
+    "@ucast/core": "workspace:*"
   }
 }
