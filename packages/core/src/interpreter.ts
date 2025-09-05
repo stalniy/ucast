@@ -25,7 +25,7 @@ function getInterpreter<T extends Record<string, AnyInterpreter>>(
   const interpret = interpreters[operator];
 
   if (typeof interpret !== 'function') {
-    throw new Error(`Unable to interpret "${operator}" condition. Did you forget to register interpreter for it?`);
+    throw new Error(`Unable to interpret "${String(operator)}" condition. Did you forget to register interpreter for it?`);
   }
 
   return interpret;
@@ -46,28 +46,32 @@ export function createInterpreter<T extends AnyInterpreter, U extends {} = {}>(
 ) {
   const options = rawOptions as U & InterpreterOptions;
   const getInterpreterName = options && options.getInterpreterName || defaultInterpreterName;
-  let interpret;
+  let interpret: InterpretationContext<T>['interpret'];
 
   switch (options ? options.numberOfArguments : 0) {
     case 1:
       interpret = ((condition) => {
         const interpreterName = getInterpreterName(condition, options);
         const interpretOperator = getInterpreter(interpreters, interpreterName);
-        return interpretOperator(condition, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
-      }) as InterpretationContext<T>['interpret'];
+        return interpretOperator(condition, defaultContext);  
+      });
       break;
     case 3:
-      interpret = ((condition, value, params) => {
+      interpret = ((
+        condition: ArgsExceptLast<T>[0],
+        value: ArgsExceptLast<T>[1],
+        params: ArgsExceptLast<T>[2]
+      ) => {
         const interpreterName = getInterpreterName(condition, options);
         const interpretOperator = getInterpreter(interpreters, interpreterName);
-        return interpretOperator(condition, value, params, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
-      }) as InterpretationContext<T>['interpret'];
+        return interpretOperator(condition, value, params, defaultContext);  
+      }) as unknown as InterpretationContext<T>['interpret'];
       break;
     default:
       interpret = ((condition, value) => {
         const interpreterName = getInterpreterName(condition, options);
         const interpretOperator = getInterpreter(interpreters, interpreterName);
-        return interpretOperator(condition, value, defaultContext); // eslint-disable-line @typescript-eslint/no-use-before-define
+        return interpretOperator(condition, value, defaultContext);  
       }) as InterpretationContext<T>['interpret'];
       break;
   }

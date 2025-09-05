@@ -1,5 +1,5 @@
 import { Condition } from '@ucast/core';
-import { ModelType, Utils, literal } from 'sequelize';
+import { ModelStatic, Utils, literal } from 'sequelize';
 import {
   createSqlInterpreter,
   allInterpreters,
@@ -8,8 +8,11 @@ import {
   mysql
 } from '../index';
 
-function joinRelation(relationName: string, Model: ModelType) {
-  return Model.associations.hasOwnProperty(relationName);
+const hasOwn = Object.hasOwn ||
+  Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
+
+function joinRelation(relationName: string, Model: ModelStatic<any>) {
+  return hasOwn(Model.associations, relationName);
 }
 
 const dialects = createDialects({
@@ -20,7 +23,7 @@ const dialects = createDialects({
 export function createInterpreter(interpreters: Record<string, SqlOperator<any>>) {
   const interpretSQL = createSqlInterpreter(interpreters);
 
-  return (condition: Condition, Model: ModelType) => {
+  return (condition: Condition, Model: ModelStatic<any>) => {
     const dialect = Model.sequelize!.getDialect() as keyof typeof dialects;
     const options = dialects[dialect];
 

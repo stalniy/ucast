@@ -15,11 +15,11 @@ export class Query {
   private _params: unknown[] = [];
   private _sql: string[] = [];
   private _joins: string[] = [];
-  private _lastPlaceholderIndex: number = 1;
+  private _lastPlaceholderIndex = 1;
   private _targetQuery!: unknown;
   private _rootAlias!: string;
 
-  constructor(options: SqlQueryOptions, fieldPrefix: string = '', targetQuery?: unknown) {
+  constructor(options: SqlQueryOptions, fieldPrefix = '', targetQuery?: unknown) {
     this.options = options;
     this._fieldPrefix = fieldPrefix;
     this._targetQuery = targetQuery;
@@ -75,7 +75,7 @@ export class Query {
     return this;
   }
 
-  merge(query: Query, operator: 'and' | 'or' = 'and', isInverted: boolean = false) {
+  merge(query: Query, operator: 'and' | 'or' = 'and', isInverted = false) {
     let sql = query._sql.join(` ${operator} `);
 
     if (sql[0] !== '(') {
