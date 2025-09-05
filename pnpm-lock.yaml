@@ -189,8 +189,8 @@ importers:
   packages/js:
     dependencies:
       '@ucast/core':
-        specifier: ^1.0.0
-        version: 1.10.2
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@babel/core':
         specifier: ^7.10.2
@@ -268,8 +268,8 @@ importers:
   packages/mongo:
     dependencies:
       '@ucast/core':
-        specifier: ^1.4.1
-        version: 1.10.2
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@babel/core':
         specifier: ^7.10.2
@@ -347,14 +347,14 @@ importers:
   packages/mongo2js:
     dependencies:
       '@ucast/core':
-        specifier: ^1.6.1
-        version: 1.10.2
+        specifier: workspace:*
+        version: link:../core
       '@ucast/js':
-        specifier: ^3.0.0
-        version: 3.0.4
+        specifier: workspace:*
+        version: link:../js
       '@ucast/mongo':
-        specifier: ^2.4.0
-        version: 2.4.3
+        specifier: workspace:*
+        version: link:../mongo
     devDependencies:
       '@babel/core':
         specifier: ^7.12.3
@@ -432,8 +432,8 @@ importers:
   packages/sql:
     dependencies:
       '@ucast/core':
-        specifier: ^1.0.0
-        version: 1.10.2
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@babel/core':
         specifier: ^7.10.2
@@ -2231,15 +2231,6 @@ packages:
   '@typescript-eslint/visitor-keys@8.42.0':
     resolution: {integrity: sha512-3WbiuzoEowaEn8RSnhJBrxSwX8ULYE9CXaPepS2C2W3NSA5NNIvBaslpBSBElPq0UGr0xVJlXFWOAKIkyylydQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@ucast/core@1.10.2':
-    resolution: {integrity: sha512-ons5CwXZ/51wrUPfoduC+cO7AS1/wRb0ybpQJ9RrssossDxVy4t49QxWoWgfBDvVKsz9VXzBk9z0wqTdZ+Cq8g==}
-
-  '@ucast/js@3.0.4':
-    resolution: {integrity: sha512-TgG1aIaCMdcaEyckOZKQozn1hazE0w90SVdlpIJ/er8xVumE11gYAtSbw/LBeUnA4fFnFWTcw3t6reqseeH/4Q==}
-
-  '@ucast/mongo@2.4.3':
-    resolution: {integrity: sha512-XcI8LclrHWP83H+7H2anGCEeDq0n+12FU2mXCTz6/Tva9/9ddK/iacvvhCyW6cijAAOILmt0tWplRyRhVyZLsA==}
 
   '@ungap/promise-all-settled@1.1.2':
     resolution: {integrity: sha512-sL/cEvJWAnClXw0wHk85/2L0G6Sj8UB0Ctc1TEMbKSsmpRosqhwj9gWgFRZSrBr2f9tiXISwNhCPmlfqUqyb9Q==}
@@ -9872,16 +9863,6 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.42.0
       eslint-visitor-keys: 4.2.1
-
-  '@ucast/core@1.10.2': {}
-
-  '@ucast/js@3.0.4':
-    dependencies:
-      '@ucast/core': 1.10.2
-
-  '@ucast/mongo@2.4.3':
-    dependencies:
-      '@ucast/core': 1.10.2
 
   '@ungap/promise-all-settled@1.1.2': {}
 
