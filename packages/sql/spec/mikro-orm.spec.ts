@@ -1,5 +1,6 @@
 import { FieldCondition } from '@ucast/core'
-import { MikroORM, Collection, EntitySchema, QueryBuilder } from 'mikro-orm'
+import { QueryBuilder } from '@mikro-orm/knex'
+import { MikroORM, Collection, EntitySchema } from '@mikro-orm/sqlite'
 import { interpret } from '../src/lib/mikro-orm'
 import { expect } from './specHelper'
 
@@ -91,7 +92,6 @@ async function configureORM() {
   const orm = await MikroORM.init({
     entities: [UserSchema, ProjectSchema],
     dbName: ':memory:',
-    type: 'sqlite',
   })
 
   return { User, Project, orm }

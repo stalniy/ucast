@@ -28,21 +28,31 @@ export class Query {
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
-    const relationNameIndex = name.indexOf('.');
+    let separator = name.lastIndexOf('.');
 
-    if (relationNameIndex === -1) {
+    if (separator === -1) {
       return this._rootAlias + this.options.escapeField(name);
     }
 
-    const relationName = name.slice(0, relationNameIndex);
-    const field = name.slice(relationNameIndex + 1);
+    const field = name.substring(separator + 1);
+    const relationName = name.substring(0, separator);
 
     if (!this.options.joinRelation(relationName, this._targetQuery)) {
       return this.options.escapeField(field);
     }
 
-    this._joins.push(relationName);
-    return `${this.options.escapeField(relationName)}.${this.options.escapeField(field)}`;
+    separator = relationName.lastIndexOf('.');
+
+    let fieldRelation : string;
+    if (separator !== -1) {
+      fieldRelation = relationName.substring(separator + 1);
+    } else {
+      fieldRelation = relationName;
+    }
+
+    // todo: in theory we must push each relation
+    this._joins.push(fieldRelation);
+    return `${this.options.escapeField(fieldRelation)}.${this.options.escapeField(field)}`;
   }
 
   param() {

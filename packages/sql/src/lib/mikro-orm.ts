@@ -1,5 +1,5 @@
 import { Condition } from '@ucast/core';
-import { QueryBuilder, AnyEntity, EntityMetadata } from 'mikro-orm';
+import { QueryBuilder, AnyEntity, EntityMetadata } from '@mikro-orm/knex';
 import {
   createSqlInterpreter,
   allInterpreters,
@@ -7,18 +7,36 @@ import {
   createDialects,
   mysql
 } from '../index';
+import { splitRelationName } from './utils';
 
-function joinRelation<T extends AnyEntity<T>>(relationName: string, query: QueryBuilder<T>) {
+function joinRelation<T extends AnyEntity<T>>(input: string, query: QueryBuilder<T>) {
+  let relationFullName : string | undefined = input;
   const privateQuery = query as any;
-  const meta = privateQuery.metadata.get(privateQuery.entityName) as EntityMetadata<T>;
-  const prop = meta.properties[relationName as keyof T & string];
 
-  if (prop && prop.reference) {
-    query.join(`${query.alias}.${relationName}`, relationName);
-    return true;
+  let meta = privateQuery.metadata.get(privateQuery.entityName) as EntityMetadata;
+  let alias : string | undefined = query.alias;
+
+  while (relationFullName) {
+    let relationName: string;
+    [relationName, relationFullName] = splitRelationName(relationFullName);
+
+    const relation = meta.properties[relationName];
+
+    if (relation) {
+      query.join(`${alias}.${relationName}`, relationName);
+
+      if (!relation.targetMeta) {
+        return false;
+      }
+
+      meta = relation.targetMeta;
+      alias = relationName;
+    } else {
+      return false;
+    }
   }
 
-  return false;
+  return true;
 }
 
 const dialects = createDialects({

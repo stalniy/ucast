@@ -7,9 +7,20 @@ import {
   createDialects,
   mysql
 } from '../index';
+import { splitRelationName } from './utils';
 
-function joinRelation(relationName: string, Model: ModelType) {
-  return Model.associations.hasOwnProperty(relationName);
+function joinRelation(input: string, Model: ModelType) {
+  let relationFullName : string | undefined = input;
+  while (relationFullName) {
+    let relationName: string;
+    [relationName, relationFullName] = splitRelationName(relationFullName);
+
+    if (!Model.associations.hasOwnProperty(relationName)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 const dialects = createDialects({
