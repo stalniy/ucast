@@ -26,9 +26,14 @@ function flattenConditions<T extends Condition>(
   return flatConditions;
 }
 
-export function optimizedCompoundCondition<T extends Condition>(operator: string, conditions: T[]) {
+export function optimizedCompoundCondition<T extends Condition>(
+  operator: string,
+  conditions: T[]
+) : T | CompoundCondition<T> {
   if (conditions.length === 1) {
-    return conditions[0];
+    const [first] = conditions;
+
+    return first;
   }
 
   return new CompoundCondition(operator, flattenConditions(operator, conditions));
@@ -78,4 +83,12 @@ export function pushIfNonNullCondition(conditions: Condition[], condition: Condi
   if (condition !== NULL_CONDITION) {
     conditions.push(condition);
   }
+}
+
+export function isObject(item: unknown) : item is Record<string, any> {
+  return (
+    !!item
+      && typeof item === 'object'
+      && !Array.isArray(item)
+  );
 }

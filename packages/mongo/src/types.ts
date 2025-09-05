@@ -39,8 +39,15 @@ type ItemOf<T, AdditionalArrayTypes = never> = T extends any[]
   ? T[number] | AdditionalArrayTypes
   : T;
 type OperatorValues<T> = null | T | Partial<ItemOf<T, []>> | MongoQueryFieldOperators<ItemOf<T>>;
-type Query<T extends Record<PropertyKey, any>, FieldOperators> = {
-  [K in keyof T]?: OperatorValues<T[K]> | FieldOperators
+type Query<
+    T extends Record<PropertyKey, any>,
+    FieldOperators extends Record<PropertyKey, any> | undefined
+> = {
+  [K in keyof T]?: K extends keyof NonNullable<FieldOperators> ?
+    OperatorValues<T[K]> | FieldOperators :
+    T[K] extends Record<PropertyKey, any> ?
+      Query<T[K], FieldOperators> :
+      OperatorValues<T[K]> | FieldOperators
 };
 
 export interface DefaultOperators<T> {

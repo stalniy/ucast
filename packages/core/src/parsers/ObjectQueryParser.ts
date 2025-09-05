@@ -12,7 +12,7 @@ import {
   hasOperators,
   object,
   pushIfNonNullCondition,
-  objectKeysSkipIgnore,
+  objectKeysSkipIgnore, isObject,
 } from '../utils';
 
 export type FieldQueryOperators<T extends {}> = {
@@ -35,6 +35,10 @@ export type ObjectQueryFieldParsingContext = ParsingContext<FieldParsingContext 
   hasOperators<T>(value: unknown): value is T
 }>;
 
+export type ParseOptions = {
+  parent?: string
+};
+
 export class ObjectQueryParser<
   T extends Record<any, any>,
   U extends FieldQueryOperators<T> = FieldQueryOperators<T>
@@ -43,7 +47,12 @@ export class ObjectQueryParser<
   private _fieldInstructionContext: ObjectQueryFieldParsingContext;
   private _documentInstructionContext: ParsingContext<{ query: {} }>;
   private readonly _options: Required<
-  Pick<QueryOptions, 'operatorToConditionName' | 'defaultOperatorName' | 'mergeFinalConditions'>
+  Pick<QueryOptions,
+  'operatorToConditionName' |
+  'defaultOperatorName' |
+  'mergeFinalConditions' |
+  'useIgnoreValue'
+  >
   >;
 
   private readonly _objectKeys: typeof Object.keys;
@@ -54,6 +63,7 @@ export class ObjectQueryParser<
       operatorToConditionName: options.operatorToConditionName || identity,
       defaultOperatorName: options.defaultOperatorName || 'eq',
       mergeFinalConditions: options.mergeFinalConditions || buildAnd,
+      useIgnoreValue: options.useIgnoreValue ?? false
     };
     this._instructions = Object.keys(instructions).reduce((all, name) => {
       all[name] = { name: this._options.operatorToConditionName(name), ...instructions[name] };
@@ -135,15 +145,24 @@ export class ObjectQueryParser<
     return conditions;
   }
 
-  parse<Q extends T>(query: Q): Condition {
+  parse<Q extends T>(query: Q, options: ParseOptions = {}): Condition {
     const conditions = [];
     const keys = this._objectKeys(query);
 
     this._documentInstructionContext.query = query;
 
+    const nextKey = (key: string) => {
+      if (options.parent) {
+        return `${options.parent}.${key}`;
+      }
+
+      return key;
+    };
+
     for (let i = 0, length = keys.length; i < length; i++) {
       const key = keys[i];
       const value = query[key];
+
       const instruction = this._instructions[key];
 
       if (instruction) {
@@ -156,11 +175,24 @@ export class ObjectQueryParser<
           this.parseInstruction(instruction, value, this._documentInstructionContext)
         );
       } else if (this._fieldInstructionContext.hasOperators<U>(value)) {
-        conditions.push(...this.parseFieldOperators(key, value));
+        conditions.push(...this.parseFieldOperators(nextKey(key), value));
+      } else if (isObject(value)) {
+        conditions.push(this.parse(
+          value as T,
+          {
+            ...options,
+            parent: nextKey(key)
+          }
+        ));
       } else {
         pushIfNonNullCondition(
           conditions,
-          this.parseField(key, this._options.defaultOperatorName, value, query)
+          this.parseField(
+            nextKey(key),
+            this._options.defaultOperatorName,
+            value,
+            query
+          )
         );
       }
     }

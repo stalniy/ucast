@@ -295,8 +295,8 @@ importers:
   packages/mongo:
     dependencies:
       '@ucast/core':
-        specifier: ^1.4.1
-        version: 1.10.2
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@babel/core':
         specifier: ^7.10.2

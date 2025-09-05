@@ -308,6 +308,16 @@ describe('Built-in instructions', () => {
       expect(ast.value).to.equal(query.a.$eq)
       expect(ast.field).to.equal('a')
     })
+
+    it('parsed nested condition as FieldCondition', () => {
+      const query = { foo: { bar: { $eq: 'boz' } } }
+      const ast = parser.parse(query) as FieldCondition
+
+      expect(ast).to.be.instanceOf(FieldCondition)
+      expect(ast.operator).to.equal('eq')
+      expect(ast.value).to.equal('boz')
+      expect(ast.field).to.equal('foo.bar')
+    })
   })
 
   describe('$ne', () => {

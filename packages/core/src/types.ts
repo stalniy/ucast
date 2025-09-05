@@ -2,7 +2,10 @@ import { Condition } from './Condition';
 
 export type Named<T, Name extends string = string> = T & { name: Name };
 export type Parse<T = any> = (query: T, ...args: any[]) => Condition;
-export type ParsingContext<T extends {}> = T & { parse: Parse };
+export type ParsingContext<T extends {}> = T & {
+  parse: Parse,
+  parent?: string,
+};
 
 export interface ParsingInstruction<T = unknown, Context extends {} = {}> {
   type: string
