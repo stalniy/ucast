@@ -69,3 +69,6 @@ export function testValueOrArray<T, U = T>(test: JsInterpreter<FieldCondition<T>
     return value.some(v => test(node, v, context));
   }) as JsInterpreter<FieldCondition<T>, AnyObject | U>;
 }
+
+export const hasOwn = Object.hasOwn ||
+  Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);

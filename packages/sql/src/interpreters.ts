@@ -66,7 +66,7 @@ export const regex: SqlOperator<FieldCondition<RegExp>> = (condition, query) => 
   return query.whereRaw(sql, condition.value.source);
 };
 
-function compoundOperator(combinator: 'and' | 'or', isInverted: boolean = false) {
+function compoundOperator(combinator: 'and' | 'or', isInverted = false) {
   return ((node, query, { interpret }) => {
     const childQuery = query.child();
     node.value.forEach(condition => interpret(condition, childQuery));

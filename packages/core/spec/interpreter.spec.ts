@@ -9,7 +9,7 @@ describe('createInterpreter', () => {
   })
 
   it('creates a function which mimics return type and parameters of operators', () => {
-    const eq = (node: FieldCondition, value: string, ctx: {}) => !([node, value, ctx])
+    const eq = (_: FieldCondition, _1: string, _2: {}) => false
     const interpret = createInterpreter({ eq })
     const returnType: ReturnType<typeof interpret> = true
     const args: Parameters<typeof interpret> = [condition, 'test']
@@ -20,13 +20,13 @@ describe('createInterpreter', () => {
   })
 
   it('throws exception if trying to interpret unknown operator', () => {
-    const lt = (node: FieldCondition, value: string, ctx: {}) => !([node, value, ctx])
+    const lt = (_: FieldCondition, _1: string, _2: {}) => false
     const interpret = createInterpreter({ lt })
     expect(() => interpret(condition, 'test')).to.throw(/Unable to interpret/)
   })
 
   it('passes options passed in "interpret" function and this function itself in operator interpreter as the last argument', () => {
-    const eq = (node: FieldCondition, value: string, context: any) => context
+    const eq = (_: FieldCondition, _1: string, context: any) => context
     const options = { a: 1, b: 2, c: Symbol('test') }
     const interpret = createInterpreter({ eq }, options)
     const context = interpret(condition, 'test')

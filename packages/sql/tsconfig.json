@@ -3,6 +3,9 @@
   "include": [
     "src/**/*"
   ],
+  "exclude": [
+    "src/lib/mikro-orm.ts" // TODO: upgrade mikro-orm to v6
+  ],
   "compilerOptions": {
     "outDir": "dist/types"
   }

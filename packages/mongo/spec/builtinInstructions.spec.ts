@@ -359,7 +359,7 @@ describe('Built-in instructions', () => {
   describe('$where', () => {
     it('is parsed as `DocumentCondition<Function>`', () => {
       const query = { $where: () => true }
-      const ast = parser.parse(query) as DocumentCondition<Function>
+      const ast = parser.parse(query) as DocumentCondition<() => boolean>
 
       expect(ast).to.be.instanceOf(DocumentCondition)
       expect(ast.operator).to.equal('where')
