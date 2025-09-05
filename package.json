@@ -32,6 +32,7 @@
   },
   "homepage": "https://github.com/stalniy/ucast#readme",
   "devDependencies": {
+    "@eslint/js": "^9.34.0",
     "@rollup/plugin-babel": "^5.0.3",
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-node-resolve": "^8.0.1",
@@ -39,18 +40,17 @@
     "@semantic-release/git": "^9.0.0",
     "@semantic-release/github": "^7.0.7",
     "@semantic-release/npm": "^7.0.5",
+    "@stylistic/eslint-plugin-js": "^4.4.1",
+    "@stylistic/eslint-plugin-ts": "^4.4.1",
     "@swc/core": "^1.13.5",
     "@types/chai": "^4.2.11",
     "@types/chai-spies": "^1.0.1",
     "@types/mocha": "^7.0.2",
-    "@typescript-eslint/eslint-plugin": "^3.6.0",
     "chai": "^4.2.0",
     "chai-spies": "^1.0.0",
     "codecov": "^3.7.0",
-    "eslint": "^7.4.0",
-    "eslint-config-airbnb-base": "^14.2.0",
-    "eslint-config-airbnb-typescript": "^8.0.2",
-    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-import": "^2.32.0",
+    "globals": "^16.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.4.3",
     "mocha": "^8.0.1",
@@ -59,7 +59,7 @@
     "rollup-plugin-terser": "^6.1.0",
     "semantic-release": "^17.4.7",
     "ts-node": "^8.10.2",
-    "typescript": "^5.9.2"
-  },
-  "packageManager": "pnpm@10.12.1+sha512.f0dda8580f0ee9481c5c79a1d927b9164f2c478e90992ad268bbb2465a736984391d6333d2c327913578b2804af33474ca554ba29c04a8b13060a717675ae3ac"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0"
+  }
 }

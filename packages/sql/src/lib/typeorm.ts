@@ -1,5 +1,5 @@
 import { Condition } from '@ucast/core';
-import { SelectQueryBuilder } from 'typeorm';
+import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import {
   createSqlInterpreter,
   allInterpreters,
@@ -7,7 +7,10 @@ import {
   createDialects
 } from '../index';
 
-function joinRelation<Entity>(relationName: string, query: SelectQueryBuilder<Entity>) {
+function joinRelation<Entity extends ObjectLiteral>(
+  relationName: string,
+  query: SelectQueryBuilder<Entity>,
+) {
   const meta = query.expressionMap.mainAlias!.metadata;
   const relation = meta.findRelationWithPropertyPath(relationName);
 
@@ -26,13 +29,16 @@ const dialects = createDialects({
   paramPlaceholder: typeormPlaceholder,
 });
 
-// eslint-disable-next-line no-multi-assign
+ 
 dialects.sqlite.escapeField = dialects.sqlite3.escapeField = dialects.pg.escapeField;
 
 export function createInterpreter(interpreters: Record<string, SqlOperator<any>>) {
   const interpretSQL = createSqlInterpreter(interpreters);
 
-  return <Entity>(condition: Condition, query: SelectQueryBuilder<Entity>) => {
+  return <Entity extends ObjectLiteral>(
+    condition: Condition,
+    query: SelectQueryBuilder<Entity>,
+  ) => {
     const dialect = query.connection.options.type as keyof typeof dialects;
     const options = dialects[dialect];
 

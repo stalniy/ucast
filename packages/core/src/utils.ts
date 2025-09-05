@@ -1,6 +1,7 @@
 import { Condition, CompoundCondition, NULL_CONDITION } from './Condition';
 
-const hasOwnProperty = Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
+const hasOwn = Object.hasOwn ||
+  Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
 
 export function isCompound(operator: string, condition: Condition): condition is CompoundCondition {
   return condition instanceof CompoundCondition && condition.operator === operator;
@@ -53,8 +54,8 @@ export function hasOperators<T>(
     return false;
   }
 
-  for (const prop in value) { // eslint-disable-line no-restricted-syntax, guard-for-in
-    const hasProp = hasOwnProperty(value, prop) && hasOwnProperty(instructions, prop);
+  for (const prop in value) {  
+    const hasProp = hasOwn(value, prop) && hasOwn(instructions, prop);
     if (hasProp && (!skipIgnore || value[prop] !== ignoreValue)) {
       return true;
     }
@@ -65,8 +66,8 @@ export function hasOperators<T>(
 
 export function objectKeysSkipIgnore(anyObject: Record<string, unknown>) {
   const keys: string[] = [];
-  for (const key in anyObject) { // eslint-disable-line no-restricted-syntax
-    if (hasOwnProperty(anyObject, key) && anyObject[key] !== ignoreValue) {
+  for (const key in anyObject) {  
+    if (hasOwn(anyObject, key) && anyObject[key] !== ignoreValue) {
       keys.push(key);
     }
   }

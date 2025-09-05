@@ -16,7 +16,7 @@ export abstract class Condition<T = unknown> {
     });
   }
 
-  get notes(): ReadonlyArray<Note<T>> | undefined {
+  get notes(): readonly Note<T>[] | undefined {
     return this._notes;
   }
 

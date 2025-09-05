@@ -42,7 +42,7 @@ type OperatorValues<T> = null | T | Partial<ItemOf<T, []>> | MongoQueryFieldOper
 type Query<T extends Record<PropertyKey, any>, FieldOperators> = {
   [K in keyof T]?: OperatorValues<T[K]> | FieldOperators
 } & {
-  [K in NestedKeys<T>]: OperatorValues<TypeFromNestedKeyPath<T[K]>> | FieldOperators
+  [K in NestedKeys<T>]: OperatorValues<TypeFromNestedKeyPath<T[K], K>> | FieldOperators
 };
 
 export interface DefaultOperators<T> {
