@@ -1,4 +1,4 @@
-import babel from '@rollup/plugin-babel';
+import { transform } from '@swc/core';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import { terser } from 'rollup-plugin-terser';
@@ -41,15 +41,21 @@ const build = config => ({
       extensions: ['.js', '.mjs', '.ts'],
     }),
     commonjs(),
-    babel({
-      rootMode: 'upward',
-      extensions: ['.js', '.mjs', '.ts'],
-      inputSourceMap: config.useInputSourceMaps,
-      babelHelpers: 'bundled',
-      caller: {
-        output: config.type,
+    {
+      name: 'swc',
+      transform(code) {
+        return transform(code, {
+          jsc: {
+            target: config.type,
+            parser: {
+              syntax: 'typescript',
+            },
+            loose: true,
+          },
+          sourceMaps: true,
+        });
       }
-    }),
+    },
     ...(config.plugins || [])
   ]
 });
@@ -92,8 +98,8 @@ function parseOptions(overrideOptions) {
 
 export default (overrideOptions) => {
   const builds = [
-    { id: 'es6m', type: 'es6', format: 'es', ext: '.mjs' },
-    { id: 'es6c', type: 'es6', format: 'cjs' },
+    { id: 'es6m', type: 'es2020', format: 'es', ext: '.mjs' },
+    { id: 'es6c', type: 'es2020', format: 'cjs' },
     { id: 'es5m', type: 'es5', format: 'es' },
     { id: 'umd', type: 'es5', format: 'umd', name: overrideOptions.name },
   ];

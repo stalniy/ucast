@@ -1,16 +1,11 @@
-import { Condition } from './Condition';
+import { Condition, ConditionValue } from './Condition';
 
-type ArgsExceptLast<F extends (...args: any[]) => any> =
-  F extends (a: any, c: any) => any
-    ? Parameters<(condition: Condition) => 0>
-    : F extends (a: any, b: any, c: any) => any
-      ? Parameters<(condition: Condition, value: Parameters<F>[1]) => 0>
-      : Parameters<(
-        condition: Condition,
-        value: Parameters<F>[1],
-        options: Parameters<F>[2],
-        ...args: unknown[]
-      ) => 0>;
+type FnWithoutLastArgument<T extends (...args: any[]) => any> =
+    T extends (...args: [...infer R, any]) => infer Ret
+      ? (...args: R) => Ret
+      : never;
+
+type ArgsExceptLast<T extends (...args: any[]) => any> = Parameters<FnWithoutLastArgument<T>>;
 
 export type Interpreter<T extends Condition, R> = (condition: T, ...args: any[]) => R;
 export type AnyInterpreter = Interpreter<any, any>;
@@ -50,29 +45,29 @@ export function createInterpreter<T extends AnyInterpreter, U extends {} = {}>(
 
   switch (options ? options.numberOfArguments : 0) {
     case 1:
-      interpret = ((condition) => {
+      interpret = ((condition: Condition) => {
         const interpreterName = getInterpreterName(condition, options);
         const interpretOperator = getInterpreter(interpreters, interpreterName);
-        return interpretOperator(condition, defaultContext);  
-      });
+        return interpretOperator(condition, defaultContext);
+      }) as unknown as InterpretationContext<T>['interpret'];
       break;
     case 3:
       interpret = ((
-        condition: ArgsExceptLast<T>[0],
-        value: ArgsExceptLast<T>[1],
-        params: ArgsExceptLast<T>[2]
+        condition: Condition,
+        value: ConditionValue<T>,
+        params: unknown
       ) => {
         const interpreterName = getInterpreterName(condition, options);
         const interpretOperator = getInterpreter(interpreters, interpreterName);
-        return interpretOperator(condition, value, params, defaultContext);  
+        return interpretOperator(condition, value, params, defaultContext);
       }) as unknown as InterpretationContext<T>['interpret'];
       break;
     default:
-      interpret = ((condition, value) => {
+      interpret = ((condition: Condition, value: ConditionValue<T>) => {
         const interpreterName = getInterpreterName(condition, options);
         const interpretOperator = getInterpreter(interpreters, interpreterName);
-        return interpretOperator(condition, value, defaultContext);  
-      }) as InterpretationContext<T>['interpret'];
+        return interpretOperator(condition, value, defaultContext);
+      }) as unknown as InterpretationContext<T>['interpret'];
       break;
   }
 

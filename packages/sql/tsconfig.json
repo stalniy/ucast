@@ -4,6 +4,8 @@
     "src/**/*"
   ],
   "exclude": [
+    "node_modules",
+    "**/node_modules",
     "src/lib/mikro-orm.ts" // TODO: upgrade mikro-orm to v6
   ],
   "compilerOptions": {

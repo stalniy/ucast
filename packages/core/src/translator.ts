@@ -2,8 +2,8 @@ import { Condition } from './Condition';
 import { Parse } from './types';
 import { AnyInterpreter } from './interpreter';
 
-type Bound<T> = T extends (first: Condition, ...args: infer A) => any
-  ? { (...args: A): ReturnType<T>, ast: Condition }
+type Bound<T> = T extends (first: any, ...args: infer A) => infer U
+  ? { (...args: A): U, ast: Condition }
   : never;
 
 export function createTranslatorFactory<Lang, Interpreter extends AnyInterpreter>(

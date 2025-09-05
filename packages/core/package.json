@@ -54,12 +54,6 @@
   },
   "homepage": "https://github.com/stalniy/ucast#readme",
   "devDependencies": {
-    "@babel/core": "^7.10.2",
-    "@babel/plugin-proposal-class-properties": "^7.10.4",
-    "@babel/plugin-proposal-object-rest-spread": "^7.10.4",
-    "@babel/plugin-transform-typescript": "^7.10.1",
-    "@babel/preset-env": "^7.10.2",
-    "@rollup/plugin-babel": "^5.0.3",
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-node-resolve": "^8.0.1",
     "@semantic-release/changelog": "^5.0.1",
