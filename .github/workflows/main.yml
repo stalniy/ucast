@@ -18,16 +18,16 @@ jobs:
     strategy:
       matrix:
         node:
-          - 18 # 2025-04-30
-          - 20 # 2026-05-26
+          - 20 # April 30, 2026
+          - 22 # April 30, 2027
           - latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: pnpm/action-setup@v2.0.1
+    - uses: actions/checkout@v5
+    - uses: pnpm/action-setup@v4
       with:
         version: 9.15.3
     - name: Cache dependencies
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       env:
         cache-name: ucast-deps
       with:
