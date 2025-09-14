@@ -13,6 +13,14 @@ function joinRelation(relationName: string, query: QueryBuilder<Model>) {
     return false;
   }
 
+  // Check if relation has already been joined e.g. with 'withGraphJoined'
+  if (query.hasWithGraph()) {
+    const graphExpression = query.graphExpressionObject();
+    if (graphExpression.$childNames.indexOf(relationName) !== -1) {
+      return true;
+    }
+  }
+
   query.joinRelated(relationName);
   return true;
 }
