@@ -20,32 +20,22 @@ jobs:
         node:
           - 20 # April 30, 2026
           - 22 # April 30, 2027
+          - 24 # 2027-06-16
           - latest
     steps:
-    - uses: actions/checkout@v5
-    - uses: pnpm/action-setup@v4
+    - uses: actions/checkout@v6
+    - uses: ./.github/actions/setup-deps
       with:
-        version: 9.15.3
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      env:
-        cache-name: ucast-deps
-      with:
-        path: ~/.pnpm-store
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('./pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
-    - name: Install dependencies
-      run: pnpm install
+        node-version: ${{ matrix.node }}
     - name: Build
       run: pnpm run -r build
     - name: lint & test
       run: |
         pnpm run -r lint
         pnpm run -r coverage
-    - name: submit coverage
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      run: pnpm run coverage.submit
+    - name: Submit coverage
+      uses: codecov/codecov-action@v5
+      with:
+        fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: true # optional (default = false)

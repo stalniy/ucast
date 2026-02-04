@@ -101,7 +101,6 @@ export class ObjectQueryParser<
     return this.parseInstruction(instruction, value, this._fieldInstructionContext);
   }
 
-  // eslint-disable-next-line class-methods-use-this
   protected parseInstruction(
     instruction: NamedInstruction,
     value: unknown,

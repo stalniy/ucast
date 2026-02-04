@@ -1,2 +1,7 @@
 packages:
   - packages/*
+
+minimumReleaseAge: 10080
+
+onlyBuiltDependencies:
+  - sqlite3

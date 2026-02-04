@@ -34,7 +34,11 @@ describe('Condition interpreter for Sequelize', () => {
 })
 
 function configureORM() {
-  const sequelize = new Sequelize('sqlite::memory:')
+  const sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: ':memory:',
+    logging: false,
+  })
 
   class User extends Model {}
   class Project extends Model {}

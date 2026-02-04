@@ -1,0 +1,7 @@
+{
+  "packages/core": "1.10.2",
+  "packages/js": "3.0.4",
+  "packages/mongo": "2.4.3",
+  "packages/mongo2js": "1.4.0",
+  "packages/sql": "0.0.1"
+}
