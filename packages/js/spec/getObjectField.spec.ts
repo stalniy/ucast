@@ -50,4 +50,9 @@ describe('getObjectField', () => {
 
     expect(getObjectField(object, 'value', get)).to.equal(state.value)
   })
+
+  it('returns undefined when trying to traverse path beyond a primitive value', () => {
+    const object = { foo: 22 }
+    expect(getObjectField(object, 'foo.bar')).to.be.undefined
+  })
 })

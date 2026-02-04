@@ -85,6 +85,15 @@ describe('guard', () => {
     expect(test({ prop: { b: 1 } })).to.be.false
   })
 
+  it('returns false when trying to match nested field against primitive value', () => {
+    expect(guard({ 'foo': 22 })({ foo: 22 })).to.be.true // OK
+    expect(guard({ 'foo.bar': 22 })({ baz: 22 })).to.be.false // OK
+    expect(guard({ 'foo.bar': 22 })({ foo: { bar: 22 } })).to.be.true // OK
+    expect(guard({ 'foo.bar': 22 })({ foo: { baz: 22 } })).to.be.false // OK
+    expect(guard({ 'foo.bar': 22 })({ foo: 23 })).to.be.false // OK
+    expect(guard({ 'foo.bar': 22 })({ foo: 22 })).to.be.false // BUG FIX
+  })
+
   function overwriteProperty(obj: any, prop: string, value: unknown) {
     const original = obj[prop]
     obj[prop] = value

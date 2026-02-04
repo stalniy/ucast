@@ -51,7 +51,7 @@ export function getValueByPath(object: AnyObject, field: string, get: GetField) 
     value = getField(value, paths[i], get);
 
     if (!value || typeof value !== 'object') {
-      return value;
+      return i < length - 1 ? undefined : value;
     }
   }
 
