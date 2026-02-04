@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.4...@ucast/js@3.1.0) (2026-02-04)
+
+
+### Features
+
+* merges @ucast/sql alpha into main stream ([#68](https://github.com/stalniy/ucast/issues/68)) ([a058b3b](https://github.com/stalniy/ucast/commit/a058b3ba6fcea17e5d02dbe76b9fe1c6b8950624))
+
+
+### Bug Fixes
+
+* ensure getValueByPath returns undefined on incomplete path traversal ([#65](https://github.com/stalniy/ucast/issues/65)) ([6f4c2db](https://github.com/stalniy/ucast/commit/6f4c2dbcba045e7ce7599c523eec6ec5529869a2))
+
 ## [3.0.4](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.3...@ucast/js@3.0.4) (2024-01-31)
 
 
