@@ -1,4 +1,4 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, CompoundCondition } from '@ucast/core'
 import {
   EntitySchema,
   createConnection,
@@ -66,6 +66,22 @@ describe('Condition interpreter for TypeORM', () => {
     ].join(' '))
     expect(query.getParameters()).to.eql({ 0: 'test' })
   })
+
+  it("shouldn't join the same relation several times", () => {
+    const condition = new CompoundCondition('and', [
+      new FieldCondition('eq', 'projects.name', 'test'),
+      new FieldCondition('eq', 'projects.active', true),
+    ])
+    const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
+
+    expect(query.getQuery()).to.equal([
+      'SELECT "u"."id" AS "u_id", "u"."name" AS "u_name"',
+      'FROM "user" "u"',
+      'INNER JOIN "project" "projects" ON "projects"."userId"="u"."id"',
+      'WHERE ("projects"."name" = :0 and "projects"."active" = :1)'
+    ].join(' '))
+    expect(query.getParameters()).to.eql({ 0: 'test', 1: true })
+  })
 })
 
 async function configureORM() {
@@ -79,6 +95,7 @@ async function configureORM() {
     id!: number
     name!: string
     user!: User
+    active!: boolean
   }
 
   const UserSchema = new EntitySchema<User>({
@@ -103,6 +120,7 @@ async function configureORM() {
     columns: {
       id: { primary: true, type: 'int', generated: true },
       name: { type: 'varchar' },
+      active: { type: 'boolean' }
     },
     relations: {
       user: { target: 'User', type: 'many-to-one' }

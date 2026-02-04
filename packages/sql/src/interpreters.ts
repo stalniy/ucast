@@ -38,7 +38,6 @@ function manyParamsOperator(name: string): SqlOperator<FieldCondition<unknown[]>
   return (condition, query) => {
     return query.whereRaw(
       `${query.field(condition.field)} ${name}(${query.manyParams(condition.value).join(', ')})`,
-      ...condition.value
     );
   };
 }
@@ -48,8 +47,7 @@ export const nin = manyParamsOperator('not in');
 
 export const mod: SqlOperator<FieldCondition<[number, number]>> = (condition, query) => {
   const params = query.manyParams(condition.value);
-  const sql = `mod(${query.field(condition.field)}, ${params[0]}) = ${params[1]}`;
-  return query.whereRaw(sql, ...condition.value);
+  return query.whereRaw(`mod(${query.field(condition.field)}, ${params[0]}) = ${params[1]}`);
 };
 
 type IElemMatch = SqlOperator<FieldCondition<Condition>>;
@@ -60,15 +58,16 @@ export const elemMatch: IElemMatch = (condition, query, { interpret }) => {
 export const regex: SqlOperator<FieldCondition<RegExp>> = (condition, query) => {
   const sql = query.options.regexp(
     query.field(condition.field),
-    query.param(),
+    query.param(condition.value.source),
     condition.value.ignoreCase
   );
-  return query.whereRaw(sql, condition.value.source);
+  return query.whereRaw(sql);
 };
 
 function compoundOperator(combinator: 'and' | 'or', isInverted = false) {
+  const childOptions = { linkParams: true };
   return ((node, query, { interpret }) => {
-    const childQuery = query.child();
+    const childQuery = query.child(childOptions);
     node.value.forEach(condition => interpret(condition, childQuery));
     return query.merge(childQuery, combinator, isInverted);
   }) as SqlOperator<CompoundCondition>;

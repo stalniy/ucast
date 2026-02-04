@@ -182,7 +182,7 @@ describe('Condition Interpreter', () => {
       ])
       const [sql, params] = interpret(condition, options)
 
-      expect(sql).to.equal('not ("age" = $1 or "age" = $2)')
+      expect(sql).to.equal('not (("age" = $1 or "age" = $2))')
       expect([12, 13]).to.deep.equal(params)
     })
 
@@ -241,10 +241,10 @@ describe('Condition Interpreter', () => {
       const [sql, params] = interpret(condition, options)
 
       expect(sql).to.equal([
-        '("age" = $1 or "age" = $2)',
+        '(("age" = $1 or "age" = $2)',
         'or ("qty" > $3 and "qty" < $4)',
         'or not ("qty" > $5 or "qty" < $6)',
-        'or not ("active" = $7 and "age" > $8)'
+        'or not (("active" = $7 and "age" > $8)))',
       ].join(' '))
       expect(params).to.deep.equal([1, 2, 1, 20, 10, 20, false, 18])
     })

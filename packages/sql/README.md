@@ -91,9 +91,9 @@ const [sql, params, joins] = interpret(condition, {
   joinRelation: relationName => relations.hasOwnProperty(relationName)
 });
 
-console.log(sql) // "address"."street" = $1
-console.log(params) // ['some street']
-console.log(joins) // ['address']
+console.log(sql); // "address"."street" = $1
+console.log(params); // ['some street']
+console.log(joins); // ['address']
 ```
 
 ### Custom interpreter

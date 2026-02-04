@@ -1,4 +1,4 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, CompoundCondition } from '@ucast/core'
 import { Model, Sequelize, DataTypes } from 'sequelize'
 import { interpret } from '../src/lib/sequelize'
 import { expect } from './specHelper'
@@ -30,6 +30,19 @@ describe('Condition interpreter for Sequelize', () => {
       { association: 'projects', required: true }
     ])
     expect(query.where.val).to.equal('`projects`.`name` = \'test\'')
+  })
+
+  it('should join the same relation exactly one time', () => {
+    const condition = new CompoundCondition('and', [
+      new FieldCondition('eq', 'projects.name', 'test'),
+      new FieldCondition('eq', 'projects.active', true),
+    ])
+
+    const query = interpret(condition, User)
+    expect(query.include).to.deep.equal([
+      { association: 'projects', required: true }
+    ])
+    expect(query.where.val).to.equal('(`projects`.`name` = \'test\' and `projects`.`active` = 1)')
   })
 })
 
