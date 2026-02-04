@@ -9,6 +9,13 @@ All notable changes to this project will be documented in this file.
 
 * ensures that `toJSON` is not called on primitives ([#54](https://github.com/stalniy/ucast/issues/54)) ([cc70754](https://github.com/stalniy/ucast/commit/cc707543119ba4278e63b2ee7894460756f3e61d))
 
+## [1.4.1](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.4.0...@ucast/mongo2js@1.4.1) (2026-02-04)
+
+
+### Bug Fixes
+
+* ensure getValueByPath returns undefined on incomplete path traversal ([#65](https://github.com/stalniy/ucast/issues/65)) ([6f4c2db](https://github.com/stalniy/ucast/commit/6f4c2dbcba045e7ce7599c523eec6ec5529869a2))
+
 ## [1.3.4](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.3.3...@ucast/mongo2js@1.3.4) (2023-02-15)
 
 
