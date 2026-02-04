@@ -1,89 +1,133 @@
 import {
   createInterpreter,
   Condition,
-  InterpretationContext
+  InterpretationContext,
+  InterpreterOptions
 } from '@ucast/core';
 import { DialectOptions } from './dialects';
 
 export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string
+  foreignField?(field: string, relationName: string): string
+  localField?(field: string): string
+  joinRelation?(relationName: string, context: unknown): boolean
 }
+
+type ChildOptions = Partial<Pick<
+SqlQueryOptions,
+'foreignField' | 'localField' | 'joinRelation'
+>> & {
+  linkParams?: boolean
+};
 
 export class Query {
   public readonly options!: SqlQueryOptions;
   private _fieldPrefix!: string;
   private _params: unknown[] = [];
   private _sql: string[] = [];
-  private _joins: string[] = [];
+  private _joins = new Set<string>();
   private _lastPlaceholderIndex = 1;
-  private _targetQuery!: unknown;
+  private _relationContext!: unknown;
   private _rootAlias!: string;
 
-  constructor(options: SqlQueryOptions, fieldPrefix = '', targetQuery?: unknown) {
+  constructor(options: SqlQueryOptions, fieldPrefix = '', relationContext?: unknown) {
     this.options = options;
     this._fieldPrefix = fieldPrefix;
-    this._targetQuery = targetQuery;
+    this._relationContext = relationContext;
     this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
+
+    if (this.options.foreignField) {
+      this._foreignField = this.options.foreignField;
+    }
+
+    if (this.options.localField) {
+      this._localField = this.options.localField;
+    }
   }
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
+
+    if (!this.options.joinRelation) {
+      return this._rootAlias + this._localField(name);
+    }
+
     const relationNameIndex = name.indexOf('.');
 
     if (relationNameIndex === -1) {
-      return this._rootAlias + this.options.escapeField(name);
+      return this._rootAlias + this._localField(name);
     }
 
     const relationName = name.slice(0, relationNameIndex);
     const field = name.slice(relationNameIndex + 1);
 
-    if (!this.options.joinRelation(relationName, this._targetQuery)) {
-      return this.options.escapeField(field);
+    if (!this.options.joinRelation(relationName, this._relationContext)) {
+      return this._rootAlias + this._localField(name);
     }
 
-    this._joins.push(relationName);
+    this._joins.add(relationName);
+    return this._foreignField(field, relationName);
+  }
+
+  private _localField(field: string) {
+    return this.options.escapeField(field);
+  }
+
+  private _foreignField(field: string, relationName: string) {
     return `${this.options.escapeField(relationName)}.${this.options.escapeField(field)}`;
   }
 
-  param() {
-    return this.options.paramPlaceholder(this._lastPlaceholderIndex + this._params.length);
+  param(value: unknown) {
+    const index = this._lastPlaceholderIndex + this._params.length;
+    this._params.push(value);
+    return this.options.paramPlaceholder(index);
   }
 
   manyParams(items: unknown[]) {
-    const startIndex = this._lastPlaceholderIndex + this._params.length;
-    return items.map((_, i) => this.options.paramPlaceholder(startIndex + i));
+    return items.map(item => this.param(item));
   }
 
-  child() {
-    const query = new Query(this.options, this._fieldPrefix, this._targetQuery);
-    query._lastPlaceholderIndex = this._lastPlaceholderIndex + this._params.length;
+  child(options?: ChildOptions) {
+    let queryOptions: SqlQueryOptions = this.options;
+    let canLinkParams = false;
+
+    if (options) {
+      const { linkParams, ...overrideOptions } = options;
+      queryOptions = { ...this.options, ...overrideOptions };
+      canLinkParams = !!linkParams;
+    }
+
+    const query = new Query(queryOptions, this._fieldPrefix, this._relationContext);
+
+    if (canLinkParams) {
+      query._params = this._params;
+      query._joins = this._joins; // TODO: investigate case of referencing relations of relations
+    } else {
+      query._lastPlaceholderIndex = this._lastPlaceholderIndex + this._params.length;
+    }
     return query;
   }
 
-  where(field: string, operator: string, value?: unknown) {
-    const sql = `${this.field(field)} ${operator} ${this.param()}`;
-    return this.whereRaw(sql, value);
+  where(field: string, operator: string, value: unknown) {
+    return this.whereRaw(`${this.field(field)} ${operator} ${this.param(value)}`);
   }
 
-  whereRaw(sql: string, ...values: unknown[]) {
+  whereRaw(sql: string) {
     this._sql.push(sql);
-
-    if (values) {
-      this._params.push(...values);
-    }
-
     return this;
   }
 
   merge(query: Query, operator: 'and' | 'or' = 'and', isInverted = false) {
-    let sql = query._sql.join(` ${operator} `);
+    const sql = query._sql.join(` ${operator} `);
 
-    if (sql[0] !== '(') {
-      sql = `(${sql})`;
+    this._sql.push(`${isInverted ? 'not ' : ''}(${sql})`);
+
+    if (this._params !== query._params) {
+      this._params.push(...query._params);
+      for (const relation of query._joins) {  
+        this._joins.add(relation);
+      }
     }
-
-    this._sql.push(`${isInverted ? 'not ' : ''}${sql}`);
-    this._params.push(...query._params);
     return this;
   }
 
@@ -100,7 +144,7 @@ export class Query {
   }
 
   toJSON(): [string, unknown[], string[]] {
-    return [this._sql.join(' and '), this._params, this._joins];
+    return [this._sql.join(' and '), this._params, Array.from(this._joins)];
   }
 }
 
@@ -110,9 +154,16 @@ export type SqlOperator<C extends Condition> = (
   context: InterpretationContext<SqlOperator<C>>,
 ) => Query;
 
-export function createSqlInterpreter(operators: Record<string, SqlOperator<any>>) {
-  const interpret = createInterpreter<SqlOperator<any>>(operators);
-  return (condition: Condition, options: SqlQueryOptions, targetQuery?: unknown) => {
-    return interpret(condition, new Query(options, '', targetQuery)).toJSON();
+interface SqlInterpreterOptions {
+  getInterpreterName?: InterpreterOptions['getInterpreterName']
+}
+
+export function createSqlInterpreter(
+  operators: Record<string, SqlOperator<any>>,
+  options?: SqlInterpreterOptions
+) {
+  const interpret = createInterpreter<SqlOperator<any>>(operators, options);
+  return (condition: Condition, sqlOptions: SqlQueryOptions, relationContext?: unknown) => {
+    return interpret(condition, new Query(sqlOptions, '', relationContext)).toJSON();
   };
 }

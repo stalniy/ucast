@@ -34,8 +34,7 @@ export const mssql = {
 
 export interface DialectOptions {
   regexp(field: string, placeholder: string, ignoreCase: boolean): string
-  joinRelation?(relationName: string, context: unknown): boolean
-  escapeField(field: string): string
+  escapeField(field: string, relationName?: string): string
   paramPlaceholder(index: number): string
 }
 

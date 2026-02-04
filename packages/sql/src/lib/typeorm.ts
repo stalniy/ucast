@@ -12,8 +12,14 @@ function joinRelation<Entity extends ObjectLiteral>(
   query: SelectQueryBuilder<Entity>,
 ) {
   const meta = query.expressionMap.mainAlias!.metadata;
-  const relation = meta.findRelationWithPropertyPath(relationName);
+  const joinAlreadyExists = query.expressionMap.joinAttributes
+    .some(j => j.alias.name === relationName);
 
+  if (joinAlreadyExists) {
+    return true;
+  }
+
+  const relation = meta.findRelationWithPropertyPath(relationName);
   if (relation) {
     query.innerJoin(`${query.alias}.${relationName}`, relationName);
     return true;
@@ -22,11 +28,9 @@ function joinRelation<Entity extends ObjectLiteral>(
   return false;
 }
 
-const typeormPlaceholder = (index: number) => `:${index - 1}`;
-
 const dialects = createDialects({
   joinRelation,
-  paramPlaceholder: typeormPlaceholder,
+  paramPlaceholder: index => `:${index - 1}`
 });
 
  

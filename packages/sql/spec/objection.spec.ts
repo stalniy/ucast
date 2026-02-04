@@ -1,4 +1,4 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, CompoundCondition } from '@ucast/core'
 import { Model, QueryBuilder } from 'objection'
 import Knex from 'knex'
 import { interpret } from '../src/lib/objection'
@@ -43,6 +43,22 @@ describe('Condition interpreter for Objection', () => {
       where "projects"."name" = 'test'
     `.trim())
   })
+
+  it('should join the same relation exactly one time', () => {
+    const condition = new CompoundCondition('and', [
+      new FieldCondition('eq', 'projects.name', 'test'),
+      new FieldCondition('eq', 'projects.active', true),
+    ])
+
+    const query = interpret(condition, User.query())
+
+    expect(query.toKnexQuery().toString()).to.equal(linearize`
+      select "users".*
+      from "users"
+        inner join "projects" on "projects"."user_id" = "users"."id"
+      where ("projects"."name" = 'test' and "projects"."active" = true)
+    `.trim())
+  })
 })
 
 function configureORM() {
@@ -70,7 +86,8 @@ function configureORM() {
         user: {
           relation: Model.BelongsToOneRelation,
           modelClass: User,
-          join: { from: 'users.id', to: 'projects.user_id' }
+          join: { from: 'users.id', to: 'projects.user_id' },
+          active: Boolean
         }
       }
     }
