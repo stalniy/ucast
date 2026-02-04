@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+
+  "release-type": "node",
+  "separate-pull-requests": false,
+  "tag-separator": "@",
+  "include-component-in-tag": true,
+  "include-v-in-tag": false,
+
+  "packages": {
+    "packages/core": {
+      "package-name": "@ucast/core",
+      "component": "@ucast/core",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/js": {
+      "package-name": "@ucast/js",
+      "component": "@ucast/js",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/mongo": {
+      "package-name": "@ucast/mongo",
+      "component": "@ucast/mongo",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/mongo2js": {
+      "package-name": "@ucast/mongo2js",
+      "component": "@ucast/mongo2js",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/sql": {
+      "package-name": "@ucast/sql",
+      "component": "@ucast/sql",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

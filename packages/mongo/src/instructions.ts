@@ -37,7 +37,7 @@ function ensureIsComparable(instruction: NamedInstruction, value: string | numbe
 }
 
 const ensureIs = (type: string) => (instruction: NamedInstruction, value: unknown) => {
-  if (typeof value !== type) { // eslint-disable-line valid-typeof
+  if (typeof value !== type) {
     throw new Error(`"${instruction.name}" expects value to be a "${type}"`);
   }
 };

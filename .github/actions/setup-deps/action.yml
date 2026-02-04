@@ -1,0 +1,43 @@
+name: 'Setup dependencies'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: 24
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        package-manager-cache: false
+    - name: Node & npm versions
+      shell: bash
+      run: |
+        echo "Node version: $(node -v)"
+        echo "npm version: $(npm -v)"
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10.28.0
+        run_install: false
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+    - name: Cache dependencies
+      uses: actions/cache@v5
+      env:
+        cache-name: ucast-deps
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('./pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install
