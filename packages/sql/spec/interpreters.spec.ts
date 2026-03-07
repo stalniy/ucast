@@ -283,6 +283,34 @@ describe('Condition Interpreter', () => {
       expect(options.joinRelation).to.have.been.called.twice
       spy.restore(options, 'joinRelation')
     })
+
+    it('generates query from a nested elemMatch condition', () => {
+      const condition = new Field('elemMatch', 'address', new Field('elemMatch', 'city', new Field('eq', 'name', 'NYC')))
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal('"address"."city"."name" = $1')
+      expect(params).to.deep.equal(['NYC'])
+    })
+
+    it('calls "joinRelation" with the full nested relation path', () => {
+      spy.on(options, 'joinRelation')
+      const condition = new Field('elemMatch', 'address', new Field('elemMatch', 'city', new Field('eq', 'name', 'NYC')))
+      interpret(condition, options)
+
+      expect(options.joinRelation).to.have.been.called.with('address.city')
+      spy.restore(options, 'joinRelation')
+    })
+
+    it('generates query from a nested elemMatch with compound condition', () => {
+      const condition = new Field('elemMatch', 'address', new Field('elemMatch', 'city', new CompoundCondition('and', [
+        new Field('eq', 'name', 'NYC'),
+        new Field('eq', 'zip', '10001'),
+      ])))
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal('("address"."city"."name" = $1 and "address"."city"."zip" = $2)')
+      expect(params).to.deep.equal(['NYC', '10001'])
+    })
   })
 
   describe('regex', () => {

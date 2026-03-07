@@ -52,7 +52,7 @@ export class Query {
       return this._rootAlias + this._localField(name);
     }
 
-    const relationNameIndex = name.indexOf('.');
+    const relationNameIndex = name.lastIndexOf('.');
 
     if (relationNameIndex === -1) {
       return this._rootAlias + this._localField(name);
@@ -74,7 +74,7 @@ export class Query {
   }
 
   private _foreignField(field: string, relationName: string) {
-    return `${this.options.escapeField(relationName)}.${this.options.escapeField(field)}`;
+    return `${relationName.split('.').map(part => this.options.escapeField(part)).join('.')}.${this.options.escapeField(field)}`;
   }
 
   param(value: unknown) {
@@ -135,7 +135,7 @@ export class Query {
     const prevPrefix = this._fieldPrefix;
 
     try {
-      this._fieldPrefix = `${prefix}.`;
+      this._fieldPrefix = `${this._fieldPrefix}${prefix}.`;
       callback();
       return this;
     } finally {
