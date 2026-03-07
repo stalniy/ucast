@@ -77,3 +77,24 @@ export const not = compoundOperator('and', true);
 export const and = compoundOperator('and');
 export const or = compoundOperator('or');
 export const nor = compoundOperator('or', true);
+
+export const sqlCase: SqlOperator<CompoundCondition> = (node, query, { interpret }) => {
+  const childOptions = { linkParams: true };
+  const whenClauses: string[] = [];
+
+  for (const condition of node.value) {
+    const isInverted = condition instanceof CompoundCondition && condition.operator === 'not';
+    const childQuery = query.child(childOptions);
+
+    if (isInverted) {
+      (condition as CompoundCondition).value.forEach(c => interpret(c, childQuery));
+    } else {
+      interpret(condition, childQuery);
+    }
+
+    const [sql] = childQuery.toJSON();
+    whenClauses.push(`WHEN ${sql} THEN ${isInverted ? 0 : 1}`);
+  }
+
+  return query.whereRaw(`(CASE ${whenClauses.join(' ')} ELSE 0 END = 1)`);
+};

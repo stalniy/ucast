@@ -18,6 +18,7 @@ import {
   mod,
   elemMatch,
   regex,
+  sqlCase,
   SqlQueryOptions,
   pg,
   oracle,
@@ -247,6 +248,109 @@ describe('Condition Interpreter', () => {
         'or not (("active" = $7 and "age" > $8)))',
       ].join(' '))
       expect(params).to.deep.equal([1, 2, 1, 20, 10, 20, false, 18])
+    })
+  })
+
+  describe('case (sqlCase)', () => {
+    const interpret = createSqlInterpreter({ case: sqlCase, and, or, not, eq, lt, gt, gte })
+
+    it('generates CASE/WHEN with a single direct condition', () => {
+      const condition = new CompoundCondition('case', [
+        new Field('eq', 'id', 1)
+      ])
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal('(CASE WHEN "id" = $1 THEN 1 ELSE 0 END = 1)')
+      expect(params).to.deep.equal([1])
+    })
+
+    it('generates CASE/WHEN with a single inverted condition', () => {
+      const condition = new CompoundCondition('case', [
+        new CompoundCondition('not', [new Field('eq', 'id', 1)])
+      ])
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal('(CASE WHEN "id" = $1 THEN 0 ELSE 0 END = 1)')
+      expect(params).to.deep.equal([1])
+    })
+
+    it('generates CASE/WHEN mixing inverted and direct conditions', () => {
+      const condition = new CompoundCondition('case', [
+        new CompoundCondition('not', [new Field('eq', 'id', 1)]),
+        new Field('eq', 'id', 1),
+      ])
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal('(CASE WHEN "id" = $1 THEN 0 WHEN "id" = $2 THEN 1 ELSE 0 END = 1)')
+      expect(params).to.deep.equal([1, 1])
+    })
+
+    it('generates CASE/WHEN for complex rules from issue example', () => {
+      // cannot('manage', 'Post', { id: { $gte: 5 } })
+      // can('manage', 'Post', { id: 10 })
+      // can('manage', 'Post', { id: 1 })
+      // cannot('manage', 'Post', { id: 1, private: true })
+      // Rules are ordered highest priority first
+      const condition = new CompoundCondition('case', [
+        new CompoundCondition('not', [
+          new CompoundCondition('and', [
+            new Field('eq', 'id', 1),
+            new Field('eq', 'private', true),
+          ])
+        ]),
+        new Field('eq', 'id', 1),
+        new Field('eq', 'id', 10),
+        new CompoundCondition('not', [new Field('gte', 'id', 5)]),
+      ])
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal([
+        '(CASE',
+        'WHEN ("id" = $1 and "private" = $2) THEN 0',
+        'WHEN "id" = $3 THEN 1',
+        'WHEN "id" = $4 THEN 1',
+        'WHEN "id" >= $5 THEN 0',
+        'ELSE 0 END = 1)',
+      ].join(' '))
+      expect(params).to.deep.equal([1, true, 1, 10, 5])
+    })
+
+    it('generates CASE/WHEN with compound or conditions', () => {
+      const condition = new CompoundCondition('case', [
+        new CompoundCondition('or', [
+          new Field('eq', 'age', 1),
+          new Field('eq', 'age', 2),
+        ]),
+      ])
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal('(CASE WHEN ("age" = $1 or "age" = $2) THEN 1 ELSE 0 END = 1)')
+      expect(params).to.deep.equal([1, 2])
+    })
+
+    it('generates CASE/WHEN with not containing multiple conditions', () => {
+      const condition = new CompoundCondition('case', [
+        new CompoundCondition('not', [
+          new Field('eq', 'id', 1),
+          new Field('eq', 'private', true),
+        ]),
+      ])
+      const [sql, params] = interpret(condition, options)
+
+      expect(sql).to.equal('(CASE WHEN "id" = $1 and "private" = $2 THEN 0 ELSE 0 END = 1)')
+      expect(params).to.deep.equal([1, true])
+    })
+
+    it('works with MySQL dialect', () => {
+      const mysqlOptions: SqlQueryOptions = { ...mysql, joinRelation }
+      const condition = new CompoundCondition('case', [
+        new CompoundCondition('not', [new Field('eq', 'id', 1)]),
+        new Field('eq', 'id', 1),
+      ])
+      const [sql, params] = interpret(condition, mysqlOptions)
+
+      expect(sql).to.equal('(CASE WHEN `id` = ? THEN 0 WHEN `id` = ? THEN 1 ELSE 0 END = 1)')
+      expect(params).to.deep.equal([1, 1])
     })
   })
 
