@@ -1,9 +1,9 @@
-import { Condition } from '@ucast/core';
-import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+import { type Condition } from '@ucast/core';
+import { type ObjectLiteral, type SelectQueryBuilder } from 'typeorm';
 import {
   createSqlInterpreter,
   allInterpreters,
-  SqlOperator,
+  type SqlOperator,
   createDialects
 } from '../index';
 
@@ -33,7 +33,7 @@ const dialects = createDialects({
   paramPlaceholder: index => `:${index - 1}`
 });
 
- 
+
 dialects.sqlite.escapeField = dialects.sqlite3.escapeField = dialects.pg.escapeField;
 
 export function createInterpreter(interpreters: Record<string, SqlOperator<any>>) {

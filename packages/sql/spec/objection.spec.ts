@@ -1,8 +1,8 @@
 import { FieldCondition, CompoundCondition } from '@ucast/core'
 import { Model, QueryBuilder } from 'objection'
 import Knex from 'knex'
-import { interpret } from '../src/lib/objection'
-import { expect, linearize } from './specHelper'
+import { interpret } from '../src/lib/objection.ts'
+import { expect, linearize } from './specHelper.ts'
 
 describe('Condition interpreter for Objection', () => {
   const { User } = configureORM()

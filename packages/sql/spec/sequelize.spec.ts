@@ -1,7 +1,7 @@
 import { FieldCondition, CompoundCondition } from '@ucast/core'
 import { Model, Sequelize, DataTypes } from 'sequelize'
-import { interpret } from '../src/lib/sequelize'
-import { expect } from './specHelper'
+import { interpret } from '../src/lib/sequelize.ts'
+import { expect } from './specHelper.ts'
 
 describe('Condition interpreter for Sequelize', () => {
   const { User } = configureORM()

@@ -1,4 +1,4 @@
-import * as interpreters from './interpreters';
+import * as interpreters from './interpreters.ts';
 
 export const allInterpreters = {
   ...interpreters,

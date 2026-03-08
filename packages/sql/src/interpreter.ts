@@ -1,10 +1,10 @@
 import {
   createInterpreter,
-  Condition,
-  InterpretationContext,
-  InterpreterOptions
+  type Condition,
+  type InterpretationContext,
+  type InterpreterOptions
 } from '@ucast/core';
-import { DialectOptions } from './dialects';
+import { type DialectOptions } from './dialects.ts';
 
 export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string
@@ -124,7 +124,7 @@ export class Query {
 
     if (this._params !== query._params) {
       this._params.push(...query._params);
-      for (const relation of query._joins) {  
+      for (const relation of query._joins) {
         this._joins.add(relation);
       }
     }

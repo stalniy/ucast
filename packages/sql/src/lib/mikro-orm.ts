@@ -1,19 +1,19 @@
-import { Condition } from '@ucast/core';
-import { QueryBuilder, AnyEntity, EntityMetadata } from 'mikro-orm';
+import { EntityMetadata } from '@mikro-orm/core';
+import { type Condition } from '@ucast/core';
 import {
-  createSqlInterpreter,
   allInterpreters,
-  SqlOperator,
   createDialects,
-  mysql
+  createSqlInterpreter,
+  mysql,
+  type SqlOperator
 } from '../index';
 
-function joinRelation<T extends AnyEntity<T>>(relationName: string, query: QueryBuilder<T>) {
+function joinRelation(relationName: string, query: QueryBuilder) {
   const privateQuery = query as any;
-  const meta = privateQuery.metadata.get(privateQuery.entityName) as EntityMetadata<T>;
-  const prop = meta.properties[relationName as keyof T & string];
+  const meta = privateQuery.mainAlias.metadata as EntityMetadata;
+  const prop = meta.properties[relationName];
 
-  if (prop && prop.reference) {
+  if (prop?.ref) {
     query.join(`${query.alias}.${relationName}`, relationName);
     return true;
   }
@@ -29,8 +29,9 @@ const dialects = createDialects({
 export function createInterpreter(interpreters: Record<string, SqlOperator<any>>) {
   const interpretSQL = createSqlInterpreter(interpreters);
 
-  return <T extends AnyEntity<T>>(condition: Condition, query: QueryBuilder<T>) => {
-    const dialect = (query as any).driver.config.get('type') as keyof typeof dialects;
+  return <T extends QueryBuilder>(condition: Condition, query: T) => {
+    const platformName = (query as any).platform.constructor.name;
+    const dialect = platformName.slice(0, platformName.indexOf('Platform')).toLowerCase() as keyof typeof dialects;
     const options = dialects[dialect];
 
     if (!options) {
@@ -43,3 +44,9 @@ export function createInterpreter(interpreters: Record<string, SqlOperator<any>>
 }
 
 export const interpret = createInterpreter(allInterpreters);
+
+interface QueryBuilder {
+  alias: string;
+  join(path: string, alias: string): this;
+  where(sql: string, params?: unknown[]): this;
+}
