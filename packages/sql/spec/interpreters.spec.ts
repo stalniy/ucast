@@ -1,5 +1,5 @@
 import { FieldCondition as Field, CompoundCondition } from '@ucast/core'
-import { expect, spy } from './specHelper'
+import { expect, spy } from './specHelper.ts'
 import {
   createSqlInterpreter,
   eq,
@@ -18,12 +18,12 @@ import {
   mod,
   elemMatch,
   regex,
-  SqlQueryOptions,
   pg,
   oracle,
   mysql,
-  mssql
-} from '../src'
+  mssql,
+  type SqlQueryOptions,
+} from '../src/index.ts'
 
 const joinRelation = () => true
 const options: SqlQueryOptions = {

@@ -41,6 +41,7 @@ export interface DialectOptions {
 export type SupportedDialects = 'mssql' |
 'postgres' |
 'pg' |
+'postgresql' |
 'oracle' |
 'oracledb' |
 'mysql' |
@@ -78,6 +79,7 @@ export function createDialects<T extends Partial<DialectOptions>>(options: T): D
     oracledb: oracleOptions,
     pg: pgOptions,
     postgres: pgOptions,
+    postgresql: pgOptions,
     mysql: mysqlOptions,
     mysql2: mysqlOptions,
     mariadb: mysqlOptions,

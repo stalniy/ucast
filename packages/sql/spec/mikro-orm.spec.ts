@@ -1,7 +1,7 @@
 import { FieldCondition, CompoundCondition } from '@ucast/core'
-import { MikroORM, Collection, EntitySchema, QueryBuilder } from 'mikro-orm'
-import { interpret } from '../src/lib/mikro-orm'
-import { expect } from './specHelper'
+import { Collection, EntitySchema, MikroORM, QueryBuilder } from '@mikro-orm/sqlite'
+import { interpret } from '../src/lib/mikro-orm.ts'
+import { expect } from './specHelper.ts'
 
 type Depromisify<T extends Promise<any>> = T extends Promise<infer A> ? A : never
 type OrmContext = Depromisify<ReturnType<typeof configureORM>>
@@ -25,14 +25,14 @@ describe('Condition interpreter for MikroORM', () => {
     const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
 
     expect(query).to.be.instanceof(QueryBuilder)
-    expect(query.getQuery()).to.equal('select * from `user` as `e0` where (`name` = ?)')
+    expect(query.getQuery()).to.equal('select * from `user` as `u0` where (`name` = ?)')
   })
 
   it('properly binds parameters for "IN" operator', () => {
     const condition = new FieldCondition('in', 'age', [1, 2, 3])
     const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
 
-    expect(query.getQuery()).to.equal('select * from `user` as `e0` where (`age` in(?, ?, ?))')
+    expect(query.getQuery()).to.equal('select * from `user` as `u0` where (`age` in(?, ?, ?))')
   })
 
   it('automatically inner joins relation when condition is set on relation field', () => {
@@ -41,8 +41,8 @@ describe('Condition interpreter for MikroORM', () => {
 
     expect(query.getQuery()).to.equal([
       'select *',
-      'from `user` as `e0`',
-      'inner join `project` as `projects` on `e0`.`id` = `projects`.`user_id`',
+      'from `user` as `u0`',
+      'inner join `project` as `projects` on `u0`.`id` = `projects`.`user_id`',
       'where (`projects`.`name` = ?)'
     ].join(' '))
   })
@@ -56,8 +56,8 @@ describe('Condition interpreter for MikroORM', () => {
 
     expect(query.getQuery()).to.equal([
       'select *',
-      'from `user` as `e0`',
-      'inner join `project` as `projects` on `e0`.`id` = `projects`.`user_id`',
+      'from `user` as `u0`',
+      'inner join `project` as `projects` on `u0`.`id` = `projects`.`user_id`',
       'where ((`projects`.`name` = ? and `projects`.`active` = ?))'
     ].join(' '))
   })
@@ -65,22 +65,38 @@ describe('Condition interpreter for MikroORM', () => {
 
 async function configureORM() {
   class User {
+    public id: number
+    public name: string
+    public projects?: Collection<Project>
+
     constructor(
-      public id: number,
-      public name: string,
-      public projects?: Collection<Project>
+      id: number,
+      name: string,
+      projects?: Collection<Project>
     ) {
+      this.id = id
+      this.name = name
       this.projects = projects || new Collection<Project>(this)
     }
   }
 
   class Project {
+    public id: number
+    public name: string
+    public user: User
+    public active: boolean
+
     constructor(
-      public id: number,
-      public name: string,
-      public user: User,
-      public active: boolean
-    ) {}
+      id: number,
+      name: string,
+      user: User,
+      active: boolean
+    ) {
+      this.id = id
+      this.name = name
+      this.user = user
+      this.active = active
+    }
   }
 
   const UserSchema = new EntitySchema({
@@ -89,9 +105,11 @@ async function configureORM() {
       id: { type: 'number', primary: true },
       name: { type: 'string' },
       projects: {
-        type: 'Project',
-        reference: '1:m',
-        inversedBy: 'user'
+        kind: '1:m',
+        entity: 'Project',
+        ref: true,
+        nullable: false,
+        mappedBy: 'user'
       }
     }
   })
@@ -100,7 +118,7 @@ async function configureORM() {
     properties: {
       id: { type: 'number', primary: true },
       name: { type: 'string' },
-      user: { type: 'User', reference: 'm:1' },
+      user: { entity: 'User', kind: 'm:1', ref: true, nullable: false },
       active: { type: 'boolean' }
     }
   })
@@ -108,7 +126,6 @@ async function configureORM() {
   const orm = await MikroORM.init({
     entities: [UserSchema, ProjectSchema],
     dbName: ':memory:',
-    type: 'sqlite',
   })
 
   return { User, Project, orm }

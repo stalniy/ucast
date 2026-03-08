@@ -4,8 +4,8 @@ import {
   createConnection,
   SelectQueryBuilder
 } from 'typeorm'
-import { interpret } from '../src/lib/typeorm'
-import { expect } from './specHelper'
+import { interpret } from '../src/lib/typeorm.ts'
+import { expect } from './specHelper.ts'
 
 type Depromisify<T extends Promise<any>> = T extends Promise<infer A> ? A : never
 type OrmContext = Depromisify<ReturnType<typeof configureORM>>

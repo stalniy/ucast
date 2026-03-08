@@ -1,10 +1,10 @@
 import {
-  Condition,
   CompoundCondition,
   FieldCondition,
-  Comparable
+  type Condition,
+  type Comparable
 } from '@ucast/core';
-import { SqlOperator } from './interpreter';
+import { type SqlOperator } from './interpreter.ts';
 
 export const eq: SqlOperator<FieldCondition> = (condition, query) => {
   return query.where(condition.field, '=', condition.value);

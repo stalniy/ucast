@@ -1,9 +1,9 @@
-import { Condition } from '@ucast/core';
-import { Model, QueryBuilder } from 'objection';
+import { type Condition } from '@ucast/core';
+import { type Model, type QueryBuilder } from 'objection';
 import {
   createSqlInterpreter,
   allInterpreters,
-  SqlOperator,
+  type SqlOperator,
   createDialects,
   mysql,
 } from '../index';

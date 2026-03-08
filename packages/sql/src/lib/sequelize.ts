@@ -1,9 +1,9 @@
-import { Condition } from '@ucast/core';
-import { ModelStatic, Utils, literal } from 'sequelize';
+import { type Condition } from '@ucast/core';
+import { type ModelStatic, Utils, literal } from 'sequelize';
 import {
   createSqlInterpreter,
   allInterpreters,
-  SqlOperator,
+  type SqlOperator,
   createDialects,
   mysql
 } from '../index';
