@@ -59,6 +59,33 @@ describe('Condition Interpreter', () => {
     })
   })
 
+  describe('auto join nested relations', () => {
+    const interpret = createSqlInterpreter({ eq })
+    const condition = new Field('eq', 'projects.user.name', 'test')
+
+    before(() => {
+      spy.on(options, 'joinRelation')
+    })
+
+    after(() => {
+      spy.restore(options, 'joinRelation')
+    })
+
+    it('calls `joinRelation` with the leaf relation name for deeply nested dot notation', () => {
+      interpret(condition, options)
+      expect(options.joinRelation).to.have.been.called.with('user')
+    })
+
+    it('generates valid SQL using the leaf relation as the table alias', () => {
+      spy.on(options, 'escapeField')
+      const [sql] = interpret(condition, options)
+
+      expect(sql).to.equal('"user"."name" = $1')
+      expect(options.escapeField).to.have.been.called.with('user')
+      spy.restore(options, 'escapeField')
+    })
+  })
+
   describe('primitive operators', () => {
     const interpret = createSqlInterpreter({ eq, ne, lt, lte, gt, gte, mod })
 
@@ -288,16 +315,16 @@ describe('Condition Interpreter', () => {
       const condition = new Field('elemMatch', 'address', new Field('elemMatch', 'city', new Field('eq', 'name', 'NYC')))
       const [sql, params] = interpret(condition, options)
 
-      expect(sql).to.equal('"address"."city"."name" = $1')
+      expect(sql).to.equal('"city"."name" = $1')
       expect(params).to.deep.equal(['NYC'])
     })
 
-    it('calls "joinRelation" with the full nested relation path', () => {
+    it('calls "joinRelation" with the leaf relation name for nested elemMatch', () => {
       spy.on(options, 'joinRelation')
       const condition = new Field('elemMatch', 'address', new Field('elemMatch', 'city', new Field('eq', 'name', 'NYC')))
       interpret(condition, options)
 
-      expect(options.joinRelation).to.have.been.called.with('address.city')
+      expect(options.joinRelation).to.have.been.called.with('city')
       spy.restore(options, 'joinRelation')
     })
 
@@ -308,7 +335,7 @@ describe('Condition Interpreter', () => {
       ])))
       const [sql, params] = interpret(condition, options)
 
-      expect(sql).to.equal('("address"."city"."name" = $1 and "address"."city"."zip" = $2)')
+      expect(sql).to.equal('("city"."name" = $1 and "city"."zip" = $2)')
       expect(params).to.deep.equal(['NYC', '10001'])
     })
   })
