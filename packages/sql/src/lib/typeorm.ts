@@ -6,26 +6,31 @@ import {
   type SqlOperator,
   createDialects
 } from '../index';
+import { splitRelationName } from './utils';
 
-function joinRelation<Entity extends ObjectLiteral>(
-  relationName: string,
-  query: SelectQueryBuilder<Entity>,
-) {
-  const meta = query.expressionMap.mainAlias!.metadata;
-  const joinAlreadyExists = query.expressionMap.joinAttributes
-    .some(j => j.alias.name === relationName);
+function joinRelation<Entity extends ObjectLiteral>(relationPath: string, query: SelectQueryBuilder<Entity>) {
+  let relationFullName = relationPath;
+  let meta = query.expressionMap.mainAlias!.metadata;
+  let alias = query.alias;
 
-  if (joinAlreadyExists) {
-    return true;
+  while (relationFullName) {
+    let relationName: string;
+    [relationName, relationFullName] = splitRelationName(relationFullName);
+
+    const relation = meta.findRelationWithPropertyPath(relationName);
+    if (relation) {
+      // BUGALERT: query is modified but if some relation doesn't exist, and joinRelation returns false,
+      // then query will join relations which are not needed
+      query.innerJoin(`${alias}.${relationName}`, relationName);
+
+      meta = relation.entityMetadata;
+      alias = relationName;
+    } else {
+      return false;
+    }
   }
 
-  const relation = meta.findRelationWithPropertyPath(relationName);
-  if (relation) {
-    query.innerJoin(`${query.alias}.${relationName}`, relationName);
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 const dialects = createDialects({
