@@ -59,6 +59,14 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { value: ['test'] })).to.be.false
     })
 
+    it('matches array values inside array fields using configured comparison', () => {
+      const value = ['test']
+      const condition = new Field('eq', 'values', value)
+
+      expect(interpret(condition, { values: [value] })).to.be.true
+      expect(interpret(condition, { values: [['test']] })).to.be.false
+    })
+
     it('compares objects by reference', () => {
       const condition = new Field('eq', 'value', { name: 'test' })
       expect(interpret(condition, { value: condition.value })).to.be.true
@@ -378,6 +386,13 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { email: null, })).to.be.false
       expect(interpret(condition, {})).to.be.false
     })
+
+    it('resets regexp state between checks', () => {
+      const condition = new Field('regex', 'email', /@/g)
+
+      expect(interpret(condition, { email: 'ucast@github.com' })).to.be.true
+      expect(interpret(condition, { email: 'ucast@github.com' })).to.be.true
+    })
   })
 
   describe('where', () => {
@@ -415,12 +430,27 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { age: 3 })).to.be.false
     })
 
+    it('checks string values using regular expressions from specified array', () => {
+      const condition = new Field('within', 'name', [/^ucast/, 'test'])
+
+      expect(interpret(condition, { name: 'ucast-mongo' })).to.be.true
+      expect(interpret(condition, { name: 'test' })).to.be.true
+      expect(interpret(condition, { name: 'mongo' })).to.be.false
+    })
+
     it('checks that arrays intersects if field value is an array', () => {
       const condition = new Field('within', 'items', [1, 2])
 
       expect(interpret(condition, { items: [1, 3] })).to.be.true
       expect(interpret(condition, { items: [2, 4] })).to.be.true
       expect(interpret(condition, { items: [3, 5] })).to.be.false
+    })
+
+    it('checks array fields using regular expressions from specified array', () => {
+      const condition = new Field('within', 'items', [/^ucast/])
+
+      expect(interpret(condition, { items: ['mongo', 'ucast-js'] })).to.be.true
+      expect(interpret(condition, { items: ['mongo', 'js'] })).to.be.false
     })
 
     it('can check value of nested property', () => {
@@ -471,6 +501,13 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { age: 1 })).to.be.false
       expect(interpret(condition, { age: 2 })).to.be.false
       expect(interpret(condition, { age: 3 })).to.be.true
+    })
+
+    it('returns false if string value matches regular expression from specified array', () => {
+      const condition = new Field('nin', 'name', [/^ucast/])
+
+      expect(interpret(condition, { name: 'ucast-js' })).to.be.false
+      expect(interpret(condition, { name: 'mongo' })).to.be.true
     })
   })
 

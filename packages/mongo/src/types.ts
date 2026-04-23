@@ -8,23 +8,24 @@ export interface MongoQueryTopLevelOperators<Value> {
 }
 
 export interface MongoQueryFieldOperators<Value = any> {
-  $eq?: Value,
-  $ne?: Value,
-  $lt?: Extract<Comparable, Value>,
-  $lte?: Extract<Comparable, Value>,
-  $gt?: Extract<Comparable, Value>,
-  $gte?: Extract<Comparable, Value>,
-  $in?: Value[],
-  $nin?: Value[],
-  $all?: Value[],
+  $eq?: FieldOperatorValue<Value>,
+  $ne?: FieldOperatorValue<Value>,
+  $lt?: ComparableValue<Value>,
+  $lte?: ComparableValue<Value>,
+  $gt?: ComparableValue<Value>,
+  $gte?: ComparableValue<Value>,
+  $in?: MembershipValue<Value>[],
+  $nin?: MembershipValue<Value>[],
+  $all?: ItemOf<Value>[],
   /** checks by array length */
-  $size?: number,
-  $regex?: RegExp | string,
-  $options?: 'i' | 'g' | 'm' | 'u',
+  $size?: ArrayFieldValue<Value, number>,
+  $regex?: RegexValue<Value>,
+  $options?: RegexOptions<Value>,
   /** checks the shape of array item */
-  $elemMatch?: MongoQuery<Value>,
+  $elemMatch?: ArrayFieldValue<Value, MongoQuery<ItemOf<Value>>>,
   $exists?: boolean,
-  $not?: Omit<MongoQueryFieldOperators<Value>, '$not'>,
+  $mod?: NumericFieldValue<Value, [number, number]>,
+  $not?: FieldNotOperator<Value>,
 }
 
 export type MongoQueryOperators<Value = any> =
@@ -35,13 +36,27 @@ export interface CustomOperators {
   field?: {}
 }
 
-type ItemOf<T, AdditionalArrayTypes = never> = T extends readonly unknown[]
-  ? T[number] | AdditionalArrayTypes
+type ItemOf<T> = T extends readonly unknown[]
+  ? T[number]
   : T;
 
-type FieldOperatorValue<T> = ItemOf<T, T extends readonly unknown[] ? T : never>;
+type FieldOperatorValue<T> = T extends readonly unknown[] ? ItemOf<T> | T : T;
+type ComparableValue<T> = Extract<Comparable, ItemOf<T>>;
+type NumericFieldValue<T, V> = Extract<ItemOf<T>, number> extends never ? never : V;
+type StringFieldValue<T, V> = Extract<ItemOf<T>, string> extends never ? never : V;
+type ArrayFieldValue<T, V> = T extends readonly unknown[] ? V : never;
+type RegexValue<T> = StringFieldValue<T, RegExp | string>;
+type MembershipValue<T> = ItemOf<T> | StringFieldValue<T, RegExp>;
+type RegExpOption = 'i' | 'm' | 's' | 'u';
+type RegExpOptions =
+  RegExpOption
+  | `${RegExpOption}${RegExpOption}`
+  | `${RegExpOption}${RegExpOption}${RegExpOption}`
+  | `${RegExpOption}${RegExpOption}${RegExpOption}${RegExpOption}`;
+type RegexOptions<T> = StringFieldValue<T, RegExpOptions>;
+type FieldNotOperator<T> = Omit<MongoQueryFieldOperators<T>, '$not'> | StringFieldValue<T, RegExp>;
 type OperatorValues<T> =
-  null | T | Partial<ItemOf<T, []>> | MongoQueryFieldOperators<FieldOperatorValue<T>>;
+  null | T | Partial<ItemOf<T> | []> | MongoQueryFieldOperators<T>;
 type Query<T extends Record<PropertyKey, any>, FieldOperators> = {
   [K in keyof T]?: OperatorValues<T[K]> | FieldOperators
 };
