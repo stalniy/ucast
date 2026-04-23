@@ -52,21 +52,30 @@ export class Query {
       return this._rootAlias + this._localField(name);
     }
 
-    const relationNameIndex = name.indexOf('.');
+    const lastDotIndex = name.lastIndexOf('.');
 
-    if (relationNameIndex === -1) {
+    if (lastDotIndex === -1) {
       return this._rootAlias + this._localField(name);
     }
 
-    const relationName = name.slice(0, relationNameIndex);
-    const field = name.slice(relationNameIndex + 1);
+    const relationPath = name.slice(0, lastDotIndex);
+    const fieldName = name.slice(lastDotIndex + 1);
 
-    if (!this.options.joinRelation(relationName, this._relationContext)) {
+    // For nested paths like 'projects.user.name', use only the leaf segment 'user'
+    // as the SQL alias, since SQL doesn't support multi-level dot notation like
+    // "projects"."user"."name". The ORM's joinRelation implementation is responsible
+    // for joining the full relation chain.
+    const aliasDotIndex = relationPath.lastIndexOf('.');
+    const relationAlias = aliasDotIndex === -1
+      ? relationPath
+      : relationPath.slice(aliasDotIndex + 1);
+
+    if (!this.options.joinRelation(relationAlias, this._relationContext)) {
       return this._rootAlias + this._localField(name);
     }
 
-    this._joins.add(relationName);
-    return this._foreignField(field, relationName);
+    this._joins.add(relationAlias);
+    return this._foreignField(fieldName, relationAlias);
   }
 
   private _localField(field: string) {
@@ -135,7 +144,7 @@ export class Query {
     const prevPrefix = this._fieldPrefix;
 
     try {
-      this._fieldPrefix = `${prefix}.`;
+      this._fieldPrefix = `${this._fieldPrefix}${prefix}.`;
       callback();
       return this;
     } finally {
