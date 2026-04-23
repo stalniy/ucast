@@ -23,6 +23,10 @@ function flattenConditions<T extends Condition>(
         continue;
       }
 
+      if (currentNode.value.length === 0) {
+        continue;
+      }
+
       if (!flatConditions) {
         flatConditions = conditions.slice(0, i);
       }
@@ -40,14 +44,13 @@ function flattenConditions<T extends Condition>(
 }
 
 export function optimizedCompoundCondition<T extends Condition>(operator: string, conditions: T[]) {
-  if (conditions.length === 1) {
-    return conditions[0];
-  }
+  if (conditions.length === 1) return conditions[0];
+  if (conditions.length === 0) return new CompoundCondition(operator, conditions);
 
   const optimized = flattenConditions(operator, conditions);
-  return optimized.length === 1
-    ? optimized[0]
-    : new CompoundCondition(operator, optimized);
+  if (optimized.length === 1) return optimized[0];
+  if (optimized.length === 0) return new CompoundCondition(operator, optimized);
+  return new CompoundCondition(operator, optimized);
 }
 
 export const identity = <T>(x: T) => x;
