@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/stalniy/ucast/compare/@ucast/sql@0.1.0...@ucast/sql@0.1.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* **sql:** added support for mikro-orm@6 ([#73](https://github.com/stalniy/ucast/issues/73)) ([410e975](https://github.com/stalniy/ucast/commit/410e975836d70c134b1c7fe4b59618150c9de57b))
+
 ## [0.1.0](https://github.com/stalniy/ucast/compare/@ucast/sql@0.0.1...@ucast/sql@0.1.0) (2026-02-04)
 
 
