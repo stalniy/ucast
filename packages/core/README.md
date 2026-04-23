@@ -59,7 +59,7 @@ const translate = (query, ...args) => interpreter.bind(null, parse(query));
 
 ## Want to help?
 
-Want to file a bug, contribute some code, or improve documentation? Excellent! Read up on guidelines for [contributing]
+Want to file a bug, contribute some code, or improve documentation? Excellent! Read up on guidelines for [contributing].
 
 ## License
 
