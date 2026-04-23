@@ -3,7 +3,7 @@ import { Parse } from './types';
 import { AnyInterpreter } from './interpreter';
 
 type Bound<T> = T extends (first: Condition, ...args: infer A) => any
-  ? { (...args: A): ReturnType<T>, ast: Condition }
+  ? { (...args: A): ReturnType<T>, ast: Condition; }
   : never;
 
 export function createTranslatorFactory<Lang, Interpreter extends AnyInterpreter>(
@@ -13,7 +13,9 @@ export function createTranslatorFactory<Lang, Interpreter extends AnyInterpreter
   return (query: Lang, ...args: unknown[]): Bound<Interpreter> => {
     const ast = parse(query, ...args);
     const translate = (interpret as any).bind(null, ast);
-    translate.ast = ast;
+    Object.defineProperty(translate, 'ast', {
+      value: ast
+    });
     return translate;
   };
 }
