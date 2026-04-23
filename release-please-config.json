@@ -37,7 +37,8 @@
     "packages/sql": {
       "package-name": "@ucast/sql",
       "component": "@ucast/sql",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true
     }
   }
 }
