@@ -71,6 +71,13 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, object)).to.be.true
     })
+
+    it('returns true if condition value is null and field value is null', () => {
+      const condition = new Field('eq', 'value', null)
+
+      expect(interpret(condition, {})).to.be.true
+      expect(interpret(condition, { value: null })).to.be.true
+    })
   })
 
   describe('ne', () => {
