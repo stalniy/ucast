@@ -32,7 +32,13 @@ export const not: Interpret<Compound> = (node, object, { interpret }) => {
   return !interpret(node.value[0], object);
 };
 
-export const eq: Interpret<Field> = (node, object, { compare, get }) => {
+export const eq: Interpret<Field> = (node, object, options) => {
+  if (node.value === null) {
+    const [item, field] = getObjectFieldCursor<{}>(object, node.field, options.get);
+    return !hasOwn(item, field) || (item as Record<string, unknown>)[field] === null;
+  }
+
+  const { compare, get } = options;
   const value = get(object, node.field);
 
   if (Array.isArray(value) && !Array.isArray(node.value)) {
