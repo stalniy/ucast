@@ -4,13 +4,41 @@ import { JsInterpretationOptions, JsInterpreter } from './types';
 export type AnyObject = Record<PropertyKey, unknown>;
 export type GetField = (object: any, field: string) => any;
 
-export function includes<T>(
-  items: T[],
-  value: T,
+export function testRegExp(regex: RegExp, value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  regex.lastIndex = 0;
+  const result = regex.test(value);
+  regex.lastIndex = 0;
+
+  return result;
+}
+
+export function matches(
+  a: unknown,
+  b: unknown,
+  compare: JsInterpretationOptions['compare']
+): boolean {
+  if (a instanceof RegExp) {
+    return testRegExp(a, b);
+  }
+
+  if (b instanceof RegExp) {
+    return testRegExp(b, a);
+  }
+
+  return compare(a, b) === 0;
+}
+
+export function includes(
+  items: unknown[],
+  value: unknown,
   compare: JsInterpretationOptions['compare']
 ): boolean {
   for (let i = 0, length = items.length; i < length; i++) {
-    if (compare(items[i], value) === 0) {
+    if (matches(items[i], value, compare)) {
       return true;
     }
   }

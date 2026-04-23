@@ -9,6 +9,8 @@ import {
 import { JsInterpreter as Interpret } from './types';
 import {
   includes,
+  matches,
+  testRegExp,
   testValueOrArray,
   isArrayAndNotNumericField,
   AnyObject,
@@ -41,11 +43,11 @@ export const eq: Interpret<Field> = (node, object, options) => {
   const { compare, get } = options;
   const value = get(object, node.field);
 
-  if (Array.isArray(value) && !Array.isArray(node.value)) {
-    return includes(value, node.value, compare);
+  if (Array.isArray(value)) {
+    return matches(value, node.value, compare) || includes(value, node.value, compare);
   }
 
-  return compare(value, node.value) === 0;
+  return matches(value, node.value, compare);
 };
 
 export const ne: typeof eq = (node, object, context) => {
@@ -99,7 +101,7 @@ export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, obje
 };
 
 export const regex = testValueOrArray<RegExp, string>((node, value) => {
-  return typeof value === 'string' && node.value.test(value);
+  return testRegExp(node.value, value);
 });
 
 export const within = testValueOrArray<unknown[], unknown>((node, object, { compare }) => {
