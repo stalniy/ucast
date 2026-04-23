@@ -11,6 +11,15 @@ describe('Built-in instructions', () => {
       expect(() => parser.parse<any>({ $and: 1 })).to.throw(/expects value to be an array/)
     })
 
+    it('throws if array item is not an object', () => {
+      expect(() => parser.parse<any>({ $and: [{ a: 1 }, 1] }))
+        .to.throw(/expects item at index 1 to be an object/)
+      expect(() => parser.parse<any>({ $and: [null] }))
+        .to.throw(/expects item at index 0 to be an object/)
+      expect(() => parser.parse<any>({ $and: [[]] }))
+        .to.throw(/expects item at index 0 to be an object/)
+    })
+
     it('is parsed as `CompoundCondition`', () => {
       const ast = parser.parse({ $and: [{ a: 1 }, { b: 2 }] }) as CompoundCondition
 
@@ -52,12 +61,22 @@ describe('Built-in instructions', () => {
     it('is parsed the same way as "$and"', () => {
       expect(allParsingInstructions.$or).to.equal(allParsingInstructions.$and)
     })
+
+    it('throws if array item is not an object', () => {
+      expect(() => parser.parse<any>({ $or: [false] }))
+        .to.throw(/expects item at index 0 to be an object/)
+    })
   })
 
   describe('$nor', () => {
     it('throws if receives non-array or empty array', () => {
       expect(() => parser.parse({ $nor: [] })).to.throw(/at least one element/)
       expect(() => parser.parse<any>({ $nor: 1 })).to.throw(/expects value to be an array/)
+    })
+
+    it('throws if array item is not an object', () => {
+      expect(() => parser.parse<any>({ $nor: [{ a: 1 }, 'test'] }))
+        .to.throw(/expects item at index 1 to be an object/)
     })
 
     it('is parsed as `CompoundCondition`', () => {

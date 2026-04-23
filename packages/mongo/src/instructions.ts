@@ -11,42 +11,15 @@ import {
   FieldParsingContext,
   optimizedCompoundCondition,
   ObjectQueryFieldParsingContext,
+  ParsingContext,
 } from '@ucast/core';
-import { MongoQuery } from './types';
-
-function ensureIsArray(instruction: NamedInstruction, value: unknown) {
-  if (!Array.isArray(value)) {
-    throw new Error(`"${instruction.name}" expects value to be an array`);
-  }
-}
-
-function ensureIsNonEmptyArray(instruction: NamedInstruction, value: unknown[]) {
-  ensureIsArray(instruction, value);
-
-  if (!value.length) {
-    throw new Error(`"${instruction.name}" expects to have at least one element in array`);
-  }
-}
-
-function ensureIsComparable(instruction: NamedInstruction, value: string | number | Date) {
-  const isComparable = typeof value === 'string' || typeof value === 'number' || value instanceof Date;
-
-  if (!isComparable) {
-    throw new Error(`"${instruction.name}" expects value to be comparable (i.e., string, number or date)`);
-  }
-}
-
-const ensureIs = (type: string) => (instruction: NamedInstruction, value: unknown) => {
-  if (typeof value !== type) {
-    throw new Error(`"${instruction.name}" expects value to be a "${type}"`);
-  }
-};
+import type { MongoQuery } from './types';
 
 export const $and: CompoundInstruction<MongoQuery<any>[]> = {
   type: 'compound',
   validate: ensureIsNonEmptyArray,
-  parse(instruction, queries, { parse }) {
-    const conditions = queries.map(query => parse(query));
+  parse(instruction, queries, context) {
+    const conditions = parseCompoundInstruction(instruction, queries, context);
     return optimizedCompoundCondition(instruction.name, conditions);
   }
 };
@@ -54,7 +27,27 @@ export const $or = $and;
 export const $nor: CompoundInstruction<MongoQuery<any>[]> = {
   type: 'compound',
   validate: ensureIsNonEmptyArray,
+  parse(instruction, queries, context) {
+    const conditions = parseCompoundInstruction(instruction, queries, context);
+    return new CompoundCondition(instruction.name, conditions);
+  }
 };
+
+function parseCompoundInstruction(
+  instruction: NamedInstruction,
+  queries: MongoQuery<any>[],
+  context: ParsingContext<{}>
+) {
+  const conditions = new Array(queries.length);
+
+  for (let i = 0; i < queries.length; i++) {
+    const query = queries[i];
+    ensureIsObjectAtIndex(instruction, query, i);
+    conditions[i] = context.parse(query);
+  }
+
+  return conditions;
+}
 
 export const $not: FieldInstruction<MongoQuery<any> | RegExp> = {
   type: 'field',
@@ -152,3 +145,41 @@ export const $where: DocumentInstruction<() => boolean> = {
   type: 'document',
   validate: ensureIs('function'),
 };
+
+function ensureIsArray(instruction: NamedInstruction, value: unknown) {
+  if (!Array.isArray(value)) {
+    throw new Error(`"${instruction.name}" expects value to be an array`);
+  }
+}
+
+function ensureIsNonEmptyArray(instruction: NamedInstruction, value: unknown[]) {
+  ensureIsArray(instruction, value);
+
+  if (!value.length) {
+    throw new Error(`"${instruction.name}" expects to have at least one element in array`);
+  }
+}
+
+function ensureIsComparable(instruction: NamedInstruction, value: string | number | Date) {
+  const isComparable = typeof value === 'string' || typeof value === 'number' || value instanceof Date;
+
+  if (!isComparable) {
+    throw new Error(`"${instruction.name}" expects value to be comparable (i.e., string, number or date)`);
+  }
+}
+
+function ensureIs(type: string) {
+  return (instruction: NamedInstruction, value: unknown) => {
+    if (typeof value !== type) {
+      throw new Error(`"${instruction.name}" expects value to be a "${type}"`);
+    }
+  };
+}
+
+function ensureIsObjectAtIndex(instruction: NamedInstruction, value: unknown, index: number) {
+  const item = value as { constructor?: unknown } | null;
+
+  if (!item || item.constructor !== Object) {
+    throw new Error(`"${instruction.name}" expects item at index ${index} to be an object`);
+  }
+}
