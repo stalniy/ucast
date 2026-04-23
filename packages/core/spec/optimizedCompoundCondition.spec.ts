@@ -47,9 +47,9 @@ describe('optimizedCompoundCondition', () => {
     ]))
   })
 
-  it('removes empty compound identity conditions', () => {
-    expect(buildAnd([new CompoundCondition('and', []), child])).to.equal(child)
-    expect(buildOr([new CompoundCondition('or', []), child])).to.equal(child)
+  it('preserves empty empty compound identity conditions', () => {
+    expect(buildAnd([new CompoundCondition('and', []), child])).to.deep.equal(buildAnd([new CompoundCondition('and', []), child]))
+    expect(buildOr([new CompoundCondition('or', []), child])).to.deep.equal(buildOr([new CompoundCondition('or', []), child]))
   })
 
   it('preserves empty compound conditions with another operator name', () => {
