@@ -1,4 +1,5 @@
 name: 'Setup dependencies'
+description: 'Install Node.js, pnpm, and cached project dependencies'
 
 inputs:
   node-version:

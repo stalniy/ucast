@@ -34,8 +34,10 @@ jobs:
         pnpm run -r lint
         pnpm run -r coverage
     - name: Submit coverage
-      uses: codecov/codecov-action@v5
+      if: matrix.node == 'latest'
+      uses: codecov/codecov-action@v6
       with:
         fail_ci_if_error: true
         token: ${{ secrets.CODECOV_TOKEN }}
+        version: v11.2.8
         verbose: true # optional (default = false)

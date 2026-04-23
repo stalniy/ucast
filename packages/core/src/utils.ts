@@ -9,22 +9,33 @@ export function isCompound(operator: string, condition: Condition): condition is
 
 function flattenConditions<T extends Condition>(
   operator: string,
-  conditions: T[],
-  aggregatedResult?: T[]
+  conditions: T[]
 ) {
-  const flatConditions: T[] = aggregatedResult || [];
+  let flatConditions: T[] | undefined;
 
   for (let i = 0, length = conditions.length; i < length; i++) {
     const currentNode = conditions[i];
 
-    if (isCompound(operator, currentNode)) {
-      flattenConditions(operator, currentNode.value as T[], flatConditions);
-    } else {
+    if (currentNode instanceof CompoundCondition) {
+      if (currentNode.operator !== operator) {
+        if (flatConditions) flatConditions.push(currentNode);
+        continue;
+      }
+
+      if (!flatConditions) {
+        flatConditions = conditions.slice(0, i);
+      }
+
+      const nestedConditions = currentNode.value as T[];
+      for (let j = 0, nestedLength = nestedConditions.length; j < nestedLength; j++) {
+        flatConditions.push(nestedConditions[j]);
+      }
+    } else if (flatConditions) {
       flatConditions.push(currentNode);
     }
   }
 
-  return flatConditions;
+  return flatConditions || conditions;
 }
 
 export function optimizedCompoundCondition<T extends Condition>(operator: string, conditions: T[]) {
@@ -32,7 +43,10 @@ export function optimizedCompoundCondition<T extends Condition>(operator: string
     return conditions[0];
   }
 
-  return new CompoundCondition(operator, flattenConditions(operator, conditions));
+  const optimized = flattenConditions(operator, conditions);
+  return optimized.length === 1
+    ? optimized[0]
+    : new CompoundCondition(operator, optimized);
 }
 
 export const identity = <T>(x: T) => x;
@@ -54,7 +68,7 @@ export function hasOperators<T>(
     return false;
   }
 
-  for (const prop in value) {  
+  for (const prop in value) {
     const hasProp = hasOwn(value, prop) && hasOwn(instructions, prop);
     if (hasProp && (!skipIgnore || value[prop] !== ignoreValue)) {
       return true;
@@ -66,7 +80,7 @@ export function hasOperators<T>(
 
 export function objectKeysSkipIgnore(anyObject: Record<string, unknown>) {
   const keys: string[] = [];
-  for (const key in anyObject) {  
+  for (const key in anyObject) {
     if (hasOwn(anyObject, key) && anyObject[key] !== ignoreValue) {
       keys.push(key);
     }
