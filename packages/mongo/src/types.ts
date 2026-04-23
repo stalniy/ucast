@@ -35,10 +35,13 @@ export interface CustomOperators {
   field?: {}
 }
 
-type ItemOf<T, AdditionalArrayTypes = never> = T extends any[]
+type ItemOf<T, AdditionalArrayTypes = never> = T extends readonly unknown[]
   ? T[number] | AdditionalArrayTypes
   : T;
-type OperatorValues<T> = null | T | Partial<ItemOf<T, []>> | MongoQueryFieldOperators<ItemOf<T>>;
+
+type FieldOperatorValue<T> = ItemOf<T, T extends readonly unknown[] ? T : never>;
+type OperatorValues<T> =
+  null | T | Partial<ItemOf<T, []>> | MongoQueryFieldOperators<FieldOperatorValue<T>>;
 type Query<T extends Record<PropertyKey, any>, FieldOperators> = {
   [K in keyof T]?: OperatorValues<T[K]> | FieldOperators
 };
