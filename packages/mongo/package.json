@@ -1,6 +1,6 @@
 {
   "name": "@ucast/mongo",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "description": "git@github.com:stalniy/ucast.git",
   "sideEffects": false,
   "main": "dist/es6c/index.js",

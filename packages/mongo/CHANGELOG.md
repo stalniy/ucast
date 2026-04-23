@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.4](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.4.3...@ucast/mongo@2.4.4) (2026-04-23)
+
+
+### Code Refactoring
+
+* migrates to latest eslint/typescript ([#61](https://github.com/stalniy/ucast/issues/61)) ([405bcca](https://github.com/stalniy/ucast/commit/405bcca1dfc0cc4b8c3fe349e7110ce767633b47))
+
 ## [2.4.3](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.4.2...@ucast/mongo@2.4.3) (2023-02-15)
 
 

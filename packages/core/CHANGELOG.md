@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.3](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.2...@ucast/core@1.10.3) (2026-04-23)
+
+
+### Bug Fixes
+
+* force release for core package ([#76](https://github.com/stalniy/ucast/issues/76)) ([d7a9091](https://github.com/stalniy/ucast/commit/d7a9091c008a61a946f5f8a57f5cc22635e51e12))
+
+
+### Code Refactoring
+
+* makes optimizeCompoundCondition to walk only 1 level deep ([#75](https://github.com/stalniy/ucast/issues/75)) ([7bae91c](https://github.com/stalniy/ucast/commit/7bae91cca77a6c479a6808fa1495431c46121281))
+* migrates to latest eslint/typescript ([#61](https://github.com/stalniy/ucast/issues/61)) ([405bcca](https://github.com/stalniy/ucast/commit/405bcca1dfc0cc4b8c3fe349e7110ce767633b47))
+
 ## [1.10.2](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.1...@ucast/core@1.10.2) (2023-02-15)
 
 
