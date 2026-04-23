@@ -8,8 +8,9 @@ import {
   mysql
 } from '../index';
 
-const hasOwn = Object.hasOwn ||
-  Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
+const hasOwn: (object: object, key: PropertyKey) => boolean = (Object as {
+  hasOwn?: (object: object, key: PropertyKey) => boolean
+}).hasOwn || ((object, key) => Object.prototype.hasOwnProperty.call(object, key));
 
 function joinRelation(relationName: string, Model: ModelStatic<any>) {
   return hasOwn(Model.associations, relationName);

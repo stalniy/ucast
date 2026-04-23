@@ -1,7 +1,8 @@
 import { Condition, CompoundCondition, NULL_CONDITION } from './Condition';
 
-const hasOwn = Object.hasOwn ||
-  Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
+const hasOwn: (object: object, key: PropertyKey) => boolean = (Object as {
+  hasOwn?: (object: object, key: PropertyKey) => boolean
+}).hasOwn || ((object, key) => Object.prototype.hasOwnProperty.call(object, key));
 
 export function isCompound(operator: string, condition: Condition): condition is CompoundCondition {
   return condition instanceof CompoundCondition && condition.operator === operator;

@@ -20,7 +20,7 @@ Generally speaking, `ucast` can help you to transfer conditions somewhere or int
 
 ## Ecosystem
 
-All packages support nodejs 8+ and ES5 compatible browsers (IE 9+)
+All packages target ES2020-compatible JavaScript runtimes.
 
 | Project           | Status                               | Description |
 |-------------------|--------------------------------------|-------------|

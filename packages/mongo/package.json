@@ -3,22 +3,19 @@
   "version": "2.4.4",
   "description": "git@github.com:stalniy/ucast.git",
   "sideEffects": false,
-  "main": "dist/es6c/index.js",
-  "module": "dist/es5m/index.js",
-  "es2015": "dist/es6m/index.mjs",
-  "legacy": "dist/umd/index.js",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.mjs",
+  "es2015": "dist/esm/index.mjs",
   "typings": "dist/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/es6m/index.mjs",
-      "require": "./dist/es6c/index.js"
+      "import": "./dist/esm/index.mjs",
+      "require": "./dist/cjs/index.js"
     }
   },
   "scripts": {
-    "build.types": "tsc",
-    "prebuild": "rm -rf dist/* && npm run build.types",
-    "build": "rollup -c ../../rollup.config.js -n ucast.mongo -g @ucast/core:ucast.core",
+    "build": "rm -rf dist/* && tsc && tsdown -c ../../tsdown.config.mjs",
     "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
@@ -51,14 +48,6 @@
   },
   "homepage": "https://github.com/stalniy/ucast#readme",
   "devDependencies": {
-    "@babel/core": "^7.10.2",
-    "@babel/plugin-proposal-class-properties": "^7.10.4",
-    "@babel/plugin-proposal-object-rest-spread": "^7.10.4",
-    "@babel/plugin-transform-typescript": "^7.10.1",
-    "@babel/preset-env": "^7.10.2",
-    "@rollup/plugin-babel": "^5.0.3",
-    "@rollup/plugin-commonjs": "^14.0.0",
-    "@rollup/plugin-node-resolve": "^8.0.1",
     "@types/chai": "^4.2.11",
     "@types/chai-spies": "^1.0.1",
     "@types/mocha": "^7.0.2",
@@ -66,8 +55,6 @@
     "chai-spies": "^1.0.0",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
-    "rollup": "^2.15.0",
-    "rollup-plugin-terser": "^6.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },

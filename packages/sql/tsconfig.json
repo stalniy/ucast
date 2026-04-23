@@ -1,11 +1,11 @@
 {
   "extends": "../../tsconfig",
   "include": [
-    "src/**/*",
-    "spec/**/*.ts"
+    "src/**/*"
   ],
   "compilerOptions": {
     "outDir": "dist/types",
+    "rootDir": "src",
     "rewriteRelativeImportExtensions": false,
     "allowImportingTsExtensions": true,
     "allowJs": true
