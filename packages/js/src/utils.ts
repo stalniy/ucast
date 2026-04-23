@@ -70,5 +70,6 @@ export function testValueOrArray<T, U = T>(test: JsInterpreter<FieldCondition<T>
   }) as JsInterpreter<FieldCondition<T>, AnyObject | U>;
 }
 
-export const hasOwn = Object.hasOwn ||
-  Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
+export const hasOwn: (object: object, key: PropertyKey) => boolean = (Object as {
+  hasOwn?: (object: object, key: PropertyKey) => boolean
+}).hasOwn || ((object, key) => Object.prototype.hasOwnProperty.call(object, key));
