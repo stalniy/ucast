@@ -51,6 +51,21 @@ describe('getObjectField', () => {
     expect(getObjectField(object, 'value', get)).to.equal(state.value)
   })
 
+  it('allows to pass custom "isArray" function', () => {
+    const object = {
+      items: {
+        0: { price: 12 },
+        1: { price: 14 },
+        length: 2,
+      },
+    }
+    const isArray = (value: unknown) => {
+      return !!value && typeof value === 'object' && 'length' in value
+    }
+
+    expect(getObjectField(object, 'items.price', undefined, isArray)).to.deep.equal([12, 14])
+  })
+
   it('returns undefined when trying to traverse path beyond a primitive value', () => {
     const object = { foo: 22 }
     expect(getObjectField(object, 'foo.bar')).to.be.undefined

@@ -111,6 +111,24 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { items: [{ value: 1 }, { value: null }] })).to.be.true
       expect(interpret(condition, { items: [{ value: 1 }, { value: 2 }] })).to.be.false
     })
+
+    it('uses custom "isArray" function for array-like field traversal', () => {
+      const condition = new Field('eq', 'items.value', 2)
+      const object = {
+        items: {
+          0: { value: 1 },
+          1: { value: 2 },
+          length: 2,
+        },
+      }
+      const isArraySpy = spy((value: unknown) => {
+        return !!value && typeof value === 'object' && 'length' in value
+      })
+      const customInterpret = createJsInterpreter({ eq }, { isArray: isArraySpy })
+
+      expect(customInterpret(condition, object)).to.be.true
+      expect(isArraySpy).to.have.been.called()
+    })
   })
 
   describe('ne', () => {
@@ -373,6 +391,24 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { items: [{ a: [2, 3] }, { a: [4] }, { a: [2] }] })).to.be.true
       expect(interpret(condition, { items: [5, 4] })).to.be.false
       expect(interpret(condition, { items: { a: [2, 3] } })).to.be.true
+    })
+
+    it('uses custom "isArray" function for array-like values', () => {
+      const condition = new Field('size', 'value', 2)
+      const object = {
+        value: {
+          0: 'test',
+          1: 'another',
+          length: 2,
+        },
+      }
+      const isArraySpy = spy((value: unknown) => {
+        return !!value && typeof value === 'object' && 'length' in value
+      })
+      const customInterpret = createJsInterpreter({ size }, { isArray: isArraySpy })
+
+      expect(customInterpret(condition, object)).to.be.true
+      expect(isArraySpy).to.have.been.called.with(object.value)
     })
   })
 

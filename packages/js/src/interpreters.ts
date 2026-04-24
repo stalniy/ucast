@@ -34,7 +34,7 @@ export const not: Interpret<Compound> = (node, object, { interpret }) => {
   return !interpret(node.value[0], object);
 };
 
-export const eq: Interpret<Field> = (node, object, { compare, get }) => {
+export const eq: Interpret<Field> = (node, object, { compare, get, isArray }) => {
   const [item, field] = getObjectFieldCursor<Record<string, unknown>>(object, node.field, get);
 
   if (node.value === null) {
@@ -49,17 +49,18 @@ export const eq: Interpret<Field> = (node, object, { compare, get }) => {
 
       const fieldValue = get(candidate, field);
       return fieldValue === null || (
-        Array.isArray(fieldValue) && includes(fieldValue, null, compare)
+        isArray(fieldValue) && includes(fieldValue as unknown[], null, compare)
       );
     };
 
-    return isArrayAndNotNumericField(item, field) ? item.some(test) : test(item);
+    return isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
   }
 
   const value = get(item, field);
 
-  if (Array.isArray(value)) {
-    return compare(value, node.value) === 0 || includes(value, node.value, compare);
+  if (isArray(value)) {
+    return compare(value, node.value) === 0
+      || includes(value as unknown[], node.value, compare);
   }
 
   return matches(value, node.value, compare);
@@ -85,7 +86,7 @@ export const gte = testValueOrArray<Comparable>((node, value, context) => {
   return result === 0 || result === 1;
 });
 
-export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
+export const exists: Interpret<Field<boolean>> = (node, object, { get, isArray }) => {
   if (node.field === ITSELF) {
     return typeof object !== 'undefined';
   }
@@ -96,21 +97,25 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
     return hasOwn(value, field) === node.value;
   };
 
-  return isArrayAndNotNumericField(item, field) ? item.some(test) : test(item);
+  return isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
 };
 
 export const mod = testValueOrArray<[number, number], number>((node, value) => {
   return typeof value === 'number' && value % node.value[0] === node.value[1];
 });
 
-export const size: Interpret<Field<number>, AnyObject | unknown[]> = (node, object, { get }) => {
+export const size: Interpret<Field<number>, AnyObject | unknown[]> = (
+  node,
+  object,
+  { get, isArray }
+) => {
   const [items, field] = getObjectFieldCursor(object as AnyObject, node.field, get);
   const test = (item: unknown) => {
     const value = get(item, field);
-    return Array.isArray(value) && value.length === node.value;
+    return isArray(value) && (value as unknown[]).length === node.value;
   };
 
-  return node.field !== ITSELF && isArrayAndNotNumericField(items, field)
+  return node.field !== ITSELF && isArrayAndNotNumericField(items, field, isArray)
     ? items.some(test)
     : test(items);
 };
@@ -125,14 +130,18 @@ export const within = testValueOrArray<unknown[], unknown>((node, object, { comp
 
 export const nin: typeof within = (node, object, context) => !within(node, object, context);
 
-export const all: Interpret<Field<unknown[]>> = (node, object, { compare, get }) => {
+export const all: Interpret<Field<unknown[]>> = (node, object, { compare, get, isArray }) => {
   const value = get(object, node.field);
-  return Array.isArray(value) && node.value.every(v => includes(value, v, compare));
+  return isArray(value) && node.value.every(v => includes(value as unknown[], v, compare));
 };
 
-export const elemMatch: Interpret<Field<Condition>> = (node, object, { interpret, get }) => {
+export const elemMatch: Interpret<Field<Condition>> = (
+  node,
+  object,
+  { interpret, get, isArray }
+) => {
   const value = get(object, node.field);
-  return Array.isArray(value) && value.some(v => interpret(node.value, v));
+  return isArray(value) && (value as unknown[]).some(v => interpret(node.value, v));
 };
 
 type WhereFunction = (this: AnyObject) => boolean;

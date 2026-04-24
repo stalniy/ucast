@@ -1,5 +1,5 @@
 import { FieldCondition } from '@ucast/core';
-import { JsInterpretationOptions, JsInterpreter } from './types';
+import { IsArray, JsInterpretationOptions, JsInterpreter } from './types';
 
 export type AnyObject = Record<PropertyKey, unknown>;
 export type GetField = (object: any, field: string) => any;
@@ -46,12 +46,21 @@ export function includes(
   return false;
 }
 
-export function isArrayAndNotNumericField<T>(object: T | T[], field: string): object is T[] {
-  return Array.isArray(object) && Number.isNaN(Number(field));
+export function isArrayAndNotNumericField<T>(
+  object: T | T[],
+  field: string,
+  isArray: IsArray
+): object is T[] {
+  return isArray(object) && Number.isNaN(Number(field));
 }
 
-function getField<T extends AnyObject>(object: T | T[], field: string, get: GetField) {
-  if (!isArrayAndNotNumericField(object, field)) {
+function getField<T extends AnyObject>(
+  object: T | T[],
+  field: string,
+  get: GetField,
+  isArray: IsArray
+) {
+  if (!isArrayAndNotNumericField(object, field, isArray)) {
     return get(object, field);
   }
 
@@ -67,16 +76,21 @@ function getField<T extends AnyObject>(object: T | T[], field: string, get: GetF
   return result;
 }
 
-export function getValueByPath(object: AnyObject, field: string, get: GetField) {
+export function getValueByPath(
+  object: AnyObject,
+  field: string,
+  get: GetField,
+  isArray: IsArray
+) {
   if (field.indexOf('.') === -1) {
-    return getField(object, field, get);
+    return getField(object, field, get, isArray);
   }
 
   const paths = field.split('.');
   let value = object;
 
   for (let i = 0, length = paths.length; i < length; i++) {
-    value = getField(value, paths[i], get);
+    value = getField(value, paths[i], get, isArray);
 
     if (!value || typeof value !== 'object') {
       return i < length - 1 ? undefined : value;
@@ -90,11 +104,11 @@ export function testValueOrArray<T, U = T>(test: JsInterpreter<FieldCondition<T>
   return ((node, object, context) => {
     const value = context.get(object, node.field);
 
-    if (!Array.isArray(value)) {
+    if (!context.isArray(value)) {
       return test(node, value, context);
     }
 
-    return value.some(v => test(node, v, context));
+    return (value as U[]).some(v => test(node, v, context));
   }) as JsInterpreter<FieldCondition<T>, AnyObject | U>;
 }
 
