@@ -11,6 +11,7 @@ import {
   includes,
   testValueOrArray,
   isArrayAndNotNumericField,
+  getFieldValue,
   AnyObject,
   hasOwn,
   matches,
@@ -56,7 +57,7 @@ export const eq: Interpret<Field> = (node, object, { compare, get, isArray }) =>
     return isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
   }
 
-  const value = get(item, field);
+  const value = getFieldValue(item, field, get);
 
   if (isArray(value)) {
     return compare(value, node.value) === 0
@@ -111,7 +112,7 @@ export const size: Interpret<Field<number>, AnyObject | unknown[]> = (
 ) => {
   const [items, field] = getObjectFieldCursor(object as AnyObject, node.field, get);
   const test = (item: unknown) => {
-    const value = get(item, field);
+    const value = getFieldValue(item, field, get);
     return isArray(value) && (value as unknown[]).length === node.value;
   };
 

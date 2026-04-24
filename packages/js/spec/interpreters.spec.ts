@@ -80,6 +80,13 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, object)).to.be.true
     })
 
+    it('returns false when nested field parent is missing or primitive', () => {
+      const condition = new Field('eq', 'foo.bar', 22)
+
+      expect(interpret(condition, { baz: 22 })).to.be.false
+      expect(interpret(condition, { foo: 22 })).to.be.false
+    })
+
     it('returns true if condition value is null and field value is null', () => {
       const condition = new Field('eq', 'value', null)
 

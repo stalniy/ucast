@@ -1,4 +1,4 @@
-import { FieldCondition } from '@ucast/core';
+import { FieldCondition, ITSELF } from '@ucast/core';
 import { IsArray, JsInterpretationOptions, JsInterpreter } from './types';
 
 export type AnyObject = Record<PropertyKey, unknown>;
@@ -14,6 +14,18 @@ export function testRegExp(regex: RegExp, value: unknown): boolean {
   regex.lastIndex = 0;
 
   return result;
+}
+
+export function getFieldValue(
+  object: unknown,
+  field: string | typeof ITSELF,
+  get: GetField
+) {
+  if (field !== ITSELF && (object == null || typeof object !== 'object')) {
+    return undefined;
+  }
+
+  return get(object, field);
 }
 
 export function matches(
