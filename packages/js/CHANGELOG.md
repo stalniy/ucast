@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.1](https://github.com/stalniy/ucast/compare/@ucast/js@4.0.0...@ucast/js@4.0.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* the 2nd property get in eq and size interpreters should not raise exception ([9c6d49c](https://github.com/stalniy/ucast/commit/9c6d49c1552363a9c1f6d3f34efc81b08c2edf82))
+
 ## [4.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@3.1.0...@ucast/js@4.0.0) (2026-04-24)
 
 
