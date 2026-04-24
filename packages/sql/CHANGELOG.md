@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/stalniy/ucast/compare/@ucast/sql@0.1.1...@ucast/sql@0.2.0) (2026-04-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* supports ES2020+ only
+
+### Code Refactoring
+
+* drop ES5M and UMD builds ([#77](https://github.com/stalniy/ucast/issues/77)) ([14b8279](https://github.com/stalniy/ucast/commit/14b8279fa0dbd25d761ce7990afe692ae5bdbb95))
+
 ## [0.1.1](https://github.com/stalniy/ucast/compare/@ucast/sql@0.1.0...@ucast/sql@0.1.1) (2026-04-23)
 
 
