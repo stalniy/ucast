@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.3...@ucast/core@2.0.0) (2026-04-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* previously empty AND and OR conditions were removed as an optimization. But this breaks rule semantic and potential postprocessing to catch user errors.
+* supports ES2020+ only
+
+### Code Refactoring
+
+* drop ES5M and UMD builds ([#77](https://github.com/stalniy/ucast/issues/77)) ([14b8279](https://github.com/stalniy/ucast/commit/14b8279fa0dbd25d761ce7990afe692ae5bdbb95))
+* preserves empty AND and OR conditions during condition optimization ([#79](https://github.com/stalniy/ucast/issues/79)) ([9d3cec6](https://github.com/stalniy/ucast/commit/9d3cec6c269910b8417555983392992dd062d3b3))
+
 ## [1.10.3](https://github.com/stalniy/ucast/compare/@ucast/core@1.10.2...@ucast/core@1.10.3) (2026-04-23)
 
 

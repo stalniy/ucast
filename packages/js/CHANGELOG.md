@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@3.1.0...@ucast/js@4.0.0) (2026-04-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* `{ eq: null }` now behaves as in mongodb, so it matches all key values that equal to null and those which does not exist
+* supports ES2020+ only
+
+### Features
+
+* adds possibility to provider custom isArray helper ([f4f39d5](https://github.com/stalniy/ucast/commit/f4f39d5af05788e17b31225c6c98c8e68ff8b07d))
+* adds support for arrays in  eq: null  case ([667bad8](https://github.com/stalniy/ucast/commit/667bad8ae424fb1a4f106989820982893ff3aba6))
+
+
+### Bug Fixes
+
+* adjusts eq: null handling to be the same as in mongodb ([#80](https://github.com/stalniy/ucast/issues/80)) ([1e1c969](https://github.com/stalniy/ucast/commit/1e1c9697a7d6598ee7a5ec72d931c50bb68d4667))
+* adjusts MongoQuery type to reflect mongodb capabilities and adjusts interpreters as well ([#81](https://github.com/stalniy/ucast/issues/81)) ([131e893](https://github.com/stalniy/ucast/commit/131e893d578af4a160709fc64ed031540784b663))
+
+
+### Code Refactoring
+
+* drop ES5M and UMD builds ([#77](https://github.com/stalniy/ucast/issues/77)) ([14b8279](https://github.com/stalniy/ucast/commit/14b8279fa0dbd25d761ce7990afe692ae5bdbb95))
+* eq: null should not match primitive values ([f4c443c](https://github.com/stalniy/ucast/commit/f4c443c6503aa59eea36996809e59531dc339f5b))
+
 ## [3.1.0](https://github.com/stalniy/ucast/compare/@ucast/js@3.0.4...@ucast/js@3.1.0) (2026-02-04)
 
 

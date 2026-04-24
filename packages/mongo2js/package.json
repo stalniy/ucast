@@ -1,6 +1,6 @@
 {
   "name": "@ucast/mongo2js",
-  "version": "1.4.1",
+  "version": "2.0.0",
   "description": "git@github.com:stalniy/ucast.git",
   "sideEffects": false,
   "main": "dist/cjs/index.js",

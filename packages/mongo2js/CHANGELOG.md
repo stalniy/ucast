@@ -9,6 +9,17 @@ All notable changes to this project will be documented in this file.
 
 * ensures that `toJSON` is not called on primitives ([#54](https://github.com/stalniy/ucast/issues/54)) ([cc70754](https://github.com/stalniy/ucast/commit/cc707543119ba4278e63b2ee7894460756f3e61d))
 
+## [2.0.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.4.1...@ucast/mongo2js@2.0.0) (2026-04-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* supports ES2020+ only
+
+### Code Refactoring
+
+* drop ES5M and UMD builds ([#77](https://github.com/stalniy/ucast/issues/77)) ([14b8279](https://github.com/stalniy/ucast/commit/14b8279fa0dbd25d761ce7990afe692ae5bdbb95))
+
 ## [1.4.1](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.4.0...@ucast/mongo2js@1.4.1) (2026-02-04)
 
 

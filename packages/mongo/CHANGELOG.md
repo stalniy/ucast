@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.4.4...@ucast/mongo@3.0.0) (2026-04-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* supports ES2020+ only
+
+### Bug Fixes
+
+* adjusts MongoQuery type to reflect mongodb capabilities and adjusts interpreters as well ([#81](https://github.com/stalniy/ucast/issues/81)) ([131e893](https://github.com/stalniy/ucast/commit/131e893d578af4a160709fc64ed031540784b663))
+* improves validation of compound instruction parsing for mongodb ([#82](https://github.com/stalniy/ucast/issues/82)) ([f59c7e6](https://github.com/stalniy/ucast/commit/f59c7e6fe7d4a90f22905e5d72f00fd06c602537))
+
+
+### Code Refactoring
+
+* drop ES5M and UMD builds ([#77](https://github.com/stalniy/ucast/issues/77)) ([14b8279](https://github.com/stalniy/ucast/commit/14b8279fa0dbd25d761ce7990afe692ae5bdbb95))
+
 ## [2.4.4](https://github.com/stalniy/ucast/compare/@ucast/mongo@2.4.3...@ucast/mongo@2.4.4) (2026-04-23)
 
 
