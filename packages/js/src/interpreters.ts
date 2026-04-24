@@ -40,7 +40,7 @@ export const eq: Interpret<Field> = (node, object, { compare, get }) => {
   if (node.value === null) {
     const test = (candidate: unknown) => {
       if (candidate == null || typeof candidate !== 'object') {
-        return true;
+        return false;
       }
 
       if (!hasOwn(candidate, field)) {

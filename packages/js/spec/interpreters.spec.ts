@@ -85,6 +85,7 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, {})).to.be.true
       expect(interpret(condition, { value: null })).to.be.true
+      expect(interpret(condition, [{}])).to.be.true
     })
 
     it('returns false if condition value is null and field value is undefined', () => {
@@ -92,7 +93,9 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, { value: undefined })).to.be.false
       expect(interpret(condition, [{ value: undefined }])).to.be.false
-      expect(interpret(condition, [{}])).to.be.true
+      expect(interpret(condition, 1)).to.be.false
+      expect(interpret(condition, undefined)).to.be.false
+      expect(interpret(condition, { value: [undefined]})).to.be.false
     })
 
     it('returns true if condition value is null and array field contains null', () => {
