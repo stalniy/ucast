@@ -72,6 +72,8 @@ The default `interpret` function:
   interpret(condition, { address: { street: 'test' } }) // false, objects are compared by strict equality
   ```
 
+* follows current MongoDB `null` equality semantics: `{ field: null }` matches missing fields, explicit `null` values, and arrays that contain `null`, but not explicit `undefined` values.
+
 
 ### Custom interpreter
 

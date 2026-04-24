@@ -86,6 +86,28 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, {})).to.be.true
       expect(interpret(condition, { value: null })).to.be.true
     })
+
+    it('returns false if condition value is null and field value is undefined', () => {
+      const condition = new Field('eq', 'value', null)
+
+      expect(interpret(condition, { value: undefined })).to.be.false
+      expect(interpret(condition, [{ value: undefined }])).to.be.false
+      expect(interpret(condition, [{}])).to.be.true
+    })
+
+    it('returns true if condition value is null and array field contains null', () => {
+      const condition = new Field('eq', 'value', null)
+
+      expect(interpret(condition, { value: [1, null, 3] })).to.be.true
+      expect(interpret(condition, { value: [1, 2, 3] })).to.be.false
+    })
+
+    it('returns true if condition value is null and projected array field contains null', () => {
+      const condition = new Field('eq', 'items.value', null)
+
+      expect(interpret(condition, { items: [{ value: 1 }, { value: null }] })).to.be.true
+      expect(interpret(condition, { items: [{ value: 1 }, { value: 2 }] })).to.be.false
+    })
   })
 
   describe('ne', () => {

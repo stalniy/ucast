@@ -9,12 +9,12 @@ import {
 import { JsInterpreter as Interpret } from './types';
 import {
   includes,
-  matches,
-  testRegExp,
   testValueOrArray,
   isArrayAndNotNumericField,
   AnyObject,
   hasOwn,
+  matches,
+  testRegExp,
 } from './utils';
 import { getObjectFieldCursor } from './interpreter';
 
@@ -34,17 +34,32 @@ export const not: Interpret<Compound> = (node, object, { interpret }) => {
   return !interpret(node.value[0], object);
 };
 
-export const eq: Interpret<Field> = (node, object, options) => {
+export const eq: Interpret<Field> = (node, object, { compare, get }) => {
+  const [item, field] = getObjectFieldCursor<Record<string, unknown>>(object, node.field, get);
+
   if (node.value === null) {
-    const [item, field] = getObjectFieldCursor<{}>(object, node.field, options.get);
-    return !hasOwn(item, field) || (item as Record<string, unknown>)[field] === null;
+    const test = (candidate: unknown) => {
+      if (candidate == null || typeof candidate !== 'object') {
+        return true;
+      }
+
+      if (!hasOwn(candidate, field)) {
+        return true;
+      }
+
+      const fieldValue = get(candidate, field);
+      return fieldValue === null || (
+        Array.isArray(fieldValue) && includes(fieldValue, null, compare)
+      );
+    };
+
+    return isArrayAndNotNumericField(item, field) ? item.some(test) : test(item);
   }
 
-  const { compare, get } = options;
-  const value = get(object, node.field);
+  const value = get(item, field);
 
   if (Array.isArray(value)) {
-    return matches(value, node.value, compare) || includes(value, node.value, compare);
+    return compare(value, node.value) === 0 || includes(value, node.value, compare);
   }
 
   return matches(value, node.value, compare);
@@ -77,7 +92,7 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get }) => {
 
   const [item, field] = getObjectFieldCursor<{}>(object, node.field, get);
   const test = (value: {}) => {
-    if (value == null) return Boolean(value) === node.value;
+    if (value == null) return node.value === false;
     return hasOwn(value, field) === node.value;
   };
 
