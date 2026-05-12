@@ -28,6 +28,26 @@ export interface QueryOptions {
   documentContext?: Record<string, unknown>
   useIgnoreValue?: boolean
   mergeFinalConditions?(conditions: Condition[]): Condition
+  /**
+   * When `true`, the parser throws on field values that are plain objects
+   * whose keys do NOT include any registered operator, instead of silently
+   * falling back to treating the parent key as a field name with the
+   * default operator.
+   *
+   * Without this flag, `{ status: { equals: 'x' } }` against a parser where
+   * `equals` is not registered (e.g. Mongo, whose canonical operator is
+   * `$eq`) compiles as `status defaultOp { equals: 'x' }` and never matches
+   * at runtime. The fallback is convenient for legitimate field-name
+   * shorthand (`{ name: 'alice' }`) but masks wrong-shape rules from
+   * hand-rolled translators and dialect mix-ups.
+   *
+   * Field-name shorthand for primitive, array, and non-plain-object values
+   * (e.g. Date) continues to work. Only the "object value with all-unknown
+   * keys" shape is rejected.
+   *
+   * Defaults to `false` for backwards compatibility.
+   */
+  strictOperators?: boolean
 }
 
 export type ObjectQueryFieldParsingContext = ParsingContext<FieldParsingContext & {
@@ -42,9 +62,10 @@ export class ObjectQueryParser<
   private readonly _instructions: ParsingInstructions;
   private _fieldInstructionContext: ObjectQueryFieldParsingContext;
   private _documentInstructionContext: ParsingContext<{ query: {} }>;
-  private readonly _options: Required<
-  Pick<QueryOptions, 'operatorToConditionName' | 'defaultOperatorName' | 'mergeFinalConditions'>
-  >;
+  private readonly _options: Required<Pick<
+  QueryOptions,
+  'operatorToConditionName' | 'defaultOperatorName' | 'mergeFinalConditions' | 'strictOperators'
+  >>;
 
   private readonly _objectKeys: typeof Object.keys;
 
@@ -54,6 +75,7 @@ export class ObjectQueryParser<
       operatorToConditionName: options.operatorToConditionName || identity,
       defaultOperatorName: options.defaultOperatorName || 'eq',
       mergeFinalConditions: options.mergeFinalConditions || buildAnd,
+      strictOperators: options.strictOperators === true,
     };
     this._instructions = Object.keys(instructions).reduce((all, name) => {
       all[name] = { name: this._options.operatorToConditionName(name), ...instructions[name] };
@@ -115,6 +137,22 @@ export class ObjectQueryParser<
     return parse(instruction, value, context);
   }
 
+  protected assertNoUnknownOperatorObject(field: string, value: unknown): void {
+    if (!value || (value as { constructor?: unknown }).constructor !== Object) {
+      return;
+    }
+
+    const keys = this._objectKeys(value as Record<string, unknown>);
+
+    if (keys.length === 0) {
+      return;
+    }
+
+    throw new Error(
+      `Unrecognized operator key(s) in field query for "${field}": ${keys.join(', ')}`
+    );
+  }
+
   protected parseFieldOperators(field: string, value: U) {
     const conditions: Condition[] = [];
     const keys = this._objectKeys(value);
@@ -157,6 +195,9 @@ export class ObjectQueryParser<
       } else if (this._fieldInstructionContext.hasOperators<U>(value)) {
         conditions.push(...this.parseFieldOperators(key, value));
       } else {
+        if (this._options.strictOperators) {
+          this.assertNoUnknownOperatorObject(key, value);
+        }
         pushIfNonNullCondition(
           conditions,
           this.parseField(key, this._options.defaultOperatorName, value, query)

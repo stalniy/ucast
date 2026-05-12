@@ -179,6 +179,68 @@ describe('ObjectQueryParser', () => {
     })
   })
 
+  describe('when "strictOperators" is enabled', () => {
+    it('throws when field value is an object whose keys are not registered operators', () => {
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ status: { equals: 'published' } }))
+        .to.throw(/Unrecognized operator key\(s\) in field query for "status": equals/)
+    })
+
+    it('lists every unrecognized key in the error message', () => {
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ status: { equals: 'x', value: 'y' } }))
+        .to.throw(/equals, value/)
+    })
+
+    it('does not throw when field value is a primitive (field-name shorthand)', () => {
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ status: 'published' })).to.not.throw()
+    })
+
+    it('does not throw when field value is null', () => {
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ status: null })).to.not.throw()
+    })
+
+    it('does not throw when field value is an array', () => {
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ status: ['published', 'draft'] })).to.not.throw()
+    })
+
+    it('does not throw when field value is a Date or other non-plain object', () => {
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ createdAt: new Date() })).to.not.throw()
+    })
+
+    it('does not throw when the value contains a registered operator', () => {
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ status: { eq: 'published' } })).to.not.throw()
+    })
+
+    it('does not throw for an empty object value', () => {
+      // {} is unambiguous — it deep-equals only the literal empty object;
+      // strict mode should not break that legitimate (if unusual) case.
+      const parser = new ObjectQueryParser({ eq }, { strictOperators: true })
+
+      expect(() => parser.parse({ status: {} })).to.not.throw()
+    })
+
+    it('does not change behavior when disabled (default)', () => {
+      const parser = new ObjectQueryParser({ eq })
+
+      // Without the flag, the wrong-shape rule compiles silently as
+      // `status eq { equals: 'published' }` — documented current behaviour.
+      expect(() => parser.parse({ status: { equals: 'published' } })).to.not.throw()
+    })
+  })
+
   describe('when "useIgnoreValue" is enabled', () => {
     describe('field level operators', () => {
       it('ignores properties that equals to `ignoreValue`', () => {
