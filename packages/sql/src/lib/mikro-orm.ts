@@ -33,7 +33,7 @@ export const getRelationMetadata: GetRelationMetadata = (relationName, ctx) => {
     return {
       relationContext: prop.targetMeta,
       buildRelationQuery: buildManyToManyRelationQuery(
-        prop.pivotTable || prop.pivotEntity,
+        pivotTableName(prop),
         prop.targetMeta.tableName,
         joinColumnPairs(prop.joinColumns, prop.referencedColumnNames, primaryColumnNames(meta)),
         joinColumnPairs(prop.inverseJoinColumns, primaryColumnNames(prop.targetMeta)),
@@ -124,12 +124,28 @@ function directRelationColumnPairs(prop: MikroOrmRelation): RelationColumnPair[]
   }));
 }
 
+function pivotTableName(prop: MikroOrmRelation) {
+  if (prop.pivotTable) {
+    return prop.pivotTable;
+  }
+
+  const pivotEntity = prop.pivotEntity as string | { name?: string } | undefined;
+
+  if (typeof pivotEntity === 'string') {
+    return pivotEntity;
+  }
+
+  return pivotEntity!.name!;
+}
+
 function getEntityMetadata(context: unknown): EntityMetadata {
   if (isEntityMetadata(context)) {
     return context;
   }
 
-  return (context as QueryBuilder).mainAlias!.metadata!;
+  const alias = (context as QueryBuilder).mainAlias!;
+
+  return (alias.meta ?? alias.metadata)!;
 }
 
 function isEntityMetadata(context: unknown): context is EntityMetadata {
@@ -154,6 +170,7 @@ function primaryColumnNames(meta: EntityMetadata) {
 interface QueryBuilder {
   alias: string;
   mainAlias?: {
+    meta?: EntityMetadata;
     metadata?: EntityMetadata;
   };
   where(sql: string, params?: unknown[]): this;

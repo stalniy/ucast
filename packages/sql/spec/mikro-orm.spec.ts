@@ -27,29 +27,29 @@ describe('Condition interpreter for MikroORM', () => {
   })
 
   after(async () => {
-    await orm.close()
+    await orm?.close()
   })
 
   it('returns a `QueryBuilder<T>`', () => {
     const condition = new FieldCondition('eq', 'name', 'test')
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
     expect(query).to.be.instanceof(QueryBuilder)
-    expect(query.getQuery()).to.equal('select * from `user` as `u0` where (`u0`.`name` = ?)')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`name` = ?)')
   })
 
   it('properly binds parameters for "IN" operator', () => {
     const condition = new FieldCondition('in', 'age', [1, 2, 3])
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.equal('select * from `user` as `u0` where (`u0`.`age` in(?, ?, ?))')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`age` in(?, ?, ?))')
   })
 
   it('treats dotted field names as literal fields', () => {
     const condition = new FieldCondition('eq', 'projects.name', 'test')
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.equal('select * from `user` as `u0` where (`u0`.`projects.name` = ?)')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`projects.name` = ?)')
   })
 
   it("doesn't auto join dotted fields in compound conditions", () => {
@@ -57,9 +57,9 @@ describe('Condition interpreter for MikroORM', () => {
       new FieldCondition('eq', 'projects.name', 'test'),
       new FieldCondition('eq', 'projects.active', true),
     ])
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.equal('select * from `user` as `u0` where ((`u0`.`projects.name` = ? and `u0`.`projects.active` = ?))')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ((`u0`.`projects.name` = ? and `u0`.`projects.active` = ?))')
   })
 
   it('generates nested EXISTS queries for nested relations', () => {
@@ -72,10 +72,10 @@ describe('Condition interpreter for MikroORM', () => {
         new FieldCondition('eq', 'date', '2026-06-28')
       )
     )
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
     expect(query.getQuery()).to.equal([
-      'select * from `user` as `u0`',
+      'select `u0`.* from `user` as `u0`',
       'where (EXISTS (SELECT 1 FROM `project` as `projects_0`',
       'WHERE `u0`.`id` = `projects_0`.`user_id`',
       'AND (EXISTS (SELECT 1 FROM `deadline` as `deadlines_1`',
@@ -90,7 +90,7 @@ describe('Condition interpreter for MikroORM', () => {
       'roles',
       new FieldCondition('eq', 'name', 'admin')
     )
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
     const sql = query.getQuery()
 
     expect(sql).to.contain('SELECT 1 FROM `user_roles` as `roles_')
@@ -110,7 +110,7 @@ describe('Condition interpreter for MikroORM', () => {
         }
 
         return {
-          relationContext: orm.getMetadata().get(Project.name),
+          relationContext: orm.getMetadata().get(Project),
           buildRelationQuery(relation) {
             const tenantProjectAlias = 'tenant_projects'
             const tenantProjectField = (field: string) => {
@@ -132,7 +132,7 @@ describe('Condition interpreter for MikroORM', () => {
       'projects',
       new FieldCondition('eq', 'active', true)
     )
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select([]))
+    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
     expect(query.getQuery()).to.contain('`tenant_projects`.`kind` = ? AND (')
     expect(query.getQuery()).to.contain('`.`active` = ?')
@@ -146,7 +146,7 @@ describe('Condition interpreter for MikroORM', () => {
     it('filters 1:m relations', async () => {
       const users = await interpret(
         relationConditions.hasMany,
-        orm.em.fork().createQueryBuilder(User).select([])
+        orm.em.fork().createQueryBuilder(User).select('*')
       ).orderBy({ name: 'ASC' }).getResultList()
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasMany)
@@ -155,7 +155,7 @@ describe('Condition interpreter for MikroORM', () => {
     it('filters m:1 relations', async () => {
       const projects = await interpret(
         relationConditions.belongsTo,
-        orm.em.fork().createQueryBuilder(Project).select([])
+        orm.em.fork().createQueryBuilder(Project).select('*')
       ).orderBy({ name: 'ASC' }).getResultList()
 
       expect(namesOf(projects)).to.deep.equal(expectedRelationNames.belongsTo)
@@ -164,7 +164,7 @@ describe('Condition interpreter for MikroORM', () => {
     it('filters 1:1 relations', async () => {
       const users = await interpret(
         relationConditions.hasOne,
-        orm.em.fork().createQueryBuilder(User).select([])
+        orm.em.fork().createQueryBuilder(User).select('*')
       ).orderBy({ name: 'ASC' }).getResultList()
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasOne)
@@ -173,7 +173,7 @@ describe('Condition interpreter for MikroORM', () => {
     it('filters m:n relations', async () => {
       const users = await interpret(
         relationConditions.manyToMany,
-        orm.em.fork().createQueryBuilder(User).select([])
+        orm.em.fork().createQueryBuilder(User).select('*')
       ).orderBy({ name: 'ASC' }).getResultList()
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.manyToMany)
@@ -283,21 +283,21 @@ async function configureORM() {
       name: { type: 'string' },
       profile: {
         kind: '1:1',
-        entity: 'Profile',
+        entity: () => Profile,
         ref: true,
         nullable: true,
         mappedBy: 'user'
       },
       projects: {
         kind: '1:m',
-        entity: 'Project',
+        entity: () => Project,
         ref: true,
         nullable: false,
         mappedBy: 'user'
       },
       roles: {
         kind: 'm:n',
-        entity: 'Role',
+        entity: () => Role,
         owner: true,
         inversedBy: 'users',
         pivotTable: 'user_roles'
@@ -310,7 +310,7 @@ async function configureORM() {
       id: { type: 'number', primary: true },
       displayName: { type: 'string', fieldName: 'display_name' },
       user: {
-        entity: 'User',
+        entity: () => User,
         kind: '1:1',
         owner: true,
         ref: true,
@@ -323,11 +323,11 @@ async function configureORM() {
     properties: {
       id: { type: 'number', primary: true },
       name: { type: 'string' },
-      user: { entity: 'User', kind: 'm:1', ref: true, nullable: false },
+      user: { entity: () => User, kind: 'm:1', ref: true, nullable: false },
       active: { type: 'boolean' },
       deadlines: {
         kind: '1:m',
-        entity: 'Deadline',
+        entity: () => Deadline,
         ref: true,
         nullable: false,
         mappedBy: 'project'
@@ -339,7 +339,7 @@ async function configureORM() {
     properties: {
       id: { type: 'number', primary: true },
       date: { type: 'string' },
-      project: { entity: 'Project', kind: 'm:1', ref: true, nullable: false }
+      project: { entity: () => Project, kind: 'm:1', ref: true, nullable: false }
     }
   })
   const RoleSchema = new EntitySchema({
@@ -349,7 +349,7 @@ async function configureORM() {
       name: { type: 'string' },
       users: {
         kind: 'm:n',
-        entity: 'User',
+        entity: () => User,
         mappedBy: 'roles'
       }
     }
@@ -371,7 +371,7 @@ async function seedMikroOrm({
   User,
   orm
 }: OrmContext) {
-  await orm.schema.createSchema()
+  await orm.schema.create()
   const em = orm.em.fork()
 
   const users = new Map(relationSeeds.users.map(user => [
