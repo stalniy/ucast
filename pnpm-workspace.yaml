@@ -2,9 +2,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  better-sqlite3: true
   sqlite3: true
 
 minimumReleaseAge: 10080
-
-onlyBuiltDependencies:
-  - sqlite3

@@ -68,7 +68,8 @@ function createTypeOrmDialects(typeormOptions: TypeOrmInterpreterOptions = {}) {
     paramPlaceholder: index => `:${index - 1}`
   });
 
-  dialects.sqlite.escapeField = dialects.sqlite3.escapeField = dialects.pg.escapeField;
+  dialects.sqlite.escapeField = dialects.sqlite3.escapeField =
+    dialects['better-sqlite3'].escapeField = dialects.pg.escapeField;
   return dialects;
 }
 
@@ -83,7 +84,7 @@ export function createInterpreter(
     condition: Condition,
     query: SelectQueryBuilder<Entity>,
   ) => {
-    const dialect = query.connection.options.type as keyof typeof dialects;
+    const dialect = getQueryDataSource(query)?.options.type as keyof typeof dialects;
     const options = dialects[dialect];
 
     if (!options) {
@@ -99,6 +100,15 @@ export function createInterpreter(
 }
 
 export const interpret = createInterpreter(allInterpreters);
+
+function getQueryDataSource<Entity extends ObjectLiteral>(query: SelectQueryBuilder<Entity>) {
+  const typeormQuery = query as SelectQueryBuilder<Entity> & {
+    connection?: TypeOrmDataSource;
+    dataSource?: TypeOrmDataSource;
+  };
+
+  return typeormQuery.dataSource ?? typeormQuery.connection;
+}
 
 function buildManyToManyRelationMetadata(relation: TypeOrmRelation) {
   const ownerRelation = relation.isOwning ? relation : relation.inverseRelation;
@@ -157,4 +167,10 @@ interface TypeOrmRelation {
 interface TypeOrmColumn {
   databaseName: string;
   referencedColumn?: TypeOrmColumn;
+}
+
+interface TypeOrmDataSource {
+  options: {
+    type?: string;
+  };
 }

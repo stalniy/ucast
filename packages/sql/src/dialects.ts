@@ -47,6 +47,7 @@ export type SupportedDialects = 'mssql' |
 'mysql' |
 'mysql2' |
 'mariadb' |
+'better-sqlite3' |
 'sqlite3' |
 'sqlite';
 type Dialects<V> = Record<SupportedDialects, DialectOptions & V>;
@@ -83,6 +84,7 @@ export function createDialects<T extends Partial<DialectOptions>>(options: T): D
     mysql: mysqlOptions,
     mysql2: mysqlOptions,
     mariadb: mysqlOptions,
+    'better-sqlite3': sqliteOptions,
     sqlite: sqliteOptions,
     sqlite3: sqliteOptions,
   };

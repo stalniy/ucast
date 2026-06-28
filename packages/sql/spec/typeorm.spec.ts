@@ -1,7 +1,7 @@
 import { FieldCondition } from '@ucast/core'
 import {
+  DataSource,
   EntitySchema,
-  createConnection,
   SelectQueryBuilder
 } from 'typeorm'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/typeorm.ts'
@@ -30,7 +30,7 @@ describe('Condition interpreter for TypeORM', () => {
   })
 
   after(async () => {
-    await conn.close()
+    await conn?.destroy()
   })
 
   it('returns a `SelectQueryBuilder<T>`', () => {
@@ -61,6 +61,26 @@ describe('Condition interpreter for TypeORM', () => {
       1: 2,
       2: 3
     })
+  })
+
+  it('supports TypeORM better-sqlite3 dialect name', () => {
+    const options = conn.options as { type: string }
+    const originalType = options.type
+    const condition = new FieldCondition('eq', 'name', 'test')
+
+    try {
+      options.type = 'better-sqlite3'
+      const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
+
+      expect(query.getQuery()).to.equal([
+        'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+        'FROM "user" "u"',
+        'WHERE "u"."name" = :0'
+      ].join(' '))
+      expect(query.getParameters()).to.eql({ 0: 'test' })
+    } finally {
+      options.type = originalType
+    }
   })
 
   it('treats dotted field names as literal fields', () => {
@@ -328,11 +348,11 @@ async function configureORM() {
     }
   })
 
-  const conn = await createConnection({
-    type: 'sqlite',
+  const conn = await new DataSource({
+    type: 'better-sqlite3',
     database: ':memory:',
     entities: [UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema]
-  })
+  }).initialize()
 
   return { User, Project, conn }
 }
