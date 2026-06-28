@@ -7,17 +7,50 @@ import {
 import { type DialectOptions } from './dialects.ts';
 
 export interface SqlQueryOptions extends Required<DialectOptions> {
-  rootAlias?: string
-  foreignField?(field: string, relationName: string): string
-  localField?(field: string): string
-  joinRelation?(relationName: string, context: unknown): boolean
+  rootAlias?: string;
+  localField?(field: string): string;
+  getRelationMetadata?(
+    relationName: string,
+    helpers: RelationMetadataHelpers
+  ): RelationMetadata | undefined;
+}
+
+export interface RelationMetadataHelpers {
+  escape(field: string): string;
+  relationContext: unknown;
+}
+
+export type RelationMetadata = SimpleRelationMetadata | CustomRelationMetadata;
+
+export interface SimpleRelationMetadata {
+  parentField: string;
+  relationField: string;
+  relationTable: string;
+  relationContext?: unknown;
+}
+
+export interface CustomRelationMetadata {
+  relationContext?: unknown;
+  buildRelationQuery(context: RelationQueryContext): string;
+}
+
+export interface RelationQueryContext {
+  relationName: string;
+  parentAlias?: string;
+  relationAlias: string;
+  escapeField(field: string): string;
+  parentField(field: string): string;
+  relationField(field: string): string;
+  conditionSql(): string;
+  param(value: unknown): string;
 }
 
 type ChildOptions = Partial<Pick<
 SqlQueryOptions,
-'foreignField' | 'localField' | 'joinRelation'
+'localField' | 'getRelationMetadata' | 'rootAlias'
 >> & {
-  linkParams?: boolean
+  linkParams?: boolean;
+  relationContext?: unknown;
 };
 
 export class Query {
@@ -25,20 +58,18 @@ export class Query {
   private _fieldPrefix!: string;
   private _params: unknown[] = [];
   private _sql: string[] = [];
-  private _joins = new Set<string>();
   private _lastPlaceholderIndex = 1;
-  private _relationContext!: unknown;
+  private _relationCounter = { value: 0 };
+  public readonly relationContext!: unknown;
+  public readonly rootAlias?: string;
   private _rootAlias!: string;
 
   constructor(options: SqlQueryOptions, fieldPrefix = '', relationContext?: unknown) {
     this.options = options;
     this._fieldPrefix = fieldPrefix;
-    this._relationContext = relationContext;
+    this.relationContext = relationContext;
+    this.rootAlias = options.rootAlias;
     this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
-
-    if (this.options.foreignField) {
-      this._foreignField = this.options.foreignField;
-    }
 
     if (this.options.localField) {
       this._localField = this.options.localField;
@@ -47,34 +78,15 @@ export class Query {
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
+    return this._rootAlias + this._localField(name);
+  }
 
-    if (!this.options.joinRelation) {
-      return this._rootAlias + this._localField(name);
-    }
-
-    const relationNameIndex = name.indexOf('.');
-
-    if (relationNameIndex === -1) {
-      return this._rootAlias + this._localField(name);
-    }
-
-    const relationName = name.slice(0, relationNameIndex);
-    const field = name.slice(relationNameIndex + 1);
-
-    if (!this.options.joinRelation(relationName, this._relationContext)) {
-      return this._rootAlias + this._localField(name);
-    }
-
-    this._joins.add(relationName);
-    return this._foreignField(field, relationName);
+  rootField(name: string) {
+    return this._rootAlias + this._localField(name);
   }
 
   private _localField(field: string) {
     return this.options.escapeField(field);
-  }
-
-  private _foreignField(field: string, relationName: string) {
-    return `${this.options.escapeField(relationName)}.${this.options.escapeField(field)}`;
   }
 
   param(value: unknown) {
@@ -87,6 +99,10 @@ export class Query {
     return items.map(item => this.param(item));
   }
 
+  nextRelationAlias(prefix: string) {
+    return `${prefix}_${this._relationCounter.value++}`;
+  }
+
   child(options?: ChildOptions) {
     let queryOptions: SqlQueryOptions = this.options;
     let canLinkParams = false;
@@ -97,11 +113,12 @@ export class Query {
       canLinkParams = !!linkParams;
     }
 
-    const query = new Query(queryOptions, this._fieldPrefix, this._relationContext);
+    const relationContext = options?.relationContext ?? this.relationContext;
+    const query = new Query(queryOptions, this._fieldPrefix, relationContext);
+    query._relationCounter = this._relationCounter;
 
     if (canLinkParams) {
       query._params = this._params;
-      query._joins = this._joins; // TODO: investigate case of referencing relations of relations
     } else {
       query._lastPlaceholderIndex = this._lastPlaceholderIndex + this._params.length;
     }
@@ -124,9 +141,6 @@ export class Query {
 
     if (this._params !== query._params) {
       this._params.push(...query._params);
-      for (const relation of query._joins) {
-        this._joins.add(relation);
-      }
     }
     return this;
   }
@@ -143,8 +157,8 @@ export class Query {
     }
   }
 
-  toJSON(): [string, unknown[], string[]] {
-    return [this._sql.join(' and '), this._params, Array.from(this._joins)];
+  toJSON(): [string, unknown[]] {
+    return [this._sql.join(' and '), this._params];
   }
 }
 
