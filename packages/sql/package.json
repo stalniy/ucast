@@ -70,8 +70,8 @@
   },
   "homepage": "https://github.com/stalniy/ucast#readme",
   "devDependencies": {
-    "@mikro-orm/core": "^6.6.7",
-    "@mikro-orm/sqlite": "^6.6.7",
+    "@mikro-orm/core": "^7.0.0",
+    "@mikro-orm/sqlite": "^7.0.0",
     "@types/bluebird": "^3.5.32",
     "@types/chai": "^4.2.11",
     "@types/chai-spies": "^1.0.1",
@@ -92,7 +92,7 @@
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "@mikro-orm/core": "^6.0.0",
+    "@mikro-orm/core": "^6.0.0 || ^7.0.0",
     "objection": "^2.0.0 || ^3.0.0",
     "sequelize": "^5.0.0 || ^6.0.0",
     "typeorm": "^0.2.0 || ^0.3.0 || ^1.0.0"
