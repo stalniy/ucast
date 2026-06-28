@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/stalniy/ucast/compare/@ucast/sql@0.2.0...@ucast/sql@0.2.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* adds support for mikro-orm 7.x ([#88](https://github.com/stalniy/ucast/issues/88)) ([219b3b1](https://github.com/stalniy/ucast/commit/219b3b1ff556828f6a4ebe06067276cead59ad57))
+* adds support for typeorm 1.x ([#86](https://github.com/stalniy/ucast/issues/86)) ([9c87d87](https://github.com/stalniy/ucast/commit/9c87d87176e621cc0fa539e7fedf37f1b7e129ce))
+
 ## [0.2.0](https://github.com/stalniy/ucast/compare/@ucast/sql@0.1.1...@ucast/sql@0.2.0) (2026-04-24)
 
 
