@@ -1,5 +1,5 @@
 import { FieldCondition as Field, CompoundCondition } from '@ucast/core'
-import { expect, spy } from './specHelper.ts'
+import { expect } from './specHelper.ts'
 import {
   createSqlInterpreter,
   eq,
@@ -16,49 +16,22 @@ import {
   or,
   nor,
   mod,
-  elemMatch,
   regex,
   pg,
   oracle,
   mysql,
   mssql,
   type SqlQueryOptions,
+  someRelation,
+  noneRelation,
+  everyRelation,
 } from '../src/index.ts'
 
-const joinRelation = () => true
 const options: SqlQueryOptions = {
   ...pg,
-  joinRelation,
 }
 
 describe('Condition Interpreter', () => {
-  describe('auto join', () => {
-    const interpret = createSqlInterpreter({ eq })
-    const condition = new Field('eq', 'projects.name', 'test')
-
-    before(() => {
-      spy.on(options, 'joinRelation')
-    })
-
-    after(() => {
-      spy.restore(options, 'joinRelation')
-    })
-
-    it('calls `joinRelation` function passing relation name when using dot notation', () => {
-      interpret(condition, options)
-      expect(options.joinRelation).to.have.been.called.with('projects')
-    })
-
-    it('escapes relation name with `options.escapeField`', () => {
-      spy.on(options, 'escapeField')
-      const [sql] = interpret(condition, options)
-
-      expect(sql).to.equal('"projects"."name" = $1')
-      expect(options.escapeField).to.have.been.called.with('projects')
-      spy.restore(options, 'escapeField')
-    })
-  })
-
   describe('primitive operators', () => {
     const interpret = createSqlInterpreter({ eq, ne, lt, lte, gt, gte, mod })
 
@@ -250,47 +223,12 @@ describe('Condition Interpreter', () => {
     })
   })
 
-  describe('elemMatch', () => {
-    const interpret = createSqlInterpreter({ elemMatch, eq, or, and, lt, gt })
-
-    it('generates query from a field condition based on relation', () => {
-      const condition = new Field('elemMatch', 'projects', new Field('eq', 'active', true))
-      const [sql, params] = interpret(condition, options)
-
-      expect(sql).to.equal('"projects"."active" = $1')
-      expect(params).to.deep.equal([true])
-    })
-
-    it('generates query from a compound condition based on relation', () => {
-      const condition = new Field('elemMatch', 'projects', new CompoundCondition('and', [
-        new Field('gt', 'count', 5),
-        new Field('lt', 'count', 10),
-      ]))
-      const [sql, params] = interpret(condition, options)
-
-      expect(sql).to.equal('("projects"."count" > $1 and "projects"."count" < $2)')
-      expect(params).to.deep.equal([5, 10])
-    })
-
-    it('calls "joinRelation" option for every field', () => {
-      spy.on(options, 'joinRelation')
-      const condition = new Field('elemMatch', 'projects', new CompoundCondition('and', [
-        new Field('gt', 'count', 5),
-        new Field('lt', 'count', 10),
-      ]))
-      interpret(condition, options)
-
-      expect(options.joinRelation).to.have.been.called.twice
-      spy.restore(options, 'joinRelation')
-    })
-  })
-
   describe('regex', () => {
     const interpret = createSqlInterpreter({ regex })
 
     it('generates posix operator for PostgreSQL', () => {
       const condition = new Field('regex', 'email', /@/)
-      const [sql, params] = interpret(condition, { ...pg, joinRelation })
+      const [sql, params] = interpret(condition, { ...pg })
 
       expect(sql).to.equal('"email" ~ $1')
       expect(params).to.deep.equal([condition.value.source])
@@ -298,7 +236,7 @@ describe('Condition Interpreter', () => {
 
     it('generates posix operator for Oracle', () => {
       const condition = new Field('regex', 'email', /@/)
-      const [sql, params] = interpret(condition, { ...oracle, joinRelation })
+      const [sql, params] = interpret(condition, { ...oracle })
 
       expect(sql).to.equal('"email" ~ $1')
       expect(params).to.deep.equal([condition.value.source])
@@ -306,7 +244,7 @@ describe('Condition Interpreter', () => {
 
     it('generates call to `REGEXP` function for MySQL', () => {
       const condition = new Field('regex', 'email', /@/)
-      const [sql, params] = interpret(condition, { ...mysql, joinRelation })
+      const [sql, params] = interpret(condition, { ...mysql })
 
       expect(sql).to.equal('`email` regexp ? = 1')
       expect(params).to.deep.equal([condition.value.source])
@@ -315,8 +253,53 @@ describe('Condition Interpreter', () => {
     it('throws exception for MSSQL as it does not support REGEXP', () => {
       const condition = new Field('regex', 'email', /@/)
       expect(() => {
-        interpret(condition, { ...mssql, joinRelation })
+        interpret(condition, { ...mssql })
       }).to.throw(/"regexp" operator is not supported in MSSQL/)
+    })
+  })
+
+  describe('relation conditions', () => {
+    const interpret = createSqlInterpreter({
+      eq,
+      some: someRelation,
+      every: everyRelation,
+      none: noneRelation
+    })
+    const condition = new Field('some', 'wallets', new Field('eq', 'balance', 5))
+
+    it('generates EXISTS query for simple relation metadata', () => {
+      const interpreterOptions: SqlQueryOptions = {
+        ...options,
+        rootAlias: 'users',
+        getRelationMetadata: () => ({
+          parentField: 'id',
+          relationField: 'userId',
+          relationTable: 'user_wallets',
+        })
+      }
+      const [sql, params] = interpret(condition, interpreterOptions)
+
+      expect(sql).to.equal('EXISTS (SELECT 1 FROM "user_wallets" as "wallets_0" WHERE "users"."id" = "wallets_0"."userId" AND ("wallets_0"."balance" = $1))')
+      expect(params).to.deep.equal([5])
+    })
+
+    it('allows custom relation SQL to add parameters before nested condition SQL', () => {
+      const interpreterOptions: SqlQueryOptions = {
+        ...options,
+        rootAlias: 'users',
+        getRelationMetadata: () => ({
+          buildRelationQuery(relation) {
+            return `SELECT 1 FROM ${relation.escapeField('wallets')} as ${relation.escapeField(relation.relationAlias)}` +
+            ` WHERE ${relation.parentField('id')} = ${relation.relationField('userId')}` +
+            ` AND ${relation.relationField('kind')} = ${relation.param('primary')}` +
+            ` AND (${relation.conditionSql()})`
+          }
+        })
+      }
+      const [sql, params] = interpret(condition, interpreterOptions)
+
+      expect(sql).to.equal('EXISTS (SELECT 1 FROM "wallets" as "wallets_0" WHERE "users"."id" = "wallets_0"."userId" AND "wallets_0"."kind" = $1 AND ("wallets_0"."balance" = $2))')
+      expect(params).to.deep.equal(['primary', 5])
     })
   })
 })

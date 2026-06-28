@@ -3,7 +3,7 @@
 [![@ucast/sql NPM version](https://badge.fury.io/js/%40ucast%2Fsql.svg)](https://badge.fury.io/js/%40ucast%2Fsql)
 [![](https://img.shields.io/npm/dm/%40ucast%2Fsql.svg)](https://www.npmjs.com/package/%40ucast%2Fsql)
 
-This package is a part of [ucast] ecosystem. It provides an interpreter that can translates ucast conditions into [SQL query](https://en.wikipedia.org/wiki/SQL).
+This package is a part of [ucast] ecosystem. It provides an interpreter that can translate ucast conditions into [SQL query](https://en.wikipedia.org/wiki/SQL).
 
 [ucast]: https://github.com/stalniy/ucast
 
@@ -18,8 +18,6 @@ pnpm add @ucast/sql
 ```
 
 ## Getting Started
-
-Latest code is in `alpha` branch and in the latest [npm install @ucast/sql@alpha](https://www.npmjs.com/package/@ucast/sql/v/1.0.0-alpha.12)
 
 ### Interpret conditions AST
 
@@ -42,8 +40,8 @@ const interpret = createSqlInterpreter(allInterpreters);
 `interpret` is a function that takes up to 3 parameters:
 
 1. `Condition`, condition to interpret
-2. `options`, SQL dialect specific options that tells how to escape field, create placeholders and join related tables. `@ucast/sql` provides options for the most popular SQL dialects.
-3. `targetQuery`, optional, this is the parameter that `@ucast/sql` passes as the 2nd one to `joinRelation` function. This is useful when integrating with ORMs and their query builders.
+2. `options`, SQL dialect specific options that tells how to escape field names and create placeholders. `@ucast/sql` provides options for the most popular SQL dialects.
+3. `relationContext`, optional, this value is passed to `getRelationMetadata` and is useful when integrating with ORMs and their metadata.
 
 For the sake of an example, we will create AST manually using `Condition` from `@ucast/core`:
 
@@ -71,30 +69,68 @@ const condition = new CompoundCondition('and', [
 const interpret = createSqlInterpreter(allInterpreters);
 
 const [sql, replacements] = interpret(condition, {
-  ...pg,
-  joinRelation: () => false
+  ...pg
 })
 
-console.log(sql) // ("x" > $1 and "y < $2)
+console.log(sql) // ("x" > $1 and "y" < $2)
 console.log(replacements) // [5, 10]
 ```
 
-### Conditions on related table
+### Conditions on related tables
 
-Interpreter automatically detects fields with dot (`.`) inside and interprets them as fields of a relation. It's possible to automatically inner join table using `options.joinRelation` function. That function accepts 2 parameters: relation name and targetQuery (3rd argument of `interpret` function). For example:
+Use `some`, `none`, and `every` to express conditions against related records:
+
+* `some` checks that at least one related record matches the condition
+* `none` checks that no related records match the condition
+* `every` checks that no related record violates the condition
+
+Relation operators need metadata that describes how the current table is connected to the related table. ORM integrations provide this automatically, so in most cases you can use relation conditions directly:
 
 ```js
-const condition = new FieldCondition('eq', 'address.street', 'some street');
-const relations = { address: '"address"."id" = "address_id"' };
-const [sql, params, joins] = interpret(condition, {
+import { FieldCondition } from '@ucast/core';
+
+const condition = new FieldCondition(
+  'some',
+  'projects',
+  new FieldCondition('eq', 'active', true),
+);
+```
+
+When using `createSqlInterpreter` directly, or when your domain model is not mapped 1-to-1 to database tables, provide `getRelationMetadata`:
+
+```js
+import { FieldCondition } from '@ucast/core';
+import { allInterpreters, createSqlInterpreter, pg } from '@ucast/sql';
+
+const interpret = createSqlInterpreter(allInterpreters);
+const condition = new FieldCondition(
+  'some',
+  'projects',
+  new FieldCondition('eq', 'active', true),
+);
+
+const [sql, params] = interpret(condition, {
   ...pg,
-  joinRelation: relationName => relations.hasOwnProperty(relationName)
+  rootAlias: 'users',
+  getRelationMetadata(relationName) {
+    if (relationName !== 'projects') {
+      return undefined;
+    }
+
+    return {
+      parentField: 'id',
+      relationField: 'user_id',
+      relationTable: 'projects',
+    };
+  },
 });
 
-console.log(sql); // "address"."street" = $1
-console.log(params); // ['some street']
-console.log(joins); // ['address']
+console.log(sql);
+// EXISTS (SELECT 1 FROM "projects" as "projects_0" WHERE "users"."id" = "projects_0"."user_id" AND ("projects_0"."active" = $1))
+console.log(params); // [true]
 ```
+
+For composite keys, many-to-many relations, or permission-specific joins, return custom metadata with `buildRelationQuery`. Use `relationContext` when nested relation conditions need to resolve metadata from the related entity.
 
 ### Custom interpreter
 
@@ -162,7 +198,6 @@ const condition = new CompoundCondition('and', [
 ]);
 
 // {
-//  include: [],
 //  where: literal('(`blocked` = 0 and lastLoggedIn < 1597594415354)')
 // }
 const query = interpret(condition, User)

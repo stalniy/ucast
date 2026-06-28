@@ -1,7 +1,0 @@
-{
-  "name": "@ucast/sql-mikro-orm",
-  "private": true,
-  "typings": "../dist/types/lib/mikro-orm.d.ts",
-  "main": "../dist/cjs/lib/mikro-orm.js",
-  "es2015": "../dist/esm/lib/mikro-orm.mjs"
-}

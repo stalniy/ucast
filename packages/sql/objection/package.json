@@ -1,7 +1,0 @@
-{
-  "name": "@ucast/sql-objection",
-  "private": true,
-  "typings": "../dist/types/lib/objection.d.ts",
-  "main": "../dist/cjs/lib/objection.js",
-  "es2015": "../dist/esm/lib/objection.mjs"
-}

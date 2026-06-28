@@ -1,7 +1,0 @@
-{
-  "name": "@ucast/sql-sequelize",
-  "private": true,
-  "typings": "../dist/types/lib/sequelize.d.ts",
-  "main": "../dist/cjs/lib/sequelize.js",
-  "es2015": "../dist/esm/lib/sequelize.mjs"
-}

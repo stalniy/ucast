@@ -1,7 +1,0 @@
-{
-  "name": "@ucast/sql-typeorm",
-  "private": true,
-  "typings": "../dist/types/lib/typeorm.d.ts",
-  "main": "../dist/cjs/lib/typeorm.js",
-  "es2015": "../dist/esm/lib/typeorm.mjs"
-}
