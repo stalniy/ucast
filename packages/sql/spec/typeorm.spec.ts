@@ -67,25 +67,11 @@ describe('Condition interpreter for TypeORM', () => {
     expect(query.getQuery()).to.contain('WHERE "p"."userId" = :0')
   })
 
-  it('rejects a TypeORM property path that resolves to several columns', () => {
-    const metadata = {
-      columns: [],
-      findRelationWithPropertyPath: () => undefined,
-      findColumnsWithPropertyPath: () => [
-        { databaseName: 'owner_id' },
-        { databaseName: 'owner_tenant_id' },
-      ],
-    }
-
-    const interpreter = createInterpreter({ eq })
-    const query = {
-      alias: 'users',
-      connection: { options: { type: 'sqlite' } },
-      expressionMap: { mainAlias: { metadata } },
-      where: () => undefined,
-    }
-
-    expect(() => interpreter(new FieldCondition('eq', 'owner', 1), query as any))
+  it('rejects scalar conditions on relations with composite foreign keys', () => {
+    expect(() => interpret(
+      new FieldCondition('eq', 'owner', 1),
+      conn.createQueryBuilder(CompositeItem, 'i'),
+    ))
       .to.throw('maps to multiple database columns')
   })
 

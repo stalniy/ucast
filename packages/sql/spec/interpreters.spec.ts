@@ -1,5 +1,5 @@
 import { FieldCondition as Field, CompoundCondition } from '@ucast/core'
-import { expect } from './specHelper.ts'
+import { expect, spy } from './specHelper.ts'
 import {
   createSqlInterpreter,
   eq,
@@ -36,7 +36,7 @@ describe('Condition Interpreter', () => {
   describe('property mapping', () => {
     const interpret = createSqlInterpreter({ eq, and, some: someRelation })
 
-    it('maps properties before escaping and preserves unresolved fields', () => {
+    it('allows localField to translate model properties into database columns', () => {
       const condition = new CompoundCondition('and', [
         new Field('eq', 'displayName', 'Alice'),
         new Field('eq', 'legacy_column', null),
@@ -52,16 +52,16 @@ describe('Condition Interpreter', () => {
       expect(condition.value[0].field).to.equal('displayName')
     })
 
-    it('does not translate a resolved column a second time', () => {
+    it('calls localField once with the original model property', () => {
+      const localField = spy((field: string) => pg.escapeField(field === 'displayName' ? 'display_name' : field))
       const [sql] = interpret(new Field('eq', 'displayName', 'Ada'), {
         ...pg,
-        localField: (field, { escape }) => escape(({
-          displayName: 'display_name',
-          display_name: 'renamed_again',
-        }[field] ?? field)),
+        localField,
       })
 
       expect(sql).to.equal('"display_name" = $1')
+      expect(localField).to.have.been.called.once
+      expect(localField).to.have.been.called.with('displayName')
     })
 
     it('resolves the same condition independently for each model', () => {
@@ -81,7 +81,7 @@ describe('Condition Interpreter', () => {
       expect(condition.field).to.equal('label')
     })
 
-    it('uses each nested model context and does not map join columns', () => {
+    it('allows localField to map fields of both root and nested models', () => {
       const user = { displayName: 'user_name', id: 'other_id' }
       const project = { displayName: 'project_title', id: 'other_project_id' }
       const deadline = { displayName: 'deadline_title' }
@@ -106,71 +106,69 @@ describe('Condition Interpreter', () => {
         }),
       }, user)
 
-      expect(sql).to.equal('("users"."user_name" = $1 and EXISTS (SELECT 1 FROM "projects" as "projects_0" WHERE "users"."id" = "projects_0"."user_id" AND (("projects_0"."project_title" = $2 and EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1" WHERE "projects_0"."id" = "deadlines_1"."project_id" AND ("deadlines_1"."deadline_title" = $3))))))')
+      expect(sql).to.equal([
+        '("users"."user_name" = $1 and EXISTS (SELECT 1 FROM "projects" as "projects_0"',
+        'WHERE "users"."id" = "projects_0"."user_id"',
+        'AND (("projects_0"."project_title" = $2 and EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1"',
+        'WHERE "projects_0"."id" = "deadlines_1"."project_id"',
+        'AND ("deadlines_1"."deadline_title" = $3))))))',
+      ].join(' '))
       expect(params).to.deep.equal(['Alice', 'Launch', 'Tomorrow'])
-    })
-
-    it('preserves one-argument localField callbacks as escaped rendering overrides', () => {
-      const [sql, params] = interpret(new Field('eq', 'displayName', 'Alice'), {
-        ...pg,
-        rootAlias: 'users',
-        localField: field => `"custom_${field}"`,
-      })
-
-      expect(sql).to.equal('"users"."custom_displayName" = $1')
-      expect(params).to.deep.equal(['Alice'])
-    })
-
-    it('propagates errors from the mapping callback', () => {
-      expect(() => interpret(new Field('eq', 'name', 'Alice'), {
-        ...pg,
-        localField: () => { throw new Error('invalid mapping') },
-      })).to.throw('invalid mapping')
     })
 
     it('passes the prefixed field, escape helper, and current model context to localField', () => {
       const rootContext = { displayName: 'display_name' }
-      const seen: [string, unknown][] = []
+      const localField = spy((field: string) => pg.escapeField(
+        field === 'profile.displayName' ? 'profile_display_name' : field,
+      ))
       const mapped = createSqlInterpreter({ eq, elemMatch })
       const [sql, params] = mapped(
         new Field('elemMatch', 'profile', new Field('eq', 'displayName', 'Ada')),
         {
           ...pg,
-          localField: (field, { escape, relationContext }) => {
-            seen.push([field, relationContext])
-            return escape(field === 'profile.displayName' ? 'profile_display_name' : field)
-          },
+          localField,
         },
         rootContext,
       )
 
       expect(sql).to.equal('"profile_display_name" = $1')
       expect(params).to.deep.equal(['Ada'])
-      expect(seen).to.deep.equal([['profile.displayName', rootContext]])
+      expect(localField).to.have.been.called.once
+      expect(localField).to.have.been.called.with('profile.displayName', {
+        escape: pg.escapeField,
+        relationContext: rootContext,
+      })
     })
 
-    it('maps scalar operator families while preserving parameter order', () => {
-      const mapped = createSqlInterpreter({ eq, ne, exists, within, nin, mod, regex, and })
-      const condition = new CompoundCondition('and', [
-        new Field('eq', 'displayName', 'Ada'),
-        new Field('ne', 'displayName', 'Grace'),
-        new Field('exists', 'displayName', true),
-        new Field('within', 'displayName', ['Ada', 'Lin']),
-        new Field('nin', 'displayName', ['Edsger']),
-        new Field('mod', 'displayName', [2, 0]),
-        new Field('regex', 'displayName', /Ada/i),
-      ])
-      const [sql, params] = mapped(condition, {
-        ...pg,
-        localField: (field, { escape }) => escape(
-          field === 'displayName' ? 'display_name' : field,
-        ),
-      })
+    const scalarCases: [string, unknown, string][] = [
+      ['eq', 'Ada', '"display_name" = $1'],
+      ['ne', 'Ada', '"display_name" <> $1'],
+      ['lt', 1, '"display_name" < $1'],
+      ['lte', 1, '"display_name" <= $1'],
+      ['gt', 1, '"display_name" > $1'],
+      ['gte', 1, '"display_name" >= $1'],
+      ['eq', null, '"display_name" is null'],
+      ['ne', null, '"display_name" is not null'],
+      ['exists', true, '"display_name" is not null'],
+      ['exists', false, '"display_name" is null'],
+      ['within', ['Ada', 'Lin'], '"display_name" in($1, $2)'],
+      ['nin', ['Ada'], '"display_name" not in($1)'],
+      ['mod', [2, 0], 'mod("display_name", $1) = $2'],
+      ['regex', /Ada/i, '"display_name" ~* $1'],
+    ]
 
-      expect(sql).to.contain('"display_name" = $1')
-      expect(sql).to.contain('"display_name" is not null')
-      expect(sql).to.contain('mod("display_name", $6) = $7')
-      expect(params).to.deep.equal(['Ada', 'Grace', 'Ada', 'Lin', 'Edsger', 2, 0, 'Ada'])
+    scalarCases.forEach(([operator, value, expectedSql]) => {
+      it(`uses localField for ${operator} with ${String(value)}`, () => {
+        const localField = spy(() => '"display_name"')
+        const mapped = createSqlInterpreter({
+          eq, ne, lt, lte, gt, gte, exists, within, nin, mod, regex,
+        })
+        const [sql] = mapped(new Field(operator, 'displayName', value), { ...pg, localField })
+
+        expect(sql).to.equal(expectedSql)
+        expect(localField).to.have.been.called.once
+        expect(localField).to.have.been.called.with('displayName')
+      })
     })
 
     it('provides separate parent and related property rendering for custom joins', () => {

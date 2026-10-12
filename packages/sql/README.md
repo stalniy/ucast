@@ -102,8 +102,7 @@ const [sql, params] = interpret(condition, {
 
 Use your data layer's mapping primitive or metadata in this callback. Boolean
 conditions keep the current context. Conditions inside a relation use the
-`relationContext` returned by that relation's metadata. Existing one-argument
-callbacks remain valid and can ignore the helper argument.
+`relationContext` returned by that relation's metadata.
 
 The TypeORM, Sequelize, Objection, and MikroORM adapters resolve condition
 properties from their model metadata automatically, including configured column
@@ -116,6 +115,9 @@ Relation metadata and the `parentField` and `relationField` helpers in custom
 relation builders take database column names. They bypass property mapping. For
 example, use `parentField('tenant_id')` to join that column even when the model
 property is named `tenantId`.
+
+This distinction prevents translating an already resolved join column again
+when its name also identifies a model property with a different column mapping.
 
 Custom relation builders that need model properties can use the separate
 `parentProperty` and `relationProperty` helpers. They apply the matching model's

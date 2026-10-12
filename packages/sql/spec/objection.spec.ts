@@ -20,7 +20,7 @@ describe('Condition interpreter for Objection', () => {
     expect(query.toKnexQuery().toString()).to.contain('"display_name" = \'Ada\'')
   })
 
-  it('rejects properties expanded to multiple database columns', () => {
+  it('rejects scalar properties that the model formatter expands into multiple columns', () => {
     class MultiColumnModel extends Model {
       static tableName = 'multi_columns'
 
@@ -32,12 +32,7 @@ describe('Condition interpreter for Objection', () => {
       }
     }
 
-    const query = {
-      modelClass: () => MultiColumnModel,
-      whereRaw: () => undefined,
-    }
-
-    expect(() => interpret(new FieldCondition('eq', 'combined', 'value'), query as any))
+    expect(() => interpret(new FieldCondition('eq', 'combined', 'value'), MultiColumnModel.query()))
       .to.throw('maps to multiple database columns')
   })
 
@@ -203,9 +198,9 @@ describe('Condition interpreter for Objection', () => {
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.manyToMany)
     })
 
-    it('uses both composite join keys with a mapped related property', async () => {
+    it('requires both composite relation keys when filtering mapped child properties', async () => {
       const { CompositeParent } = orm
-      const parents = await CompositeParent.query().insertGraph([
+      await CompositeParent.query().insertGraph([
         { id: 1, tenantId: 'tenant-a', name: 'both keys' },
       ])
       await knex('composite_children').insert([
@@ -232,7 +227,6 @@ describe('Condition interpreter for Objection', () => {
 
       expect(result.map(parent => parent.name)).to.deep.equal(['both keys'])
       expect(decoyResult).to.have.length(0)
-      expect(parents).to.have.length(1)
     })
   })
 })

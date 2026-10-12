@@ -79,27 +79,23 @@ export class Query {
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
-    return this.renderProperty(name, this.relationContext, this._rootAlias);
+    return this.renderProperty(name);
   }
 
   rootField(name: string) {
-    return this.renderProperty(name, this.relationContext, this._rootAlias);
+    return this.renderProperty(name);
   }
 
   rootColumn(name: string) {
     return this._rootAlias + this.options.escapeField(name);
   }
 
-  property(field: string, relationContext = this.relationContext, alias = this._rootAlias) {
-    return this.renderProperty(field, relationContext, alias);
-  }
-
-  private renderProperty(field: string, relationContext: unknown, alias: string) {
-    const helpers = { escape: this.options.escapeField, relationContext };
+  private renderProperty(field: string) {
+    const helpers = { escape: this.options.escapeField, relationContext: this.relationContext };
     const localField = this.options.localField
       ? this.options.localField(field, helpers)
       : this.options.escapeField(field);
-    return alias + localField;
+    return this._rootAlias + localField;
   }
 
   param(value: unknown) {

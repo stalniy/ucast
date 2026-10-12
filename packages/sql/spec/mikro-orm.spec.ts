@@ -47,18 +47,10 @@ describe('Condition interpreter for MikroORM', () => {
     expect(query.getParams()).to.eql(['Ada'])
   })
 
-  it('rejects properties mapped to multiple columns', () => {
-    const metadata = { properties: { combined: { fieldNames: ['first_name', 'last_name'] } } }
-    const query = {
-      platform: { constructor: { name: 'SqlitePlatform' } },
-      alias: 'entity_0',
-      mainAlias: { meta: metadata },
-      where: () => undefined,
-    }
-
-    expect(() => createInterpreter({ eq })(
-      new FieldCondition('eq', 'combined', 'value'),
-      query as any,
+  it('rejects scalar conditions on relations with composite foreign keys', () => {
+    expect(() => interpret(
+      new FieldCondition('eq', 'owner', 1),
+      orm.em.createQueryBuilder(ctx.CompositeItem).select('*'),
     )).to.throw('maps to multiple database columns')
   })
 
@@ -167,6 +159,18 @@ describe('Condition interpreter for MikroORM', () => {
       await seedMikroOrm(ctx)
     })
 
+    it('maps properties with the root alias when the query joins another model', async () => {
+      const query = interpret(
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        orm.em.fork().createQueryBuilder(ctx.Profile, 'p').select('*').innerJoin('p.user', 'u'),
+      )
+
+      expect(query.getQuery()).to.contain('inner join `user` as `u`')
+      expect(query.getQuery()).to.contain('`p`.`display_name` = ?')
+      const profiles = await query.getResultList()
+      expect(profiles.map(profile => profile.displayName)).to.deep.equal(['Alice Profile'])
+    })
+
     it('filters 1:m relations', async () => {
       const users = await interpret(
         relationConditions.hasMany,
@@ -206,6 +210,17 @@ describe('Condition interpreter for MikroORM', () => {
 })
 
 async function configureORM() {
+  class CompositeOwner {
+    tenantId!: string
+    id!: number
+    displayName!: string
+  }
+
+  class CompositeItem {
+    id!: number
+    owner!: CompositeOwner
+  }
+
   class User {
     public id: number
     public tenantId: string
@@ -382,12 +397,31 @@ async function configureORM() {
     }
   })
 
+  const CompositeOwnerSchema = new EntitySchema({
+    class: CompositeOwner,
+    properties: {
+      tenantId: { type: 'string', primary: true },
+      id: { type: 'number', primary: true },
+      displayName: { type: 'string', fieldName: 'display_name' },
+    },
+  })
+  const CompositeItemSchema = new EntitySchema({
+    class: CompositeItem,
+    properties: {
+      id: { type: 'number', primary: true },
+      owner: { entity: () => CompositeOwner, kind: 'm:1' },
+    },
+  })
+
   const orm = await MikroORM.init({
-    entities: [UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema],
+    entities: [
+      UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema,
+      CompositeOwnerSchema, CompositeItemSchema,
+    ],
     dbName: ':memory:',
   })
 
-  return { Deadline, Profile, Project, Role, User, orm }
+  return { CompositeItem, Deadline, Profile, Project, Role, User, orm }
 }
 
 async function seedMikroOrm({

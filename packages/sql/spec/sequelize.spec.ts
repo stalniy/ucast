@@ -109,6 +109,21 @@ describe('Condition interpreter for Sequelize', () => {
       await seedSequelize(orm)
     })
 
+    it('maps properties with the root alias when the query joins another model', async () => {
+      let sql = ''
+      const profiles = await orm.Profile.findAll({
+        ...interpret(new FieldCondition('eq', 'displayName', 'Alice Profile'), orm.Profile, {
+          rootAlias: 'profile',
+        }),
+        include: [{ model: User, as: 'user', required: true }],
+        logging: query => { sql = query },
+      })
+
+      expect(sql).to.contain('INNER JOIN `users` AS `user`')
+      expect(sql).to.contain("`profile`.`display_name` = 'Alice Profile'")
+      expect(profiles.map(profile => profile.get('displayName'))).to.deep.equal(['Alice Profile'])
+    })
+
     it('filters HasMany relations', async () => {
       const users = await User.findAll({
         ...interpret(relationConditions.hasMany, User, { rootAlias: 'user' }),
