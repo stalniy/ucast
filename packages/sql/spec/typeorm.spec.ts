@@ -1,11 +1,11 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, buildAnd } from '@ucast/core'
 import {
   DataSource,
   EntitySchema,
   SelectQueryBuilder
 } from 'typeorm'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/typeorm.ts'
-import { expect } from './specHelper.ts'
+import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
@@ -43,7 +43,7 @@ describe('Condition interpreter for TypeORM', () => {
 
     expect(query).to.be.instanceof(SelectQueryBuilder)
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE "u"."name" = :0'
     ].join(' '))
@@ -57,6 +57,26 @@ describe('Condition interpreter for TypeORM', () => {
     )
     expect(query.getQuery()).to.contain('WHERE "p"."display_name" = :0')
     expect(query.getParameters()).to.eql({ 0: 'Ada' })
+  })
+
+  it('maps a model property to its configured database column for related models', () => {
+    const query = interpret(
+      buildAnd([
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+      ]),
+      conn.createQueryBuilder(Profile, 'p').select('p.*'),
+    )
+
+    expect(query.getQuery()).to.equal(linearize`
+      SELECT p.* FROM "profile" "p"
+      WHERE ("p"."display_name" = :0 and EXISTS (
+        SELECT 1
+        FROM "user" as "user_0"
+        WHERE "p"."userId" = "user_0"."id" AND ("user_0"."tenant_id" = :1)
+      ))
+    `)
+    expect(query.getParameters()).to.eql({ 0: 'Alice Profile', 1: 1 })
   })
 
   it('maps an owning relation property to its single foreign-key column', () => {
@@ -97,7 +117,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE "u"."age" in(:0, :1, :2)'
     ].join(' '))
@@ -119,7 +139,7 @@ describe('Condition interpreter for TypeORM', () => {
       const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
       expect(query.getQuery()).to.equal([
-        'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+        'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
         'FROM "user" "u"',
         'WHERE "u"."name" = :0'
       ].join(' '))
@@ -134,7 +154,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE "u"."projects.name" = :0'
     ].join(' '))
@@ -154,7 +174,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE EXISTS (' +
         'SELECT 1 FROM "project" as "projects_0"',
@@ -321,7 +341,7 @@ async function configureORM() {
     target: User,
     columns: {
       id: { primary: true, type: 'int', generated: true },
-      tenantId: { type: 'varchar' },
+      tenantId: { type: 'varchar', name: 'tenant_id' },
       name: { type: 'varchar' },
     },
     relations: {

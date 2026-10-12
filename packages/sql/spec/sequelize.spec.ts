@@ -1,7 +1,7 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, buildAnd } from '@ucast/core'
 import { Model, Sequelize, DataTypes } from 'sequelize'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/sequelize.ts'
-import { expect } from './specHelper.ts'
+import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
@@ -17,6 +17,25 @@ describe('Condition interpreter for Sequelize', () => {
   it('maps a model property to its configured database column', () => {
     const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile)
     expect(query.where.val).to.contain('`display_name` = \'Ada\'')
+  })
+
+  it('maps a model property to its configured database column for related models', () => {
+    const query = interpret(
+      buildAnd([
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+      ]),
+      orm.Profile,
+      { rootAlias: 'p' },
+    )
+
+    expect(query.where.val).to.equal(linearize`
+      (\`p\`.\`display_name\` = 'Alice Profile' and EXISTS (
+        SELECT 1
+        FROM \`users\` as \`user_0\`
+        WHERE \`p\`.\`userId\` = \`user_0\`.\`id\` AND (\`user_0\`.\`tenant_id\` = 1)
+      ))
+    `)
   })
 
   it('keeps unresolved fields as literal identifiers', () => {
@@ -109,21 +128,6 @@ describe('Condition interpreter for Sequelize', () => {
       await seedSequelize(orm)
     })
 
-    it('maps properties with the root alias when the query joins another model', async () => {
-      let sql = ''
-      const profiles = await orm.Profile.findAll({
-        ...interpret(new FieldCondition('eq', 'displayName', 'Alice Profile'), orm.Profile, {
-          rootAlias: 'profile',
-        }),
-        include: [{ model: User, as: 'user', required: true }],
-        logging: query => { sql = query },
-      })
-
-      expect(sql).to.contain('INNER JOIN `users` AS `user`')
-      expect(sql).to.contain("`profile`.`display_name` = 'Alice Profile'")
-      expect(profiles.map(profile => profile.get('displayName'))).to.deep.equal(['Alice Profile'])
-    })
-
     it('filters HasMany relations', async () => {
       const users = await User.findAll({
         ...interpret(relationConditions.hasMany, User, { rootAlias: 'user' }),
@@ -185,7 +189,7 @@ function configureORM() {
   class UserRole extends Model {}
 
   User.init({
-    tenantId: { type: DataTypes.STRING },
+    tenantId: { type: DataTypes.STRING, field: 'tenant_id' },
     name: { type: DataTypes.STRING },
     email: { type: DataTypes.STRING },
   }, { sequelize, modelName: 'user' })

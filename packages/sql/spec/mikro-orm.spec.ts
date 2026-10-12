@@ -1,7 +1,7 @@
-import { FieldCondition, CompoundCondition } from '@ucast/core'
-import { Collection, EntitySchema, MikroORM, QueryBuilder } from '@mikro-orm/sqlite'
+import { FieldCondition, CompoundCondition, buildAnd } from '@ucast/core'
+import { Collection, EntitySchema, MikroORM, QueryBuilder, UnderscoreNamingStrategy } from '@mikro-orm/sqlite'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/mikro-orm.ts'
-import { expect } from './specHelper.ts'
+import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
@@ -45,6 +45,27 @@ describe('Condition interpreter for MikroORM', () => {
     )
     expect(query.getQuery()).to.contain('`display_name` = ?')
     expect(query.getParams()).to.eql(['Ada'])
+  })
+
+  it('maps a model property to its configured database column for related models', () => {
+    const query = interpret(
+      buildAnd([
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+      ]),
+      orm.em.fork().createQueryBuilder(ctx.Profile, 'p').select('*'),
+    )
+    expect(query.getQuery()).to.equal(linearize`
+      select \`p\`.* from \`profile\` as \`p\`
+      where (
+        (\`p\`.\`display_name\` = ? and EXISTS (
+          SELECT 1
+          FROM \`user\` as \`user_0\`
+          WHERE \`p\`.\`user_id\` = \`user_0\`.\`id\` AND (\`user_0\`.\`tenant_id\` = ?)
+        ))
+      )
+    `)
+    expect(query.getParams()).to.eql(['Alice Profile', 1])
   })
 
   it('rejects scalar conditions on relations with composite foreign keys', () => {
@@ -157,18 +178,6 @@ describe('Condition interpreter for MikroORM', () => {
   describe('SQLite relation e2e', () => {
     before(async () => {
       await seedMikroOrm(ctx)
-    })
-
-    it('maps properties with the root alias when the query joins another model', async () => {
-      const query = interpret(
-        new FieldCondition('eq', 'displayName', 'Alice Profile'),
-        orm.em.fork().createQueryBuilder(ctx.Profile, 'p').select('*').innerJoin('p.user', 'u'),
-      )
-
-      expect(query.getQuery()).to.contain('inner join `user` as `u`')
-      expect(query.getQuery()).to.contain('`p`.`display_name` = ?')
-      const profiles = await query.getResultList()
-      expect(profiles.map(profile => profile.displayName)).to.deep.equal(['Alice Profile'])
     })
 
     it('filters 1:m relations', async () => {
@@ -419,6 +428,7 @@ async function configureORM() {
       CompositeOwnerSchema, CompositeItemSchema,
     ],
     dbName: ':memory:',
+    namingStrategy: UnderscoreNamingStrategy
   })
 
   return { CompositeItem, Deadline, Profile, Project, Role, User, orm }

@@ -1,8 +1,8 @@
-import { FieldCondition, CompoundCondition } from '@ucast/core'
+import { FieldCondition, CompoundCondition, buildAnd } from '@ucast/core'
 import { Model, QueryBuilder, snakeCaseMappers } from 'objection'
 import Knex from 'knex'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/objection.ts'
-import { expect } from './specHelper.ts'
+import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
@@ -18,6 +18,26 @@ describe('Condition interpreter for Objection', () => {
   it('maps a model property through its configured column mapper', () => {
     const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile.query())
     expect(query.toKnexQuery().toString()).to.contain('"display_name" = \'Ada\'')
+  })
+
+  it('maps a model property to its configured database column for related models', () => {
+    const query = interpret(
+      buildAnd([
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+      ]),
+      orm.Profile.query().alias('p'),
+    ).toKnexQuery().toSQL()
+
+    expect(query.sql).to.equal(linearize`
+      select "p".* from "profiles" as "p"
+      where ("p"."display_name" = ? and EXISTS (
+        SELECT 1
+        FROM "users" as "user_0"
+        WHERE "p"."user_id" = "user_0"."id" AND ("user_0"."tenant_id" = ?)
+      ))
+    `)
+    expect(query.bindings).to.eql(['Alice Profile', 1])
   })
 
   it('rejects scalar properties that the model formatter expands into multiple columns', () => {
