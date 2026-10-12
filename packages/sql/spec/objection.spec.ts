@@ -1,7 +1,7 @@
 import { FieldCondition, CompoundCondition } from '@ucast/core'
 import { Model, QueryBuilder, snakeCaseMappers } from 'objection'
 import Knex from 'knex'
-import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/objection.ts'
+import { createInterpreter, getColumnName, getRelationMetadata, interpret } from '../src/lib/objection.ts'
 import { expect } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
@@ -14,6 +14,27 @@ import {
 describe('Condition interpreter for Objection', () => {
   const orm = configureORM()
   const { Project, User } = orm
+
+  it('maps a model property through its configured column mapper', () => {
+    const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile.query())
+    expect(query.toKnexQuery().toString()).to.contain('"display_name" = \'Ada\'')
+  })
+
+  it('rejects properties expanded to multiple database columns', () => {
+    class MultiColumnModel extends Model {
+      static tableName = 'multi_columns'
+
+      $formatDatabaseJson(json: Record<string, unknown>) {
+        if (Object.prototype.hasOwnProperty.call(json, 'combined')) {
+          return { first_name: json.combined, last_name: json.combined }
+        }
+        return super.$formatDatabaseJson(json)
+      }
+    }
+
+    expect(() => getColumnName('combined', { relationContext: MultiColumnModel }))
+      .to.throw('maps to multiple database columns')
+  })
 
   it('returns `QueryBuilder`', () => {
     const condition = new FieldCondition('eq', 'name', 'test')
@@ -176,6 +197,38 @@ describe('Condition interpreter for Objection', () => {
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.manyToMany)
     })
+
+    it('uses both composite join keys with a mapped related property', async () => {
+      const { CompositeParent } = orm
+      const parents = await CompositeParent.query().insertGraph([
+        { id: 1, tenantId: 'tenant-a', name: 'both keys' },
+      ])
+      await knex('composite_children').insert([
+        { id: 1, parent_tenant_id: 'tenant-a', parent_id: 1, display_name: 'selected' },
+        { id: 2, parent_tenant_id: 'tenant-b', parent_id: 1, display_name: 'one key only' },
+        { id: 3, parent_tenant_id: 'tenant-a', parent_id: 2, display_name: 'one key only' },
+      ])
+      const result = await interpret(
+        new FieldCondition(
+          'some',
+          'children',
+          new FieldCondition('eq', 'displayName', 'selected'),
+        ),
+        CompositeParent.query(),
+      ).orderBy('name')
+      const decoyResult = await interpret(
+        new FieldCondition(
+          'some',
+          'children',
+          new FieldCondition('eq', 'displayName', 'one key only'),
+        ),
+        CompositeParent.query(),
+      )
+
+      expect(result.map(parent => parent.name)).to.deep.equal(['both keys'])
+      expect(decoyResult).to.have.length(0)
+      expect(parents).to.have.length(1)
+    })
   })
 })
 
@@ -270,6 +323,7 @@ function configureORM() {
 
   class Role extends BaseModel {
     static tableName = 'roles'
+    displayName!: string
 
     static get relationMappings() {
       return {
@@ -293,7 +347,32 @@ function configureORM() {
     static tableName = 'user_roles'
   }
 
-  return { Deadline, Profile, Project, Role, User, UserRole }
+  class CompositeParent extends BaseModel {
+    static tableName = 'composite_parents'
+    id!: number
+    tenantId!: string
+    name!: string
+
+    static get relationMappings() {
+      return {
+        children: {
+          relation: Model.HasManyRelation,
+          modelClass: CompositeChild,
+          join: {
+            from: ['composite_parents.tenant_id', 'composite_parents.id'],
+            to: ['composite_children.parent_tenant_id', 'composite_children.parent_id'],
+          },
+        },
+      }
+    }
+  }
+
+  class CompositeChild extends BaseModel {
+    static tableName = 'composite_children'
+    displayName!: string
+  }
+
+  return { CompositeParent, Deadline, Profile, Project, Role, User, UserRole }
 }
 
 async function createObjectionSchema(knex: ReturnType<typeof Knex>) {
@@ -321,11 +400,24 @@ async function createObjectionSchema(knex: ReturnType<typeof Knex>) {
   await knex.schema.createTable('roles', table => {
     table.integer('id').primary()
     table.string('name').notNullable()
+    table.string('display_name').notNullable()
   })
   await knex.schema.createTable('user_roles', table => {
     table.integer('user_id').notNullable().references('users.id')
     table.integer('role_id').notNullable().references('roles.id')
     table.primary(['user_id', 'role_id'])
+  })
+  await knex.schema.createTable('composite_parents', table => {
+    table.integer('id').notNullable()
+    table.string('tenant_id').notNullable()
+    table.string('name').notNullable()
+    table.primary(['tenant_id', 'id'])
+  })
+  await knex.schema.createTable('composite_children', table => {
+    table.integer('id').primary()
+    table.string('parent_tenant_id').notNullable()
+    table.integer('parent_id').notNullable()
+    table.string('display_name').notNullable()
   })
 }
 

@@ -38,6 +38,15 @@ describe('Condition interpreter for MikroORM', () => {
     expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`name` = ?)')
   })
 
+  it('maps a model property to its configured database column', () => {
+    const query = interpret(
+      new FieldCondition('eq', 'displayName', 'Ada'),
+      orm.em.createQueryBuilder(ctx.Profile).select('*'),
+    )
+    expect(query.getQuery()).to.contain('`display_name` = ?')
+    expect(query.getParams()).to.eql(['Ada'])
+  })
+
   it('properly binds parameters for "IN" operator', () => {
     const condition = new FieldCondition('in', 'age', [1, 2, 3])
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
@@ -262,6 +271,7 @@ async function configureORM() {
   class Role {
     public id: number
     public name: string
+    public displayName: string
     public users?: Collection<User>
 
     constructor(
@@ -271,6 +281,7 @@ async function configureORM() {
     ) {
       this.id = id
       this.name = name
+      this.displayName = name
       this.users = users || new Collection<User>(this)
     }
   }
@@ -347,6 +358,7 @@ async function configureORM() {
     properties: {
       id: { type: 'number', primary: true },
       name: { type: 'string' },
+      displayName: { type: 'string', fieldName: 'display_name' },
       users: {
         kind: 'm:n',
         entity: () => User,

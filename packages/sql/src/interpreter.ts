@@ -9,10 +9,16 @@ import { type DialectOptions } from './dialects.ts';
 export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string;
   localField?(field: string): string;
+  /** Returns an unescaped column name, or undefined for literal fallback. Overridden by localField. */
+  getColumnName?(field: string, helpers: ColumnNameHelpers): string | undefined;
   getRelationMetadata?(
     relationName: string,
     helpers: RelationMetadataHelpers
   ): RelationMetadata | undefined;
+}
+
+export interface ColumnNameHelpers {
+  relationContext: unknown;
 }
 
 export interface RelationMetadataHelpers {
@@ -41,13 +47,16 @@ export interface RelationQueryContext {
   escapeField(field: string): string;
   parentField(field: string): string;
   relationField(field: string): string;
+  /** Render a model property using the parent or related mapping context. */
+  parentProperty(field: string): string;
+  relationProperty(field: string): string;
   conditionSql(): string;
   param(value: unknown): string;
 }
 
 type ChildOptions = Partial<Pick<
 SqlQueryOptions,
-'localField' | 'getRelationMetadata' | 'rootAlias'
+'localField' | 'getColumnName' | 'getRelationMetadata' | 'rootAlias'
 >> & {
   linkParams?: boolean;
   relationContext?: unknown;
@@ -71,22 +80,29 @@ export class Query {
     this.rootAlias = options.rootAlias;
     this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
 
-    if (this.options.localField) {
-      this._localField = this.options.localField;
-    }
   }
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
-    return this._rootAlias + this._localField(name);
+    return this.renderProperty(name, this.relationContext, this._rootAlias);
   }
 
   rootField(name: string) {
-    return this._rootAlias + this._localField(name);
+    return this.renderProperty(name, this.relationContext, this._rootAlias);
   }
 
-  private _localField(field: string) {
-    return this.options.escapeField(field);
+  rootColumn(name: string) {
+    return this._rootAlias + this.options.escapeField(name);
+  }
+
+  property(field: string, relationContext = this.relationContext, alias = this._rootAlias) {
+    return this.renderProperty(field, relationContext, alias);
+  }
+
+  private renderProperty(field: string, relationContext: unknown, alias: string) {
+    if (this.options.localField) return alias + this.options.localField(field);
+    const column = this.options.getColumnName?.(field, { relationContext });
+    return alias + this.options.escapeField(column ?? field);
   }
 
   param(value: unknown) {

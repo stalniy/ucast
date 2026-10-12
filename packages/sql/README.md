@@ -41,7 +41,7 @@ const interpret = createSqlInterpreter(allInterpreters);
 
 1. `Condition`, condition to interpret
 2. `options`, SQL dialect specific options that tells how to escape field names and create placeholders. `@ucast/sql` provides options for the most popular SQL dialects.
-3. `relationContext`, optional, this value is passed to `getRelationMetadata` and is useful when integrating with ORMs and their metadata.
+3. `relationContext`, optional, this value is passed to `getRelationMetadata` and `getColumnName` and is useful when integrating with ORMs and their metadata.
 
 For the sake of an example, we will create AST manually using `Condition` from `@ucast/core`:
 
@@ -75,6 +75,66 @@ const [sql, replacements] = interpret(condition, {
 console.log(sql) // ("x" > $1 and "y" < $2)
 console.log(replacements) // [5, 10]
 ```
+
+### Map model properties to database columns
+
+Provide the optional `getColumnName` callback to resolve a model property to an
+unescaped database column name. Return `undefined` to keep the original field name.
+The interpreter escapes the result and applies the current query alias.
+
+```ts
+const columns: Record<string, string> = { displayName: 'display_name' };
+const condition = new FieldCondition('eq', 'displayName', 'Alice');
+
+const [sql, params] = interpret(condition, {
+  ...pg,
+  rootAlias: 'users',
+  getColumnName(property, { relationContext }) {
+    return (relationContext as Record<string, string>)[property];
+  },
+}, columns);
+
+// sql: '"users"."display_name" = $1'
+// params: ['Alice']
+```
+
+Use your data layer's mapping primitive or metadata in this callback. Boolean
+conditions keep the current context. Conditions inside a relation use the
+`relationContext` returned by that relation's metadata.
+
+`localField`, when supplied, remains a complete rendering override: it receives
+the original field and returns the escaped expression. It takes precedence over
+`getColumnName`.
+
+The TypeORM, Sequelize, Objection, and MikroORM adapters resolve condition
+properties from their model metadata automatically, including configured column
+names. A property resolving to more than one physical column throws an explicit
+unsupported-mapping error. A field that the model does not resolve remains a
+literal SQL identifier. If a name is both a property and another column name,
+the property mapping takes precedence.
+
+Relation metadata and the `parentField` and `relationField` helpers in custom
+relation builders take database column names. They bypass property mapping. For
+example, use `parentField('tenant_id')` to join that column even when the model
+property is named `tenantId`.
+
+Custom relation builders that need model properties can use the separate
+`parentProperty` and `relationProperty` helpers. They apply the matching model's
+property mapping and query alias:
+
+```ts
+buildRelationQuery(relation) {
+  return `SELECT 1 FROM ${relation.escapeField('tenant_projects')} as ${relation.escapeField(relation.relationAlias)}` +
+    ` WHERE ${relation.parentProperty('tenantId')} = ${relation.relationProperty('ownerId')}` +
+    ` AND (${relation.conditionSql()})`;
+}
+```
+
+Code that previously passed a model property such as `tenantId` to
+`parentField` should switch to the physical column name (for example,
+`tenant_id`) or use `parentProperty('tenantId')` when it needs model-level
+resolution. Table names, relation names, and aliases remain outside property
+mapping.
 
 ### Conditions on related tables
 

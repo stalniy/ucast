@@ -180,8 +180,14 @@ function buildRelationQuery(
     relationAlias,
     parentAlias: query.rootAlias,
     escapeField,
-    parentField: (field: string) => query.rootField(field),
+    parentField: (field: string) => query.rootColumn(field),
     relationField: (field: string) => `${escapeField(relationAlias)}.${escapeField(field)}`,
+    parentProperty: (field: string) => query.property(field),
+    relationProperty: (field: string) => query.property(
+      field,
+      relation.relationContext,
+      `${escapeField(relationAlias)}.`,
+    ),
     conditionSql,
     param: (value: unknown) => query.param(value),
   };

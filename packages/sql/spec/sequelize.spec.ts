@@ -14,6 +14,11 @@ describe('Condition interpreter for Sequelize', () => {
   const orm = configureORM()
   const { Project, User, sequelize } = orm
 
+  it('maps a model property to its configured database column', () => {
+    const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile)
+    expect(query.where.val).to.contain('`display_name` = \'Ada\'')
+  })
+
   after(async () => {
     await sequelize.close()
   })
@@ -178,7 +183,8 @@ function configureORM() {
   }, { sequelize, modelName: 'deadline' })
 
   Role.init({
-    name: { type: DataTypes.STRING }
+    name: { type: DataTypes.STRING },
+    displayName: { type: DataTypes.STRING, field: 'display_name' },
   }, { sequelize, modelName: 'role' })
 
   UserRole.init({}, {

@@ -21,6 +21,17 @@ export interface MikroOrmInterpreterOptions {
   getRelationMetadata?: GetRelationMetadata;
 }
 
+export function getColumnName(field: string, helpers: { relationContext: unknown }) {
+  const meta = getEntityMetadata(helpers.relationContext);
+  const property = meta?.properties[field];
+  if (!property) return undefined;
+  const columns = property.fieldNames ?? [];
+  if (columns.length > 1) {
+    throw new Error(`Property "${field}" maps to multiple database columns, which is not supported`);
+  }
+  return columns[0];
+}
+
 export const getRelationMetadata: GetRelationMetadata = (relationName, ctx) => {
   const meta = getEntityMetadata(ctx.relationContext);
   const prop = meta?.properties[relationName] as MikroOrmRelation | undefined;
@@ -88,6 +99,7 @@ export function createInterpreter(
     const [sql, params] = interpretSQL(condition, {
       ...options,
       rootAlias: query.alias,
+      getColumnName,
     }, getEntityMetadata(query));
     return query.where(sql, params);
   };

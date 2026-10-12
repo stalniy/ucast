@@ -20,6 +20,28 @@ export interface TypeOrmInterpreterOptions {
   getRelationMetadata?: GetRelationMetadata;
 }
 
+export function getColumnName(field: string, helpers: { relationContext: unknown }) {
+  const meta = getEntityMetadata(helpers.relationContext);
+  if (!meta) return undefined;
+  const metadata = meta as EntityMetadata & {
+    columns?: TypeOrmColumn[];
+    findColumnsWithPropertyPath?(propertyPath: string): TypeOrmColumn[];
+    findRelationWithPropertyPath?(propertyPath: string): {
+      joinColumns?: TypeOrmColumn[];
+    } | undefined;
+  };
+  const propertyColumns = metadata.columns?.filter(column => column.propertyPath === field) ?? [];
+  const columns = metadata.findColumnsWithPropertyPath
+    ? metadata.findColumnsWithPropertyPath(field)
+    : propertyColumns.length
+      ? propertyColumns
+      : metadata.findRelationWithPropertyPath?.(field)?.joinColumns ?? [];
+  if (columns.length > 1) {
+    throw new Error(`Property "${field}" maps to multiple database columns, which is not supported`);
+  }
+  return columns[0]?.databaseName;
+}
+
 export const getRelationMetadata: GetRelationMetadata = (relationName, ctx) => {
   const meta = getEntityMetadata(ctx.relationContext);
   const relation = meta?.findRelationWithPropertyPath(relationName) as TypeOrmRelation | undefined;
@@ -94,6 +116,7 @@ export function createInterpreter(
     const [sql, params] = interpretSQL(condition, {
       ...options,
       rootAlias: query.alias,
+      getColumnName,
     }, query.expressionMap.mainAlias!.metadata);
     return query.where(sql, params);
   };
@@ -165,6 +188,8 @@ interface TypeOrmRelation {
 }
 
 interface TypeOrmColumn {
+  propertyPath?: string;
+  propertyName?: string;
   databaseName: string;
   referencedColumn?: TypeOrmColumn;
 }

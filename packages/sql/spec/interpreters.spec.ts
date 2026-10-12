@@ -32,6 +32,167 @@ const options: SqlQueryOptions = {
 }
 
 describe('Condition Interpreter', () => {
+  describe('property mapping', () => {
+    const interpret = createSqlInterpreter({ eq, and, some: someRelation })
+
+    it('maps properties before escaping and preserves unresolved fields', () => {
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'displayName', 'Alice'),
+        new Field('eq', 'legacy_column', null),
+      ])
+      const [sql, params] = interpret(condition, {
+        ...pg,
+        rootAlias: 'users',
+        getColumnName: field => field === 'displayName' ? 'display_name' : undefined,
+      })
+
+      expect(sql).to.equal('("users"."display_name" = $1 and "users"."legacy_column" is null)')
+      expect(params).to.deep.equal(['Alice'])
+      expect(condition.value[0].field).to.equal('displayName')
+    })
+
+    it('does not translate a resolved column a second time', () => {
+      const [sql] = interpret(new Field('eq', 'displayName', 'Ada'), {
+        ...pg,
+        getColumnName: field => ({
+          displayName: 'display_name',
+          display_name: 'renamed_again',
+        }[field]),
+      })
+
+      expect(sql).to.equal('"display_name" = $1')
+    })
+
+    it('resolves the same condition independently for each model', () => {
+      const condition = new Field('eq', 'label', 'same value')
+      const options = (column: string) => ({
+        ...pg,
+        getColumnName: () => column,
+      })
+      const first = interpret(condition, options('user_label'))[0]
+      const second = interpret(condition, options('project_label'))[0]
+
+      expect(first).to.equal('"user_label" = $1')
+      expect(second).to.equal('"project_label" = $1')
+      expect(condition.field).to.equal('label')
+    })
+
+    it('uses each nested model context and does not map join columns', () => {
+      const user = { displayName: 'user_name', id: 'other_id' }
+      const project = { displayName: 'project_title', id: 'other_project_id' }
+      const deadline = { displayName: 'deadline_title' }
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'displayName', 'Alice'),
+        new Field('some', 'projects', new CompoundCondition('and', [
+          new Field('eq', 'displayName', 'Launch'),
+          new Field('some', 'deadlines', new Field('eq', 'displayName', 'Tomorrow')),
+        ])),
+      ])
+      const [sql, params] = interpret(condition, {
+        ...pg,
+        rootAlias: 'users',
+        getColumnName: (field, { relationContext }) => {
+          return (relationContext as Record<string, string>)[field]
+        },
+        getRelationMetadata: name => ({
+          parentField: 'id',
+          relationField: name === 'projects' ? 'user_id' : 'project_id',
+          relationTable: name,
+          relationContext: name === 'projects' ? project : deadline,
+        }),
+      }, user)
+
+      expect(sql).to.equal('("users"."user_name" = $1 and EXISTS (SELECT 1 FROM "projects" as "projects_0" WHERE "users"."id" = "projects_0"."user_id" AND (("projects_0"."project_title" = $2 and EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1" WHERE "projects_0"."id" = "deadlines_1"."project_id" AND ("deadlines_1"."deadline_title" = $3))))))')
+      expect(params).to.deep.equal(['Alice', 'Launch', 'Tomorrow'])
+    })
+
+    it('preserves localField as a complete rendering override', () => {
+      const [sql, params] = interpret(new Field('eq', 'displayName', 'Alice'), {
+        ...pg,
+        rootAlias: 'users',
+        getColumnName: () => { throw new Error('must not run') },
+        localField: field => `"custom_${field}"`,
+      })
+
+      expect(sql).to.equal('"users"."custom_displayName" = $1')
+      expect(params).to.deep.equal(['Alice'])
+    })
+
+    it('propagates errors from the mapping callback', () => {
+      expect(() => interpret(new Field('eq', 'name', 'Alice'), {
+        ...pg,
+        getColumnName: () => { throw new Error('invalid mapping') },
+      })).to.throw('invalid mapping')
+    })
+
+    it('maps scalar operator families while preserving parameter order', () => {
+      const mapped = createSqlInterpreter({ eq, ne, exists, within, nin, mod, regex, and })
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'displayName', 'Ada'),
+        new Field('ne', 'displayName', 'Grace'),
+        new Field('exists', 'displayName', true),
+        new Field('within', 'displayName', ['Ada', 'Lin']),
+        new Field('nin', 'displayName', ['Edsger']),
+        new Field('mod', 'displayName', [2, 0]),
+        new Field('regex', 'displayName', /Ada/i),
+      ])
+      const [sql, params] = mapped(condition, {
+        ...pg,
+        getColumnName: field => field === 'displayName' ? 'display_name' : undefined,
+      })
+
+      expect(sql).to.contain('"display_name" = $1')
+      expect(sql).to.contain('"display_name" is not null')
+      expect(sql).to.contain('mod("display_name", $6) = $7')
+      expect(params).to.deep.equal(['Ada', 'Grace', 'Ada', 'Lin', 'Edsger', 2, 0, 'Ada'])
+    })
+
+    it('provides separate parent and related property rendering for custom joins', () => {
+      const mapped = createSqlInterpreter({ eq, some: someRelation })
+      const parent = { tenantId: 'tenant_id' }
+      const related = { ownerId: 'owner_id', id: 'physical_id' }
+      const [sql] = mapped(new Field('some', 'records', new Field('eq', 'id', 1)), {
+        ...pg,
+        rootAlias: 'parents',
+        getColumnName: (field, { relationContext }) =>
+          (relationContext as Record<string, string>)[field],
+        getRelationMetadata: () => ({
+          relationContext: related,
+          buildRelationQuery: relation =>
+            `SELECT 1 FROM "records" as "${relation.relationAlias}"` +
+            ` WHERE ${relation.parentProperty('tenantId')} = ${relation.relationProperty('ownerId')}` +
+            ` AND ${relation.parentField('physical_id')} = ${relation.relationField('physical_id')}` +
+            ` AND (${relation.conditionSql()})`,
+        }),
+      }, parent)
+
+      expect(sql).to.contain('"parents"."tenant_id" = "records_0"."owner_id"')
+      expect(sql).to.contain('"parents"."physical_id" = "records_0"."physical_id"')
+      expect(sql).to.contain('"records_0"."physical_id" = $1')
+    })
+
+    it('keeps composite correlation columns physical under property name collisions', () => {
+      const mapped = createSqlInterpreter({ eq, some: someRelation })
+      const [sql] = mapped(new Field('some', 'records', new Field('eq', 'id', 1)), {
+        ...pg,
+        rootAlias: 'parents',
+        getColumnName: field => ({ id: 'mapped_id' }[field]),
+        getRelationMetadata: () => ({
+          relationContext: {},
+          buildRelationQuery: relation =>
+            `SELECT 1 FROM "records" as "${relation.relationAlias}"` +
+            ` WHERE ${relation.parentField('id')} = ${relation.relationField('parent_id')}` +
+            ` AND ${relation.parentField('tenant_id')} = ${relation.relationField('tenant_id')}` +
+            ` AND (${relation.conditionSql()})`,
+        }),
+      })
+
+      expect(sql).to.contain('"parents"."id" = "records_0"."parent_id"')
+      expect(sql).to.contain('"parents"."tenant_id" = "records_0"."tenant_id"')
+      expect(sql).to.contain('"records_0"."mapped_id" = $1')
+    })
+  })
+
   describe('primitive operators', () => {
     const interpret = createSqlInterpreter({ eq, ne, lt, lte, gt, gte, mod })
 

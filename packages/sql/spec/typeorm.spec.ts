@@ -4,7 +4,7 @@ import {
   EntitySchema,
   SelectQueryBuilder
 } from 'typeorm'
-import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/typeorm.ts'
+import { createInterpreter, getColumnName, getRelationMetadata, interpret } from '../src/lib/typeorm.ts'
 import { expect } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
@@ -21,12 +21,14 @@ describe('Condition interpreter for TypeORM', () => {
   let conn: OrmContext['conn']
   let User: OrmContext['User']
   let Project: OrmContext['Project']
+  let Profile: OrmContext['Profile']
 
   before(async () => {
     const ctx = await configureORM()
     conn = ctx.conn
     User = ctx.User
     Project = ctx.Project
+    Profile = ctx.Profile
   })
 
   after(async () => {
@@ -44,6 +46,68 @@ describe('Condition interpreter for TypeORM', () => {
       'WHERE "u"."name" = :0'
     ].join(' '))
     expect(query.getParameters()).to.eql({ 0: 'test' })
+  })
+
+  it('maps a model property to its configured database column', () => {
+    const query = interpret(
+      new FieldCondition('eq', 'displayName', 'Ada'),
+      conn.createQueryBuilder(Profile, 'p'),
+    )
+    expect(query.getQuery()).to.contain('WHERE "p"."display_name" = :0')
+    expect(query.getParameters()).to.eql({ 0: 'Ada' })
+  })
+
+  it('maps an owning relation property to its single foreign-key column', () => {
+    expect(getColumnName('user', { relationContext: conn.getMetadata(Profile) }))
+      .to.equal('userId')
+  })
+
+  it('rejects a TypeORM property path that resolves to several columns', () => {
+    const metadata = {
+      columns: [],
+      findRelationWithPropertyPath: () => undefined,
+      findColumnsWithPropertyPath: () => [
+        { databaseName: 'owner_id' },
+        { databaseName: 'owner_tenant_id' },
+      ],
+    }
+
+    expect(() => getColumnName('owner', { relationContext: metadata }))
+      .to.throw('maps to multiple database columns')
+  })
+
+  it('keeps TypeORM composite relation join columns physical', () => {
+    const relationMetadata = {
+      findRelationWithPropertyPath: () => ({
+        isManyToMany: false,
+        joinColumns: [
+          { databaseName: 'owner_tenant_id', referencedColumn: { databaseName: 'tenant_id' } },
+          { databaseName: 'owner_id', referencedColumn: { databaseName: 'id' } },
+        ],
+        inverseEntityMetadata: { tableName: 'owners' },
+      }),
+    }
+    const metadata = getRelationMetadata('owner', {
+      escape: field => `"${field}"`,
+      relationContext: relationMetadata,
+    })
+    if (!metadata || !('buildRelationQuery' in metadata)) {
+      throw new Error('Expected a composite relation query')
+    }
+    const sql = metadata.buildRelationQuery({
+      relationName: 'owner',
+      relationAlias: 'owner_0',
+      escapeField: field => `"${field}"`,
+      parentField: field => `"users"."${field}"`,
+      relationField: field => `"owner_0"."${field}"`,
+      parentProperty: field => `"users"."${field}"`,
+      relationProperty: field => `"owner_0"."${field}"`,
+      conditionSql: () => '1 = 1',
+      param: () => '?',
+    })
+
+    expect(sql).to.contain('"users"."owner_tenant_id" = "owner_0"."tenant_id"')
+    expect(sql).to.contain('"users"."owner_id" = "owner_0"."id"')
   })
 
   it('properly binds parameters for "IN" operator', () => {
@@ -255,6 +319,7 @@ async function configureORM() {
   class Role {
     id!: number
     name!: string
+    displayName!: string
     users!: User[]
   }
 
@@ -337,7 +402,8 @@ async function configureORM() {
     target: Role,
     columns: {
       id: { primary: true, type: 'int', generated: true },
-      name: { type: 'varchar' }
+      name: { type: 'varchar' },
+      displayName: { type: 'varchar', name: 'display_name' },
     },
     relations: {
       users: {
@@ -354,7 +420,7 @@ async function configureORM() {
     entities: [UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema]
   }).initialize()
 
-  return { User, Project, conn }
+  return { User, Project, Profile, conn }
 }
 
 async function seedTypeOrm(conn: OrmContext['conn']) {

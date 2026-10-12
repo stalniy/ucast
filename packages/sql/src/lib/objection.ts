@@ -20,6 +20,19 @@ export interface ObjectionInterpreterOptions {
   getRelationMetadata?: GetRelationMetadata;
 }
 
+export function getColumnName(field: string, helpers: { relationContext: unknown }) {
+  const Model = helpers.relationContext as ModelClass<Model>;
+  if (typeof Model?.propertyNameToColumnName !== 'function') return undefined;
+  const model = new Model() as Model & { $formatDatabaseJson(json: object): object };
+  const existingColumns = Object.keys(model.$formatDatabaseJson({}));
+  const mappedColumns = Object.keys(model.$formatDatabaseJson({ [field]: null }))
+    .filter(column => !existingColumns.includes(column));
+  if (mappedColumns.length > 1) {
+    throw new Error(`Property "${field}" maps to multiple database columns, which is not supported`);
+  }
+  return Model.propertyNameToColumnName(field);
+}
+
 export const getRelationMetadata: GetRelationMetadata = (relationName, ctx) => {
   const Model = ctx.relationContext as ModelClass<Model>;
   const relation = Model.getRelation(relationName) as RuntimeRelation | undefined;
@@ -88,6 +101,7 @@ export function createInterpreter(
     const [sql, params] = interpretSQL(condition, {
       ...options,
       rootAlias: getRootAlias(query),
+      getColumnName,
     }, query.modelClass());
     return query.whereRaw(sql, params);
   };
