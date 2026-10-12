@@ -42,9 +42,6 @@ export interface RelationQueryContext {
   escapeField(field: string): string;
   parentField(field: string): string;
   relationField(field: string): string;
-  /** Render a model property using the parent or related mapping context. */
-  parentProperty(field: string): string;
-  relationProperty(field: string): string;
   conditionSql(): string;
   param(value: unknown): string;
 }
@@ -84,10 +81,6 @@ export class Query {
 
   rootField(name: string) {
     return this.renderProperty(name);
-  }
-
-  rootColumn(name: string) {
-    return this._rootAlias + this.options.escapeField(name);
   }
 
   private renderProperty(field: string) {

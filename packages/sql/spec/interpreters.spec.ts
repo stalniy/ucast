@@ -108,9 +108,9 @@ describe('Condition Interpreter', () => {
 
       expect(sql).to.equal([
         '("users"."user_name" = $1 and EXISTS (SELECT 1 FROM "projects" as "projects_0"',
-        'WHERE "users"."id" = "projects_0"."user_id"',
+        'WHERE "users"."other_id" = "projects_0"."user_id"',
         'AND (("projects_0"."project_title" = $2 and EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1"',
-        'WHERE "projects_0"."id" = "deadlines_1"."project_id"',
+        'WHERE "projects_0"."other_project_id" = "deadlines_1"."project_id"',
         'AND ("deadlines_1"."deadline_title" = $3))))))',
       ].join(' '))
       expect(params).to.deep.equal(['Alice', 'Launch', 'Tomorrow'])
@@ -171,7 +171,7 @@ describe('Condition Interpreter', () => {
       })
     })
 
-    it('provides separate parent and related property rendering for custom joins', () => {
+    it('allows custom builders to map parent and related fields through localField', () => {
       const mapped = createSqlInterpreter({ eq, some: someRelation })
       const parent = { tenantId: 'tenant_id' }
       const related = { ownerId: 'owner_id', id: 'physical_id' }
@@ -185,36 +185,45 @@ describe('Condition Interpreter', () => {
           relationContext: related,
           buildRelationQuery: relation =>
             `SELECT 1 FROM "records" as "${relation.relationAlias}"` +
-            ` WHERE ${relation.parentProperty('tenantId')} = ${relation.relationProperty('ownerId')}` +
-            ` AND ${relation.parentField('physical_id')} = ${relation.relationField('physical_id')}` +
+            ` WHERE ${relation.parentField('tenantId')} = ${relation.relationField('ownerId')}` +
             ` AND (${relation.conditionSql()})`,
         }),
       }, parent)
 
       expect(sql).to.contain('"parents"."tenant_id" = "records_0"."owner_id"')
-      expect(sql).to.contain('"parents"."physical_id" = "records_0"."physical_id"')
       expect(sql).to.contain('"records_0"."physical_id" = $1')
     })
 
-    it('keeps composite correlation columns physical under property name collisions', () => {
+    it('passes each relation correlation field to localField with its model context', () => {
       const mapped = createSqlInterpreter({ eq, some: someRelation })
-      const [sql] = mapped(new Field('some', 'records', new Field('eq', 'id', 1)), {
+      const parent = { tenantId: 'tenant_id' }
+      const related = { parentId: 'parent_id', displayName: 'display_name' }
+      const localField = spy((field: string, { escape, relationContext }: {
+        escape(field: string): string;
+        relationContext: unknown;
+      }) => escape((relationContext as Record<string, string>)[field] ?? field))
+      const [sql] = mapped(new Field('some', 'records', new Field('eq', 'displayName', 'Ada')), {
         ...pg,
         rootAlias: 'parents',
-        localField: (field, { escape }) => escape(({ id: 'mapped_id' }[field] ?? field)),
+        localField,
         getRelationMetadata: () => ({
-          relationContext: {},
-          buildRelationQuery: relation =>
-            `SELECT 1 FROM "records" as "${relation.relationAlias}"` +
-            ` WHERE ${relation.parentField('id')} = ${relation.relationField('parent_id')}` +
-            ` AND ${relation.parentField('tenant_id')} = ${relation.relationField('tenant_id')}` +
-            ` AND (${relation.conditionSql()})`,
+          relationContext: related,
+          relationTable: 'records',
+          parentField: 'tenantId',
+          relationField: 'parentId',
         }),
-      })
+      }, parent)
 
-      expect(sql).to.contain('"parents"."id" = "records_0"."parent_id"')
-      expect(sql).to.contain('"parents"."tenant_id" = "records_0"."tenant_id"')
-      expect(sql).to.contain('"records_0"."mapped_id" = $1')
+      expect(sql).to.contain('"parents"."tenant_id" = "records_0"."parent_id"')
+      expect(sql).to.contain('"records_0"."display_name" = $1')
+      expect(localField).to.have.been.called.with('tenantId', {
+        escape: pg.escapeField,
+        relationContext: parent,
+      })
+      expect(localField).to.have.been.called.with('parentId', {
+        escape: pg.escapeField,
+        relationContext: related,
+      })
     })
   })
 

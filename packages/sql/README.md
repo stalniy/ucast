@@ -108,34 +108,25 @@ The TypeORM, Sequelize, Objection, and MikroORM adapters resolve condition
 properties from their model metadata automatically, including configured column
 names. A property resolving to more than one physical column throws an explicit
 unsupported-mapping error. A field that the model does not resolve remains a
-literal SQL identifier. If a name is both a property and another column name,
-the property mapping takes precedence.
+literal SQL identifier. For unusual property/column name collisions, the property
+mapping takes precedence.
 
-Relation metadata and the `parentField` and `relationField` helpers in custom
-relation builders take database column names. They bypass property mapping. For
-example, use `parentField('tenant_id')` to join that column even when the model
-property is named `tenantId`.
-
-This distinction prevents translating an already resolved join column again
-when its name also identifies a model property with a different column mapping.
-
-Custom relation builders that need model properties can use the separate
-`parentProperty` and `relationProperty` helpers. They apply the matching model's
-property mapping and query alias:
+The `parentField` and `relationField` helpers in custom relation builders use
+`localField` with the parent and related model contexts, respectively. They
+resolve and escape fields consistently with condition predicates, then apply
+the appropriate query alias:
 
 ```ts
 buildRelationQuery(relation) {
   return `SELECT 1 FROM ${relation.escapeField('tenant_projects')} as ${relation.escapeField(relation.relationAlias)}` +
-    ` WHERE ${relation.parentProperty('tenantId')} = ${relation.relationProperty('ownerId')}` +
+    ` WHERE ${relation.parentField('tenantId')} = ${relation.relationField('ownerId')}` +
     ` AND (${relation.conditionSql()})`;
 }
 ```
 
-Code that previously passed a model property such as `tenantId` to
-`parentField` should switch to the physical column name (for example,
-`tenant_id`) or use `parentProperty('tenantId')` when it needs model-level
-resolution. Table names, relation names, and aliases remain outside property
-mapping.
+The ORM adapters use join fields supplied by their data layer. An unresolved
+field remains a literal column name through the adapter's normal fallback.
+Table names, relation names, and aliases remain outside property mapping.
 
 ### Conditions on related tables
 
