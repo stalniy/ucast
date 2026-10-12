@@ -22,6 +22,7 @@ describe('Condition interpreter for TypeORM', () => {
   let User: OrmContext['User']
   let Project: OrmContext['Project']
   let Profile: OrmContext['Profile']
+  let CompositeItem: OrmContext['CompositeItem']
 
   before(async () => {
     const ctx = await configureORM()
@@ -29,6 +30,7 @@ describe('Condition interpreter for TypeORM', () => {
     User = ctx.User
     Project = ctx.Project
     Profile = ctx.Profile
+    CompositeItem = ctx.CompositeItem
   })
 
   after(async () => {
@@ -87,38 +89,21 @@ describe('Condition interpreter for TypeORM', () => {
       .to.throw('maps to multiple database columns')
   })
 
-  it('keeps TypeORM composite relation join columns physical', () => {
-    const relationMetadata = {
-      findRelationWithPropertyPath: () => ({
-        isManyToMany: false,
-        joinColumns: [
-          { databaseName: 'owner_tenant_id', referencedColumn: { databaseName: 'tenant_id' } },
-          { databaseName: 'owner_id', referencedColumn: { databaseName: 'id' } },
-        ],
-        inverseEntityMetadata: { tableName: 'owners' },
-      }),
-    }
-    const metadata = getRelationMetadata('owner', {
-      escape: field => `"${field}"`,
-      relationContext: relationMetadata,
-    })
-    if (!metadata || !('buildRelationQuery' in metadata)) {
-      throw new Error('Expected a composite relation query')
-    }
-    const sql = metadata.buildRelationQuery({
-      relationName: 'owner',
-      relationAlias: 'owner_0',
-      escapeField: field => `"${field}"`,
-      parentField: field => `"users"."${field}"`,
-      relationField: field => `"owner_0"."${field}"`,
-      parentProperty: field => `"users"."${field}"`,
-      relationProperty: field => `"owner_0"."${field}"`,
-      conditionSql: () => '1 = 1',
-      param: () => '?',
-    })
+  it('keeps composite relation join columns physical', () => {
+    const query = interpret(
+      new FieldCondition(
+        'some',
+        'owner',
+        new FieldCondition('eq', 'displayName', 'Ada'),
+      ),
+      conn.createQueryBuilder(CompositeItem, 'i'),
+    )
 
-    expect(sql).to.contain('"users"."owner_tenant_id" = "owner_0"."tenant_id"')
-    expect(sql).to.contain('"users"."owner_id" = "owner_0"."id"')
+    expect(query.getQuery()).to.contain(
+      'WHERE EXISTS (SELECT 1 FROM "composite_owner" as "owner_0" ' +
+      'WHERE "i"."owner_tenant_id" = "owner_0"."tenant_id" ' +
+      'AND "i"."owner_id" = "owner_0"."id" AND ("owner_0"."display_name" = :0))',
+    )
   })
 
   it('properly binds parameters for "IN" operator', () => {
@@ -334,6 +319,17 @@ async function configureORM() {
     users!: User[]
   }
 
+  class CompositeOwner {
+    tenantId!: string
+    id!: number
+    displayName!: string
+  }
+
+  class CompositeItem {
+    id!: number
+    owner!: CompositeOwner
+  }
+
   const UserSchema = new EntitySchema<User>({
     name: 'User',
     target: User,
@@ -425,13 +421,49 @@ async function configureORM() {
     }
   })
 
+  const CompositeOwnerSchema = new EntitySchema<CompositeOwner>({
+    name: 'CompositeOwner',
+    target: CompositeOwner,
+    columns: {
+      tenantId: { primary: true, type: 'varchar', name: 'tenant_id' },
+      id: { primary: true, type: 'int' },
+      displayName: { type: 'varchar', name: 'display_name' },
+    },
+  })
+
+  const CompositeItemSchema = new EntitySchema<CompositeItem>({
+    name: 'CompositeItem',
+    target: CompositeItem,
+    columns: {
+      id: { primary: true, type: 'int', generated: true },
+    },
+    relations: {
+      owner: {
+        target: 'CompositeOwner',
+        type: 'many-to-one',
+        joinColumn: [
+          { name: 'owner_tenant_id', referencedColumnName: 'tenantId' },
+          { name: 'owner_id', referencedColumnName: 'id' },
+        ],
+      },
+    },
+  })
+
   const conn = await new DataSource({
     type: 'better-sqlite3',
     database: ':memory:',
-    entities: [UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema]
+    entities: [
+      UserSchema,
+      ProfileSchema,
+      ProjectSchema,
+      DeadlineSchema,
+      RoleSchema,
+      CompositeOwnerSchema,
+      CompositeItemSchema,
+    ]
   }).initialize()
 
-  return { User, Project, Profile, conn }
+  return { User, Project, Profile, CompositeItem, conn }
 }
 
 async function seedTypeOrm(conn: OrmContext['conn']) {
