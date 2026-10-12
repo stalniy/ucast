@@ -44,6 +44,54 @@ describe('Condition interpreter for Sequelize', () => {
     expect(query.where.val).to.contain('`legacy_column` = \'Ada\'')
   })
 
+  it('reports unknown relations before producing SQL', () => {
+    expect(() => interpret(
+      new FieldCondition('some', 'missingRelation', new FieldCondition('eq', 'name', 'Ada')),
+      User,
+    )).to.throw('Relation metadata for "missingRelation" not found')
+  })
+
+  it('rejects unsupported database dialects', () => {
+    const originalDialect = sequelize.getDialect
+
+    try {
+      sequelize.getDialect = () => 'unsupported' as ReturnType<typeof sequelize.getDialect>
+      expect(() => interpret(new FieldCondition('eq', 'name', 'Ada'), User))
+        .to.throw('Unsupported database dialect: unsupported')
+    } finally {
+      sequelize.getDialect = originalDialect
+    }
+  })
+
+  it('uses the property name when attribute metadata has no column override', () => {
+    const attribute = User.rawAttributes.name
+    const originalField = attribute.field
+
+    try {
+      delete attribute.field
+      const query = interpret(new FieldCondition('eq', 'name', 'Ada'), User)
+      expect(query.where.val).to.equal("`users`.`name` = 'Ada'")
+    } finally {
+      attribute.field = originalField
+    }
+  })
+
+  it('uses the through model when a many-to-many association lacks throughModel', () => {
+    const association = User.associations.roles as typeof User.associations.roles & {
+      throughModel?: typeof Model;
+    }
+    const originalThroughModel = association.throughModel
+
+    try {
+      delete association.throughModel
+      const query = interpret(relationConditions.manyToMany, User)
+      expect(query.where.val).to.contain('FROM `user_roles` as `roles_0_through`')
+      expect(query.where.val).to.contain("`roles_0`.`display_name` = 'admin'")
+    } finally {
+      association.throughModel = originalThroughModel
+    }
+  })
+
   after(async () => {
     await sequelize.close()
   })
