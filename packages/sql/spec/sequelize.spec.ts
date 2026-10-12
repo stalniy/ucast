@@ -19,6 +19,12 @@ describe('Condition interpreter for Sequelize', () => {
     expect(query.where.val).to.contain('`display_name` = \'Ada\'')
   })
 
+  it('keeps unresolved fields as literal identifiers', () => {
+    const run = createInterpreter({ eq })
+    const query = run(new FieldCondition('eq', 'legacy_column', 'Ada'), User)
+    expect(query.where.val).to.contain('`legacy_column` = \'Ada\'')
+  })
+
   after(async () => {
     await sequelize.close()
   })

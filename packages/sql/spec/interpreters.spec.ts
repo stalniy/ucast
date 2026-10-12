@@ -18,6 +18,7 @@ import {
   mod,
   regex,
   pg,
+  elemMatch,
   oracle,
   mysql,
   mssql,
@@ -43,7 +44,7 @@ describe('Condition Interpreter', () => {
       const [sql, params] = interpret(condition, {
         ...pg,
         rootAlias: 'users',
-        getColumnName: field => field === 'displayName' ? 'display_name' : undefined,
+        localField: (field, { escape }) => escape(field === 'displayName' ? 'display_name' : field),
       })
 
       expect(sql).to.equal('("users"."display_name" = $1 and "users"."legacy_column" is null)')
@@ -54,10 +55,10 @@ describe('Condition Interpreter', () => {
     it('does not translate a resolved column a second time', () => {
       const [sql] = interpret(new Field('eq', 'displayName', 'Ada'), {
         ...pg,
-        getColumnName: field => ({
+        localField: (field, { escape }) => escape(({
           displayName: 'display_name',
           display_name: 'renamed_again',
-        }[field]),
+        }[field] ?? field)),
       })
 
       expect(sql).to.equal('"display_name" = $1')
@@ -65,12 +66,15 @@ describe('Condition Interpreter', () => {
 
     it('resolves the same condition independently for each model', () => {
       const condition = new Field('eq', 'label', 'same value')
-      const options = (column: string) => ({
+      const render = {
         ...pg,
-        getColumnName: () => column,
-      })
-      const first = interpret(condition, options('user_label'))[0]
-      const second = interpret(condition, options('project_label'))[0]
+        localField: (field: string, { escape, relationContext }: {
+          escape(field: string): string;
+          relationContext: unknown;
+        }) => escape((relationContext as { label: string }).label ?? field),
+      }
+      const first = interpret(condition, render, { label: 'user_label' })[0]
+      const second = interpret(condition, render, { label: 'project_label' })[0]
 
       expect(first).to.equal('"user_label" = $1')
       expect(second).to.equal('"project_label" = $1')
@@ -91,9 +95,9 @@ describe('Condition Interpreter', () => {
       const [sql, params] = interpret(condition, {
         ...pg,
         rootAlias: 'users',
-        getColumnName: (field, { relationContext }) => {
-          return (relationContext as Record<string, string>)[field]
-        },
+        localField: (field, { escape, relationContext }) => escape(
+          (relationContext as Record<string, string>)[field] ?? field,
+        ),
         getRelationMetadata: name => ({
           parentField: 'id',
           relationField: name === 'projects' ? 'user_id' : 'project_id',
@@ -106,11 +110,10 @@ describe('Condition Interpreter', () => {
       expect(params).to.deep.equal(['Alice', 'Launch', 'Tomorrow'])
     })
 
-    it('preserves localField as a complete rendering override', () => {
+    it('preserves one-argument localField callbacks as escaped rendering overrides', () => {
       const [sql, params] = interpret(new Field('eq', 'displayName', 'Alice'), {
         ...pg,
         rootAlias: 'users',
-        getColumnName: () => { throw new Error('must not run') },
         localField: field => `"custom_${field}"`,
       })
 
@@ -121,8 +124,29 @@ describe('Condition Interpreter', () => {
     it('propagates errors from the mapping callback', () => {
       expect(() => interpret(new Field('eq', 'name', 'Alice'), {
         ...pg,
-        getColumnName: () => { throw new Error('invalid mapping') },
+        localField: () => { throw new Error('invalid mapping') },
       })).to.throw('invalid mapping')
+    })
+
+    it('passes the prefixed field, escape helper, and current model context to localField', () => {
+      const rootContext = { displayName: 'display_name' }
+      const seen: [string, unknown][] = []
+      const mapped = createSqlInterpreter({ eq, elemMatch })
+      const [sql, params] = mapped(
+        new Field('elemMatch', 'profile', new Field('eq', 'displayName', 'Ada')),
+        {
+          ...pg,
+          localField: (field, { escape, relationContext }) => {
+            seen.push([field, relationContext])
+            return escape(field === 'profile.displayName' ? 'profile_display_name' : field)
+          },
+        },
+        rootContext,
+      )
+
+      expect(sql).to.equal('"profile_display_name" = $1')
+      expect(params).to.deep.equal(['Ada'])
+      expect(seen).to.deep.equal([['profile.displayName', rootContext]])
     })
 
     it('maps scalar operator families while preserving parameter order', () => {
@@ -138,7 +162,9 @@ describe('Condition Interpreter', () => {
       ])
       const [sql, params] = mapped(condition, {
         ...pg,
-        getColumnName: field => field === 'displayName' ? 'display_name' : undefined,
+        localField: (field, { escape }) => escape(
+          field === 'displayName' ? 'display_name' : field,
+        ),
       })
 
       expect(sql).to.contain('"display_name" = $1')
@@ -154,8 +180,9 @@ describe('Condition Interpreter', () => {
       const [sql] = mapped(new Field('some', 'records', new Field('eq', 'id', 1)), {
         ...pg,
         rootAlias: 'parents',
-        getColumnName: (field, { relationContext }) =>
-          (relationContext as Record<string, string>)[field],
+        localField: (field, { escape, relationContext }) => escape(
+          (relationContext as Record<string, string>)[field] ?? field,
+        ),
         getRelationMetadata: () => ({
           relationContext: related,
           buildRelationQuery: relation =>
@@ -176,7 +203,7 @@ describe('Condition Interpreter', () => {
       const [sql] = mapped(new Field('some', 'records', new Field('eq', 'id', 1)), {
         ...pg,
         rootAlias: 'parents',
-        getColumnName: field => ({ id: 'mapped_id' }[field]),
+        localField: (field, { escape }) => escape(({ id: 'mapped_id' }[field] ?? field)),
         getRelationMetadata: () => ({
           relationContext: {},
           buildRelationQuery: relation =>

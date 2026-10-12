@@ -20,8 +20,8 @@ export interface TypeOrmInterpreterOptions {
   getRelationMetadata?: GetRelationMetadata;
 }
 
-export function getColumnName(field: string, helpers: { relationContext: unknown }) {
-  const meta = getEntityMetadata(helpers.relationContext);
+function mapColumnName(field: string, relationContext: unknown) {
+  const meta = getEntityMetadata(relationContext);
   if (!meta) return undefined;
   const metadata = meta as EntityMetadata & {
     columns?: TypeOrmColumn[];
@@ -116,7 +116,8 @@ export function createInterpreter(
     const [sql, params] = interpretSQL(condition, {
       ...options,
       rootAlias: query.alias,
-      getColumnName,
+      localField: (field, { escape, relationContext }) =>
+        escape(mapColumnName(field, relationContext) ?? field),
     }, query.expressionMap.mainAlias!.metadata);
     return query.where(sql, params);
   };

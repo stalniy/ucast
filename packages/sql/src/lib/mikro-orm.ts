@@ -21,8 +21,8 @@ export interface MikroOrmInterpreterOptions {
   getRelationMetadata?: GetRelationMetadata;
 }
 
-export function getColumnName(field: string, helpers: { relationContext: unknown }) {
-  const meta = getEntityMetadata(helpers.relationContext);
+function mapColumnName(field: string, relationContext: unknown) {
+  const meta = getEntityMetadata(relationContext);
   const property = meta?.properties[field];
   if (!property) return undefined;
   const columns = property.fieldNames ?? [];
@@ -99,7 +99,8 @@ export function createInterpreter(
     const [sql, params] = interpretSQL(condition, {
       ...options,
       rootAlias: query.alias,
-      getColumnName,
+      localField: (field, { escape, relationContext }) =>
+        escape(mapColumnName(field, relationContext) ?? field),
     }, getEntityMetadata(query));
     return query.where(sql, params);
   };

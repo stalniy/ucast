@@ -47,6 +47,21 @@ describe('Condition interpreter for MikroORM', () => {
     expect(query.getParams()).to.eql(['Ada'])
   })
 
+  it('rejects properties mapped to multiple columns', () => {
+    const metadata = { properties: { combined: { fieldNames: ['first_name', 'last_name'] } } }
+    const query = {
+      platform: { constructor: { name: 'SqlitePlatform' } },
+      alias: 'entity_0',
+      mainAlias: { meta: metadata },
+      where: () => undefined,
+    }
+
+    expect(() => createInterpreter({ eq })(
+      new FieldCondition('eq', 'combined', 'value'),
+      query as any,
+    )).to.throw('maps to multiple database columns')
+  })
+
   it('properly binds parameters for "IN" operator', () => {
     const condition = new FieldCondition('in', 'age', [1, 2, 3])
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))

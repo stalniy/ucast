@@ -41,7 +41,7 @@ const interpret = createSqlInterpreter(allInterpreters);
 
 1. `Condition`, condition to interpret
 2. `options`, SQL dialect specific options that tells how to escape field names and create placeholders. `@ucast/sql` provides options for the most popular SQL dialects.
-3. `relationContext`, optional, this value is passed to `getRelationMetadata` and `getColumnName` and is useful when integrating with ORMs and their metadata.
+3. `relationContext`, optional, this value is passed to `getRelationMetadata` and `localField` and is useful when integrating with ORMs and their metadata.
 
 For the sake of an example, we will create AST manually using `Condition` from `@ucast/core`:
 
@@ -78,9 +78,10 @@ console.log(replacements) // [5, 10]
 
 ### Map model properties to database columns
 
-Provide the optional `getColumnName` callback to resolve a model property to an
-unescaped database column name. Return `undefined` to keep the original field name.
-The interpreter escapes the result and applies the current query alias.
+Use `localField` to resolve a model property and escape the resulting column.
+It receives the field after existing prefix handling and a helper with the
+current `relationContext` and dialect `escape` function. Return the escaped
+column fragment; the interpreter applies the current query alias.
 
 ```ts
 const columns: Record<string, string> = { displayName: 'display_name' };
@@ -89,8 +90,9 @@ const condition = new FieldCondition('eq', 'displayName', 'Alice');
 const [sql, params] = interpret(condition, {
   ...pg,
   rootAlias: 'users',
-  getColumnName(property, { relationContext }) {
-    return (relationContext as Record<string, string>)[property];
+  localField(property, { relationContext, escape }) {
+    const column = (relationContext as Record<string, string>)[property];
+    return escape(column ?? property);
   },
 }, columns);
 
@@ -100,11 +102,8 @@ const [sql, params] = interpret(condition, {
 
 Use your data layer's mapping primitive or metadata in this callback. Boolean
 conditions keep the current context. Conditions inside a relation use the
-`relationContext` returned by that relation's metadata.
-
-`localField`, when supplied, remains a complete rendering override: it receives
-the original field and returns the escaped expression. It takes precedence over
-`getColumnName`.
+`relationContext` returned by that relation's metadata. Existing one-argument
+callbacks remain valid and can ignore the helper argument.
 
 The TypeORM, Sequelize, Objection, and MikroORM adapters resolve condition
 properties from their model metadata automatically, including configured column

@@ -1,7 +1,7 @@
 import { FieldCondition, CompoundCondition } from '@ucast/core'
 import { Model, QueryBuilder, snakeCaseMappers } from 'objection'
 import Knex from 'knex'
-import { createInterpreter, getColumnName, getRelationMetadata, interpret } from '../src/lib/objection.ts'
+import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/objection.ts'
 import { expect } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
@@ -32,7 +32,12 @@ describe('Condition interpreter for Objection', () => {
       }
     }
 
-    expect(() => getColumnName('combined', { relationContext: MultiColumnModel }))
+    const query = {
+      modelClass: () => MultiColumnModel,
+      whereRaw: () => undefined,
+    }
+
+    expect(() => interpret(new FieldCondition('eq', 'combined', 'value'), query as any))
       .to.throw('maps to multiple database columns')
   })
 

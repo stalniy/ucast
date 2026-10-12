@@ -20,8 +20,8 @@ export interface ObjectionInterpreterOptions {
   getRelationMetadata?: GetRelationMetadata;
 }
 
-export function getColumnName(field: string, helpers: { relationContext: unknown }) {
-  const Model = helpers.relationContext as ModelClass<Model>;
+function mapColumnName(field: string, relationContext: unknown) {
+  const Model = relationContext as ModelClass<Model>;
   if (typeof Model?.propertyNameToColumnName !== 'function') return undefined;
   const model = new Model() as Model & { $formatDatabaseJson(json: object): object };
   const existingColumns = Object.keys(model.$formatDatabaseJson({}));
@@ -101,7 +101,8 @@ export function createInterpreter(
     const [sql, params] = interpretSQL(condition, {
       ...options,
       rootAlias: getRootAlias(query),
-      getColumnName,
+      localField: (field, { escape, relationContext }) =>
+        escape(mapColumnName(field, relationContext) ?? field),
     }, query.modelClass());
     return query.whereRaw(sql, params);
   };

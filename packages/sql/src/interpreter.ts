@@ -8,17 +8,12 @@ import { type DialectOptions } from './dialects.ts';
 
 export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string;
-  localField?(field: string): string;
-  /** Returns an unescaped column name, or undefined for literal fallback. Overridden by localField. */
-  getColumnName?(field: string, helpers: ColumnNameHelpers): string | undefined;
+  /** Returns an escaped local column fragment; Query adds the current alias. */
+  localField?(field: string, helpers: RelationMetadataHelpers): string;
   getRelationMetadata?(
     relationName: string,
     helpers: RelationMetadataHelpers
   ): RelationMetadata | undefined;
-}
-
-export interface ColumnNameHelpers {
-  relationContext: unknown;
 }
 
 export interface RelationMetadataHelpers {
@@ -56,7 +51,7 @@ export interface RelationQueryContext {
 
 type ChildOptions = Partial<Pick<
 SqlQueryOptions,
-'localField' | 'getColumnName' | 'getRelationMetadata' | 'rootAlias'
+'localField' | 'getRelationMetadata' | 'rootAlias'
 >> & {
   linkParams?: boolean;
   relationContext?: unknown;
@@ -100,9 +95,11 @@ export class Query {
   }
 
   private renderProperty(field: string, relationContext: unknown, alias: string) {
-    if (this.options.localField) return alias + this.options.localField(field);
-    const column = this.options.getColumnName?.(field, { relationContext });
-    return alias + this.options.escapeField(column ?? field);
+    const helpers = { escape: this.options.escapeField, relationContext };
+    const localField = this.options.localField
+      ? this.options.localField(field, helpers)
+      : this.options.escapeField(field);
+    return alias + localField;
   }
 
   param(value: unknown) {

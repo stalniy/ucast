@@ -4,7 +4,7 @@ import {
   EntitySchema,
   SelectQueryBuilder
 } from 'typeorm'
-import { createInterpreter, getColumnName, getRelationMetadata, interpret } from '../src/lib/typeorm.ts'
+import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/typeorm.ts'
 import { expect } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
@@ -58,8 +58,11 @@ describe('Condition interpreter for TypeORM', () => {
   })
 
   it('maps an owning relation property to its single foreign-key column', () => {
-    expect(getColumnName('user', { relationContext: conn.getMetadata(Profile) }))
-      .to.equal('userId')
+    const query = interpret(
+      new FieldCondition('eq', 'user', 1),
+      conn.createQueryBuilder(Profile, 'p'),
+    )
+    expect(query.getQuery()).to.contain('WHERE "p"."userId" = :0')
   })
 
   it('rejects a TypeORM property path that resolves to several columns', () => {
@@ -72,7 +75,15 @@ describe('Condition interpreter for TypeORM', () => {
       ],
     }
 
-    expect(() => getColumnName('owner', { relationContext: metadata }))
+    const interpreter = createInterpreter({ eq })
+    const query = {
+      alias: 'users',
+      connection: { options: { type: 'sqlite' } },
+      expressionMap: { mainAlias: { metadata } },
+      where: () => undefined,
+    }
+
+    expect(() => interpreter(new FieldCondition('eq', 'owner', 1), query as any))
       .to.throw('maps to multiple database columns')
   })
 
