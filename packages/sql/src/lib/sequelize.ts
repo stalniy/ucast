@@ -20,6 +20,13 @@ export interface SequelizeInterpreterOptions {
   getRelationMetadata?: GetRelationMetadata;
 }
 
+function mapColumnName(field: string, relationContext: unknown) {
+  const Model = relationContext as ModelStatic<any>;
+  const attribute = Model?.rawAttributes?.[field];
+  if (!attribute) return undefined;
+  return attribute.field ?? field;
+}
+
 export const getRelationMetadata: GetRelationMetadata = (
   relationName,
   ctx,
@@ -90,7 +97,9 @@ export function createInterpreter(
 
     const [sql, params] = interpretSQL(condition, {
       ...options,
-      rootAlias: callOptions?.rootAlias ?? Model.tableName
+      rootAlias: callOptions?.rootAlias ?? Model.tableName,
+      localField: (field, { escape, relationContext }) =>
+        escape(mapColumnName(field, relationContext) ?? field),
     }, Model);
     return {
       where: literal(Utils.format([sql, ...(params as string[])], dialect)),

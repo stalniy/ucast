@@ -175,13 +175,17 @@ function buildRelationQuery(
   conditionSql: () => string,
 ) {
   const escapeField = query.options.escapeField;
+  const relatedQuery = query.child({
+    rootAlias: relationAlias,
+    relationContext: relation.relationContext,
+  });
   const context = {
     relationName,
     relationAlias,
     parentAlias: query.rootAlias,
     escapeField,
     parentField: (field: string) => query.rootField(field),
-    relationField: (field: string) => `${escapeField(relationAlias)}.${escapeField(field)}`,
+    relationField: (field: string) => relatedQuery.rootField(field),
     conditionSql,
     param: (value: unknown) => query.param(value),
   };

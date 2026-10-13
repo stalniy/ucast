@@ -1,11 +1,12 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, buildAnd } from '@ucast/core'
 import {
   DataSource,
   EntitySchema,
   SelectQueryBuilder
 } from 'typeorm'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/typeorm.ts'
-import { expect } from './specHelper.ts'
+import { pg } from '../src/dialects.ts'
+import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
@@ -21,12 +22,18 @@ describe('Condition interpreter for TypeORM', () => {
   let conn: OrmContext['conn']
   let User: OrmContext['User']
   let Project: OrmContext['Project']
+  let Profile: OrmContext['Profile']
+  let CompositeItem: OrmContext['CompositeItem']
+  let Role: OrmContext['Role']
 
   before(async () => {
     const ctx = await configureORM()
     conn = ctx.conn
     User = ctx.User
     Project = ctx.Project
+    Profile = ctx.Profile
+    CompositeItem = ctx.CompositeItem
+    Role = ctx.Role
   })
 
   after(async () => {
@@ -39,11 +46,194 @@ describe('Condition interpreter for TypeORM', () => {
 
     expect(query).to.be.instanceof(SelectQueryBuilder)
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE "u"."name" = :0'
     ].join(' '))
     expect(query.getParameters()).to.eql({ 0: 'test' })
+  })
+
+  it('maps a model property to its configured database column', () => {
+    const query = interpret(
+      new FieldCondition('eq', 'displayName', 'Ada'),
+      conn.createQueryBuilder(Profile, 'p'),
+    )
+    expect(query.getQuery()).to.contain('WHERE "p"."display_name" = :0')
+    expect(query.getParameters()).to.eql({ 0: 'Ada' })
+  })
+
+  it('maps a model property to its configured database column for related models', () => {
+    const query = interpret(
+      buildAnd([
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+      ]),
+      conn.createQueryBuilder(Profile, 'p').select('p.*'),
+    )
+
+    expect(query.getQuery()).to.equal(linearize`
+      SELECT p.* FROM "profile" "p"
+      WHERE ("p"."display_name" = :0 and EXISTS (
+        SELECT 1
+        FROM "user" as "user_0"
+        WHERE "p"."userId" = "user_0"."id" AND ("user_0"."tenant_id" = :1)
+      ))
+    `)
+    expect(query.getParameters()).to.eql({ 0: 'Alice Profile', 1: 1 })
+  })
+
+  it('maps an owning relation property to its single foreign-key column', () => {
+    const query = interpret(
+      new FieldCondition('eq', 'user', 1),
+      conn.createQueryBuilder(Profile, 'p'),
+    )
+    expect(query.getQuery()).to.contain('WHERE "p"."userId" = :0')
+  })
+
+  it('reports unknown relations before producing SQL', () => {
+    expect(() => interpret(
+      new FieldCondition('some', 'missingRelation', new FieldCondition('eq', 'name', 'Ada')),
+      conn.createQueryBuilder(User, 'u'),
+    )).to.throw('Relation metadata for "missingRelation" not found')
+  })
+
+  it('rejects unsupported database dialects', () => {
+    const query = conn.createQueryBuilder(User, 'u')
+    const options = conn.options as { type: string }
+    const originalType = options.type
+
+    try {
+      options.type = 'mongodb'
+      expect(() => interpret(new FieldCondition('eq', 'name', 'Ada'), query))
+        .to.throw('Unsupported database dialect: mongodb')
+    } finally {
+      options.type = originalType
+    }
+  })
+
+  it('accepts a query builder as the relation metadata context', () => {
+    const metadata = getRelationMetadata('projects', {
+      escape: pg.escapeField,
+      relationContext: conn.createQueryBuilder(User, 'u'),
+    })
+
+    expect(metadata).to.include({
+      parentField: 'id',
+      relationField: 'userId',
+      relationTable: 'project',
+      relationContext: conn.getMetadata(Project),
+    })
+  })
+
+  it('supports query builders exposing connection instead of dataSource', () => {
+    const query = conn.createQueryBuilder(Profile, 'p')
+    const legacyQuery: typeof query = Object.create(query)
+    Object.defineProperty(legacyQuery, 'dataSource', { value: undefined })
+    Object.defineProperty(legacyQuery, 'connection', { value: conn })
+    legacyQuery.where = query.where.bind(query)
+
+    const result = interpret(new FieldCondition('eq', 'displayName', 'Ada'), legacyQuery)
+
+    expect(result).to.equal(query)
+    expect(result.getQuery()).to.contain('WHERE "p"."display_name" = :0')
+    expect(result.getParameters()).to.eql({ 0: 'Ada' })
+  })
+
+  it('keeps literal fields in custom relations without entity metadata', () => {
+    const run = createInterpreter({ eq, some: someRelation }, {
+      getRelationMetadata: () => ({
+        parentField: 'id',
+        relationField: 'parent_id',
+        relationTable: 'external_records',
+        relationContext: { expressionMap: {} },
+      }),
+    })
+    const query = run(
+      new FieldCondition('some', 'external', new FieldCondition('eq', 'legacy_column', 'Ada')),
+      conn.createQueryBuilder(User, 'u'),
+    )
+
+    expect(query.getQuery()).to.contain('"external_0"."legacy_column" = :0')
+    expect(query.getParameters()).to.eql({ 0: 'Ada' })
+  })
+
+  describe('metadata without the column lookup method', () => {
+    beforeEach(() => {
+      [Profile, CompositeItem].forEach(Entity => {
+        Object.defineProperty(conn.getMetadata(Entity), 'findColumnsWithPropertyPath', {
+          value: undefined,
+          configurable: true,
+        })
+      })
+    })
+
+    afterEach(() => {
+      [Profile, CompositeItem].forEach(Entity => {
+        Reflect.deleteProperty(conn.getMetadata(Entity), 'findColumnsWithPropertyPath')
+      })
+    })
+
+    it('maps scalar property paths through column metadata', () => {
+      const query = interpret(
+        new FieldCondition('eq', 'displayName', 'Ada'),
+        conn.createQueryBuilder(Profile, 'p'),
+      )
+
+      expect(query.getQuery()).to.contain('WHERE "p"."display_name" = :0')
+      expect(query.getParameters()).to.eql({ 0: 'Ada' })
+    })
+
+    it('maps owning relation properties through join metadata', () => {
+      const query = interpret(
+        new FieldCondition('eq', 'user', 1),
+        conn.createQueryBuilder(Profile, 'p'),
+      )
+
+      expect(query.getQuery()).to.contain('WHERE "p"."userId" = :0')
+      expect(query.getParameters()).to.eql({ 0: 1 })
+    })
+
+    it('keeps unresolved properties as literal identifiers', () => {
+      const query = interpret(
+        new FieldCondition('eq', 'legacy_column', 'Ada'),
+        conn.createQueryBuilder(Profile, 'p'),
+      )
+
+      expect(query.getQuery()).to.contain('WHERE "p"."legacy_column" = :0')
+      expect(query.getParameters()).to.eql({ 0: 'Ada' })
+    })
+
+    it('still rejects scalar conditions on composite relations', () => {
+      expect(() => interpret(
+        new FieldCondition('eq', 'owner', 1),
+        conn.createQueryBuilder(CompositeItem, 'i'),
+      )).to.throw('maps to multiple database columns')
+    })
+  })
+
+  it('rejects scalar conditions on relations with composite foreign keys', () => {
+    expect(() => interpret(
+      new FieldCondition('eq', 'owner', 1),
+      conn.createQueryBuilder(CompositeItem, 'i'),
+    ))
+      .to.throw('maps to multiple database columns')
+  })
+
+  it('keeps composite relation join columns physical', () => {
+    const query = interpret(
+      new FieldCondition(
+        'some',
+        'owner',
+        new FieldCondition('eq', 'displayName', 'Ada'),
+      ),
+      conn.createQueryBuilder(CompositeItem, 'i'),
+    )
+
+    expect(query.getQuery()).to.contain(
+      'WHERE EXISTS (SELECT 1 FROM "composite_owner" as "owner_0" ' +
+      'WHERE "i"."owner_tenant_id" = "owner_0"."tenant_id" ' +
+      'AND "i"."owner_id" = "owner_0"."id" AND ("owner_0"."display_name" = :0))',
+    )
   })
 
   it('properly binds parameters for "IN" operator', () => {
@@ -51,7 +241,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE "u"."age" in(:0, :1, :2)'
     ].join(' '))
@@ -73,7 +263,7 @@ describe('Condition interpreter for TypeORM', () => {
       const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
       expect(query.getQuery()).to.equal([
-        'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+        'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
         'FROM "user" "u"',
         'WHERE "u"."name" = :0'
       ].join(' '))
@@ -88,7 +278,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE "u"."projects.name" = :0'
     ].join(' '))
@@ -108,7 +298,7 @@ describe('Condition interpreter for TypeORM', () => {
     const query = interpret(condition, conn.createQueryBuilder(User, 'u'))
 
     expect(query.getQuery()).to.equal([
-      'SELECT "u"."id" AS "u_id", "u"."tenantId" AS "u_tenantId", "u"."name" AS "u_name"',
+      'SELECT "u"."id" AS "u_id", "u"."tenant_id" AS "u_tenant_id", "u"."name" AS "u_name"',
       'FROM "user" "u"',
       'WHERE EXISTS (' +
         'SELECT 1 FROM "project" as "projects_0"',
@@ -184,6 +374,15 @@ describe('Condition interpreter for TypeORM', () => {
       await seedTypeOrm(conn)
     })
 
+    it('filters inverse many-to-many relations through the owner junction metadata', async () => {
+      const roles = await interpret(
+        new FieldCondition('some', 'users', new FieldCondition('eq', 'name', 'Bob')),
+        conn.createQueryBuilder(Role, 'r'),
+      ).getMany()
+
+      expect(namesOf(roles)).to.deep.equal(['editor'])
+    })
+
     it('filters one-to-many relations', async () => {
       const users = await interpret(
         relationConditions.hasMany,
@@ -255,7 +454,19 @@ async function configureORM() {
   class Role {
     id!: number
     name!: string
+    displayName!: string
     users!: User[]
+  }
+
+  class CompositeOwner {
+    tenantId!: string
+    id!: number
+    displayName!: string
+  }
+
+  class CompositeItem {
+    id!: number
+    owner!: CompositeOwner
   }
 
   const UserSchema = new EntitySchema<User>({
@@ -263,7 +474,7 @@ async function configureORM() {
     target: User,
     columns: {
       id: { primary: true, type: 'int', generated: true },
-      tenantId: { type: 'varchar' },
+      tenantId: { type: 'varchar', name: 'tenant_id' },
       name: { type: 'varchar' },
     },
     relations: {
@@ -337,7 +548,8 @@ async function configureORM() {
     target: Role,
     columns: {
       id: { primary: true, type: 'int', generated: true },
-      name: { type: 'varchar' }
+      name: { type: 'varchar' },
+      displayName: { type: 'varchar', name: 'display_name' },
     },
     relations: {
       users: {
@@ -348,13 +560,49 @@ async function configureORM() {
     }
   })
 
+  const CompositeOwnerSchema = new EntitySchema<CompositeOwner>({
+    name: 'CompositeOwner',
+    target: CompositeOwner,
+    columns: {
+      tenantId: { primary: true, type: 'varchar', name: 'tenant_id' },
+      id: { primary: true, type: 'int' },
+      displayName: { type: 'varchar', name: 'display_name' },
+    },
+  })
+
+  const CompositeItemSchema = new EntitySchema<CompositeItem>({
+    name: 'CompositeItem',
+    target: CompositeItem,
+    columns: {
+      id: { primary: true, type: 'int', generated: true },
+    },
+    relations: {
+      owner: {
+        target: 'CompositeOwner',
+        type: 'many-to-one',
+        joinColumn: [
+          { name: 'owner_tenant_id', referencedColumnName: 'tenantId' },
+          { name: 'owner_id', referencedColumnName: 'id' },
+        ],
+      },
+    },
+  })
+
   const conn = await new DataSource({
     type: 'better-sqlite3',
     database: ':memory:',
-    entities: [UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema]
+    entities: [
+      UserSchema,
+      ProfileSchema,
+      ProjectSchema,
+      DeadlineSchema,
+      RoleSchema,
+      CompositeOwnerSchema,
+      CompositeItemSchema,
+    ]
   }).initialize()
 
-  return { User, Project, conn }
+  return { User, Project, Profile, CompositeItem, Role, conn }
 }
 
 async function seedTypeOrm(conn: OrmContext['conn']) {

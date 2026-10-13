@@ -41,7 +41,7 @@ const interpret = createSqlInterpreter(allInterpreters);
 
 1. `Condition`, condition to interpret
 2. `options`, SQL dialect specific options that tells how to escape field names and create placeholders. `@ucast/sql` provides options for the most popular SQL dialects.
-3. `relationContext`, optional, this value is passed to `getRelationMetadata` and is useful when integrating with ORMs and their metadata.
+3. `relationContext`, optional, this value is passed to `getRelationMetadata` and `localField` and is useful when integrating with ORMs and their metadata.
 
 For the sake of an example, we will create AST manually using `Condition` from `@ucast/core`:
 
@@ -75,6 +75,58 @@ const [sql, replacements] = interpret(condition, {
 console.log(sql) // ("x" > $1 and "y" < $2)
 console.log(replacements) // [5, 10]
 ```
+
+### Map model properties to database columns
+
+Use `localField` to resolve a model property and escape the resulting column.
+It receives the field after existing prefix handling and a helper with the
+current `relationContext` and dialect `escape` function. Return the escaped
+column fragment; the interpreter applies the current query alias.
+
+```ts
+const columns: Record<string, string> = { displayName: 'display_name' };
+const condition = new FieldCondition('eq', 'displayName', 'Alice');
+
+const [sql, params] = interpret(condition, {
+  ...pg,
+  rootAlias: 'users',
+  localField(property, { relationContext, escape }) {
+    const column = (relationContext as Record<string, string>)[property];
+    return escape(column ?? property);
+  },
+}, columns);
+
+// sql: '"users"."display_name" = $1'
+// params: ['Alice']
+```
+
+Use your data layer's mapping primitive or metadata in this callback. Boolean
+conditions keep the current context. Conditions inside a relation use the
+`relationContext` returned by that relation's metadata.
+
+The TypeORM, Sequelize, Objection, and MikroORM adapters resolve condition
+properties from their model metadata automatically, including configured column
+names. A property resolving to more than one physical column throws an explicit
+unsupported-mapping error. A field that the model does not resolve remains a
+literal SQL identifier. For unusual property/column name collisions, the property
+mapping takes precedence.
+
+The `parentField` and `relationField` helpers in custom relation builders use
+`localField` with the parent and related model contexts, respectively. They
+resolve and escape fields consistently with condition predicates, then apply
+the appropriate query alias:
+
+```ts
+buildRelationQuery(relation) {
+  return `SELECT 1 FROM ${relation.escapeField('tenant_projects')} as ${relation.escapeField(relation.relationAlias)}` +
+    ` WHERE ${relation.parentField('tenantId')} = ${relation.relationField('ownerId')}` +
+    ` AND (${relation.conditionSql()})`;
+}
+```
+
+The ORM adapters use join fields supplied by their data layer. An unresolved
+field remains a literal column name through the adapter's normal fallback.
+Table names, relation names, and aliases remain outside property mapping.
 
 ### Conditions on related tables
 

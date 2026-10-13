@@ -1,7 +1,7 @@
-import { FieldCondition, CompoundCondition } from '@ucast/core'
-import { Collection, EntitySchema, MikroORM, QueryBuilder } from '@mikro-orm/sqlite'
+import { FieldCondition, CompoundCondition, buildAnd } from '@ucast/core'
+import { Collection, EntitySchema, MikroORM, QueryBuilder, UnderscoreNamingStrategy } from '@mikro-orm/sqlite'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/mikro-orm.ts'
-import { expect } from './specHelper.ts'
+import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
@@ -36,6 +36,43 @@ describe('Condition interpreter for MikroORM', () => {
 
     expect(query).to.be.instanceof(QueryBuilder)
     expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`name` = ?)')
+  })
+
+  it('maps a model property to its configured database column', () => {
+    const query = interpret(
+      new FieldCondition('eq', 'displayName', 'Ada'),
+      orm.em.createQueryBuilder(ctx.Profile).select('*'),
+    )
+    expect(query.getQuery()).to.contain('`display_name` = ?')
+    expect(query.getParams()).to.eql(['Ada'])
+  })
+
+  it('maps a model property to its configured database column for related models', () => {
+    const query = interpret(
+      buildAnd([
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+      ]),
+      orm.em.fork().createQueryBuilder(ctx.Profile, 'p').select('*'),
+    )
+    expect(query.getQuery()).to.equal(linearize`
+      select \`p\`.* from \`profile\` as \`p\`
+      where (
+        (\`p\`.\`display_name\` = ? and EXISTS (
+          SELECT 1
+          FROM \`user\` as \`user_0\`
+          WHERE \`p\`.\`user_id\` = \`user_0\`.\`id\` AND (\`user_0\`.\`tenant_id\` = ?)
+        ))
+      )
+    `)
+    expect(query.getParams()).to.eql(['Alice Profile', 1])
+  })
+
+  it('rejects scalar conditions on relations with composite foreign keys', () => {
+    expect(() => interpret(
+      new FieldCondition('eq', 'owner', 1),
+      orm.em.createQueryBuilder(ctx.CompositeItem).select('*'),
+    )).to.throw('maps to multiple database columns')
   })
 
   it('properly binds parameters for "IN" operator', () => {
@@ -182,6 +219,17 @@ describe('Condition interpreter for MikroORM', () => {
 })
 
 async function configureORM() {
+  class CompositeOwner {
+    tenantId!: string
+    id!: number
+    displayName!: string
+  }
+
+  class CompositeItem {
+    id!: number
+    owner!: CompositeOwner
+  }
+
   class User {
     public id: number
     public tenantId: string
@@ -262,6 +310,7 @@ async function configureORM() {
   class Role {
     public id: number
     public name: string
+    public displayName: string
     public users?: Collection<User>
 
     constructor(
@@ -271,6 +320,7 @@ async function configureORM() {
     ) {
       this.id = id
       this.name = name
+      this.displayName = name
       this.users = users || new Collection<User>(this)
     }
   }
@@ -347,6 +397,7 @@ async function configureORM() {
     properties: {
       id: { type: 'number', primary: true },
       name: { type: 'string' },
+      displayName: { type: 'string', fieldName: 'display_name' },
       users: {
         kind: 'm:n',
         entity: () => User,
@@ -355,12 +406,32 @@ async function configureORM() {
     }
   })
 
-  const orm = await MikroORM.init({
-    entities: [UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema],
-    dbName: ':memory:',
+  const CompositeOwnerSchema = new EntitySchema({
+    class: CompositeOwner,
+    properties: {
+      tenantId: { type: 'string', primary: true },
+      id: { type: 'number', primary: true },
+      displayName: { type: 'string', fieldName: 'display_name' },
+    },
+  })
+  const CompositeItemSchema = new EntitySchema({
+    class: CompositeItem,
+    properties: {
+      id: { type: 'number', primary: true },
+      owner: { entity: () => CompositeOwner, kind: 'm:1' },
+    },
   })
 
-  return { Deadline, Profile, Project, Role, User, orm }
+  const orm = await MikroORM.init({
+    entities: [
+      UserSchema, ProfileSchema, ProjectSchema, DeadlineSchema, RoleSchema,
+      CompositeOwnerSchema, CompositeItemSchema,
+    ],
+    dbName: ':memory:',
+    namingStrategy: UnderscoreNamingStrategy
+  })
+
+  return { CompositeItem, Deadline, Profile, Project, Role, User, orm }
 }
 
 async function seedMikroOrm({

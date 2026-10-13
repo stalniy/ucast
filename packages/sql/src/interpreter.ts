@@ -8,7 +8,8 @@ import { type DialectOptions } from './dialects.ts';
 
 export interface SqlQueryOptions extends Required<DialectOptions> {
   rootAlias?: string;
-  localField?(field: string): string;
+  /** Returns an escaped local column fragment; Query adds the current alias. */
+  localField?(field: string, helpers: RelationMetadataHelpers): string;
   getRelationMetadata?(
     relationName: string,
     helpers: RelationMetadataHelpers
@@ -71,22 +72,23 @@ export class Query {
     this.rootAlias = options.rootAlias;
     this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
 
-    if (this.options.localField) {
-      this._localField = this.options.localField;
-    }
   }
 
   field(rawName: string) {
     const name = this._fieldPrefix + rawName;
-    return this._rootAlias + this._localField(name);
+    return this.renderProperty(name);
   }
 
   rootField(name: string) {
-    return this._rootAlias + this._localField(name);
+    return this.renderProperty(name);
   }
 
-  private _localField(field: string) {
-    return this.options.escapeField(field);
+  private renderProperty(field: string) {
+    const helpers = { escape: this.options.escapeField, relationContext: this.relationContext };
+    const localField = this.options.localField
+      ? this.options.localField(field, helpers)
+      : this.options.escapeField(field);
+    return this._rootAlias + localField;
   }
 
   param(value: unknown) {

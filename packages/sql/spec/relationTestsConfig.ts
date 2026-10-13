@@ -21,9 +21,9 @@ export const relationSeeds = {
     { id: 2, projectId: 3, date: '2026-07-01' },
   ],
   roles: [
-    { id: 1, name: 'admin' },
-    { id: 2, name: 'editor' },
-    { id: 3, name: 'viewer' },
+    { id: 1, name: 'admin', displayName: 'admin' },
+    { id: 2, name: 'editor', displayName: 'editor' },
+    { id: 3, name: 'viewer', displayName: 'viewer' },
   ],
   userRoles: [
     { userId: 1, roleId: 1 },
@@ -36,8 +36,8 @@ export const relationSeeds = {
 export const relationConditions = {
   hasMany: new FieldCondition('some', 'projects', new FieldCondition('eq', 'name', 'Audit')),
   belongsTo: new FieldCondition('some', 'user', new FieldCondition('eq', 'name', 'Bob')),
-  hasOne: new FieldCondition('some', 'profile', new FieldCondition('eq', 'display_name', 'Alice Profile')),
-  manyToMany: new FieldCondition('some', 'roles', new FieldCondition('eq', 'name', 'admin')),
+  hasOne: new FieldCondition('some', 'profile', new FieldCondition('eq', 'displayName', 'Alice Profile')),
+  manyToMany: new FieldCondition('some', 'roles', new FieldCondition('eq', 'displayName', 'admin')),
 }
 
 export const expectedRelationNames = {

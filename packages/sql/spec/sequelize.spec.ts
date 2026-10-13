@@ -1,7 +1,7 @@
-import { FieldCondition } from '@ucast/core'
+import { FieldCondition, buildAnd } from '@ucast/core'
 import { Model, Sequelize, DataTypes } from 'sequelize'
 import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/sequelize.ts'
-import { expect } from './specHelper.ts'
+import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
@@ -13,6 +13,84 @@ import {
 describe('Condition interpreter for Sequelize', () => {
   const orm = configureORM()
   const { Project, User, sequelize } = orm
+
+  it('maps a model property to its configured database column', () => {
+    const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile)
+    expect(query.where.val).to.contain('`display_name` = \'Ada\'')
+  })
+
+  it('maps a model property to its configured database column for related models', () => {
+    const query = interpret(
+      buildAnd([
+        new FieldCondition('eq', 'displayName', 'Alice Profile'),
+        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+      ]),
+      orm.Profile,
+      { rootAlias: 'p' },
+    )
+
+    expect(query.where.val).to.equal(linearize`
+      (\`p\`.\`display_name\` = 'Alice Profile' and EXISTS (
+        SELECT 1
+        FROM \`users\` as \`user_0\`
+        WHERE \`p\`.\`userId\` = \`user_0\`.\`id\` AND (\`user_0\`.\`tenant_id\` = 1)
+      ))
+    `)
+  })
+
+  it('keeps unresolved fields as literal identifiers', () => {
+    const run = createInterpreter({ eq })
+    const query = run(new FieldCondition('eq', 'legacy_column', 'Ada'), User)
+    expect(query.where.val).to.contain('`legacy_column` = \'Ada\'')
+  })
+
+  it('reports unknown relations before producing SQL', () => {
+    expect(() => interpret(
+      new FieldCondition('some', 'missingRelation', new FieldCondition('eq', 'name', 'Ada')),
+      User,
+    )).to.throw('Relation metadata for "missingRelation" not found')
+  })
+
+  it('rejects unsupported database dialects', () => {
+    const originalDialect = sequelize.getDialect
+
+    try {
+      sequelize.getDialect = () => 'unsupported' as ReturnType<typeof sequelize.getDialect>
+      expect(() => interpret(new FieldCondition('eq', 'name', 'Ada'), User))
+        .to.throw('Unsupported database dialect: unsupported')
+    } finally {
+      sequelize.getDialect = originalDialect
+    }
+  })
+
+  it('uses the property name when attribute metadata has no column override', () => {
+    const attribute = User.rawAttributes.name
+    const originalField = attribute.field
+
+    try {
+      delete attribute.field
+      const query = interpret(new FieldCondition('eq', 'name', 'Ada'), User)
+      expect(query.where.val).to.equal("`users`.`name` = 'Ada'")
+    } finally {
+      attribute.field = originalField
+    }
+  })
+
+  it('uses the through model when a many-to-many association lacks throughModel', () => {
+    const association = User.associations.roles as typeof User.associations.roles & {
+      throughModel?: typeof Model;
+    }
+    const originalThroughModel = association.throughModel
+
+    try {
+      delete association.throughModel
+      const query = interpret(relationConditions.manyToMany, User)
+      expect(query.where.val).to.contain('FROM `user_roles` as `roles_0_through`')
+      expect(query.where.val).to.contain("`roles_0`.`display_name` = 'admin'")
+    } finally {
+      association.throughModel = originalThroughModel
+    }
+  })
 
   after(async () => {
     await sequelize.close()
@@ -159,7 +237,7 @@ function configureORM() {
   class UserRole extends Model {}
 
   User.init({
-    tenantId: { type: DataTypes.STRING },
+    tenantId: { type: DataTypes.STRING, field: 'tenant_id' },
     name: { type: DataTypes.STRING },
     email: { type: DataTypes.STRING },
   }, { sequelize, modelName: 'user' })
@@ -178,7 +256,8 @@ function configureORM() {
   }, { sequelize, modelName: 'deadline' })
 
   Role.init({
-    name: { type: DataTypes.STRING }
+    name: { type: DataTypes.STRING },
+    displayName: { type: DataTypes.STRING, field: 'display_name' },
   }, { sequelize, modelName: 'role' })
 
   UserRole.init({}, {
