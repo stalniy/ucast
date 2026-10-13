@@ -2,7 +2,7 @@
 
 ![build](https://github.com/stalniy/ucast/workflows/CI/badge.svg)
 [![CASL codecov](https://codecov.io/gh/stalniy/ucast/branch/master/graph/badge.svg)](https://codecov.io/gh/stalniy/ucast)
-[![UCAST join the chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/stalniy-ucast/community)
+[![Support](https://img.shields.io/badge/Support-github%20discussions-green?style=flat&link=https://github.com/stalniy/ucast/discussions)](https://github.com/stalniy/ucast/discussions)
 
 `ucast` is a low level library that helps to create awesome things! It aims to be a universal way to represent a set of conditions that can be transferred between APIs and databases.
 
