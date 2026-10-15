@@ -152,11 +152,11 @@ describe('Condition interpreter for Objection', () => {
           buildRelationQuery(relation) {
             const tenantProjectAlias = 'tenant_projects'
             const tenantProjectField = (field: string) => {
-              return `${relation.escapeField(tenantProjectAlias)}.${relation.escapeField(field)}`
+              return `${relation.escapeIdentifier(tenantProjectAlias)}.${relation.escapeIdentifier(field)}`
             }
 
-            return `SELECT 1 FROM ${relation.escapeField('tenant_projects')} as ${relation.escapeField(tenantProjectAlias)}` +
-            ` INNER JOIN ${relation.escapeField('projects')} as ${relation.escapeField(relation.relationAlias)}` +
+            return `SELECT 1 FROM ${relation.escapeIdentifier('tenant_projects')} as ${relation.escapeIdentifier(tenantProjectAlias)}` +
+            ` INNER JOIN ${relation.escapeIdentifier('projects')} as ${relation.escapeIdentifier(relation.relationAlias)}` +
             ` ON ${relation.relationField('id')} = ${tenantProjectField('project_id')}` +
             ` WHERE ${relation.parentField('tenant_id')} = ${tenantProjectField('tenant_id')}` +
             ` AND ${tenantProjectField('kind')} = ${relation.param('owned')}` +

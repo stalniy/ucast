@@ -118,9 +118,7 @@ the appropriate query alias:
 
 ```ts
 buildRelationQuery(relation) {
-  return `SELECT 1 FROM ${relation.escapeField('tenant_projects')} as ${relation.escapeField(relation.relationAlias)}` +
-    ` WHERE ${relation.parentField('tenantId')} = ${relation.relationField('ownerId')}` +
-    ` AND (${relation.conditionSql()})`;
+  return relation.sql`SELECT 1 FROM ${relation.escapeIdentifier('tenant_projects')} as ${relation.escapeIdentifier(relation.relationAlias)} WHERE ${relation.parentField('tenantId')} = ${relation.relationField('ownerId')} AND (${relation.conditionSql()})`;
 }
 ```
 
@@ -184,6 +182,34 @@ console.log(params); // [true]
 
 For composite keys, many-to-many relations, or permission-specific joins, return custom metadata with `buildRelationQuery`. Use `relationContext` when nested relation conditions need to resolve metadata from the related entity.
 
+### SQL fragment backends
+
+`createSqlInterpreter` creates one backend for each interpretation call. Without a
+`backend` option, it creates the built-in string backend and returns `[sql, parameters]`.
+The backend owns its parameter array and placeholder sequence, so repeated calls
+start with a fresh `$1`. Root and child queries use the same backend instance.
+
+For native fragments, provide a backend factory in the `createSqlInterpreter` options. It returns a
+`SqlBackend<Fragment, Result>` with `sql`, `raw`, `param`, `manyParams`, `join`, and
+`result` helpers. `sql` is a tagged function that the backend binds to its own state;
+`raw` marks trusted SQL syntax or escaped identifiers, while `param` binds values.
+Custom operators and relation builders receive those same helpers on their context.
+The interpreter calls `result` once after the root query is complete; nested queries
+pass fragments directly to their parents.
+
+```ts
+const interpret = createSqlInterpreter<MyFragment, MyFragment>(allInterpreters, {
+  backend: () => new MyBackend(),
+})
+const predicate = interpret(condition, pg)
+```
+
+Direct `Query` construction requires an explicit backend instance, for example
+`new Query(pg, createDefaultSqlBackend(pg))`. A native backend needs `regexp` to
+interpret regex conditions. Dialect `escapeIdentifier(name)` quotes identifiers;
+relation builders use `context.escapeIdentifier(name)` for an identifier fragment.
+String relation builders remain valid with the default backend.
+
 ### Custom interpreter
 
 Sometimes you may want to add custom operator or restrict supported operators. To do this, just pass desired operators manually:
@@ -208,9 +234,9 @@ import {
   pg,
 } from '@ucast/sql';
 
-const isActive: SqlOperator<DocumentCondition<boolean>> = (node, query) => {
-  const operator = node.value ? '>=' : '<';
-  return query.where('publishedAt', operator, new Date());
+const isActive: SqlOperator<DocumentCondition<boolean>> = (node, query, context) => {
+  const operator = node.value ? ' >= ' : ' < ';
+  return query.where(context.sql`${query.field('publishedAt')}${context.raw(operator)}${context.param(new Date())}`);
 };
 const interpret = createSqlInterpreter({
   ...allInterpreters,

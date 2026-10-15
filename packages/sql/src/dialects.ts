@@ -13,14 +13,14 @@ const $indexPlaceholder = (index: number) => `$${index}`;
 export const oracle = {
   regexp: posixRegex,
   paramPlaceholder: $indexPlaceholder,
-  escapeField: (field: string) => `"${field}"`,
+  escapeIdentifier: (name: string) => `"${name}"`,
 };
 export const pg = oracle;
 
 export const mysql = {
   regexp,
   paramPlaceholder: questionPlaceholder,
-  escapeField: (field: string) => `\`${field}\``,
+  escapeIdentifier: (name: string) => `\`${name}\``,
 };
 export const sqlite = mysql;
 
@@ -29,12 +29,12 @@ export const mssql = {
     throw new Error('"regexp" operator is not supported in MSSQL');
   },
   paramPlaceholder: questionPlaceholder,
-  escapeField: (field: string) => `[${field}]`,
+  escapeIdentifier: (name: string) => `[${name}]`,
 };
 
 export interface DialectOptions {
   regexp(field: string, placeholder: string, ignoreCase: boolean): string
-  escapeField(field: string, relationName?: string): string
+  escapeIdentifier(name: string, relationName?: string): string
   paramPlaceholder(index: number): string
 }
 

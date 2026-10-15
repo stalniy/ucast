@@ -1,19 +1,28 @@
 import {
-  createInterpreter,
   type Condition,
-  type InterpretationContext,
   type InterpreterOptions
 } from '@ucast/core';
 import { type DialectOptions } from './dialects.ts';
 
-export interface SqlQueryOptions extends Required<DialectOptions> {
+export type SqlTag<F> = (strings: TemplateStringsArray, ...values: unknown[]) => F;
+
+/** One backend instance owns fragments and bound values for one interpretation. */
+export interface SqlBackend<F, R> extends FragmentHelpers<F> {
+  result(fragment: F): R;
+  regexp(field: F, value: F, ignoreCase: boolean): F;
+}
+
+export type SqlBackendFactory<F, R> = () => SqlBackend<F, R>;
+
+export interface SqlQueryOptions<F = string>
+  extends Required<DialectOptions> {
   rootAlias?: string;
   /** Returns an escaped local column fragment; Query adds the current alias. */
   localField?(field: string, helpers: RelationMetadataHelpers): string;
   getRelationMetadata?(
     relationName: string,
     helpers: RelationMetadataHelpers
-  ): RelationMetadata | undefined;
+  ): RelationMetadata<F> | undefined;
 }
 
 export interface RelationMetadataHelpers {
@@ -21,7 +30,7 @@ export interface RelationMetadataHelpers {
   relationContext: unknown;
 }
 
-export type RelationMetadata = SimpleRelationMetadata | CustomRelationMetadata;
+export type RelationMetadata<F = string> = SimpleRelationMetadata | CustomRelationMetadata<F>;
 
 export interface SimpleRelationMetadata {
   parentField: string;
@@ -30,126 +39,143 @@ export interface SimpleRelationMetadata {
   relationContext?: unknown;
 }
 
-export interface CustomRelationMetadata {
+export interface CustomRelationMetadata<F = string> {
   relationContext?: unknown;
-  buildRelationQuery(context: RelationQueryContext): string;
+  buildRelationQuery(context: RelationQueryContext<F>): F;
 }
 
-export interface RelationQueryContext {
+export interface FragmentHelpers<F> {
+  sql: SqlTag<F>;
+  raw(text: string): F;
+  param(value: unknown): F;
+  manyParams(items: unknown[]): F;
+  join(fragments: readonly F[], separator: string): F;
+  regexp(field: F, value: F, ignoreCase: boolean): F;
+}
+
+export interface SqlInterpretationContext<F = string, R = [string, unknown[]]>
+  extends FragmentHelpers<F> {
+  interpret(condition: Condition, query: Query<F, R>): Query<F, R>;
+}
+
+export interface RelationQueryContext<F = string> extends FragmentHelpers<F> {
   relationName: string;
   parentAlias?: string;
   relationAlias: string;
-  escapeField(field: string): string;
-  parentField(field: string): string;
-  relationField(field: string): string;
-  conditionSql(): string;
-  param(value: unknown): string;
+  escapeIdentifier(name: string): F;
+  parentField(field: string): F;
+  relationField(field: string): F;
+  conditionSql(): F;
 }
 
-type ChildOptions = Partial<Pick<
-SqlQueryOptions,
-'localField' | 'getRelationMetadata' | 'rootAlias'
+type ChildOptions<F> = Partial<Pick<
+  SqlQueryOptions<F>,
+  'localField' | 'getRelationMetadata' | 'rootAlias'
 >> & {
-  linkParams?: boolean;
   relationContext?: unknown;
 };
 
-export class Query {
-  public readonly options!: SqlQueryOptions;
-  private _fieldPrefix!: string;
-  private _params: unknown[] = [];
-  private _sql: string[] = [];
-  private _lastPlaceholderIndex = 1;
-  private _relationCounter = { value: 0 };
-  public readonly relationContext!: unknown;
-  public readonly rootAlias?: string;
-  private _rootAlias!: string;
+const identity = <T>(x: T) => x;
+const joinStrings = (fragments: readonly string[], separator: string) => fragments.join(separator);
+export function createDefaultSqlBackend(
+  options: Required<DialectOptions>
+): SqlBackend<string, [string, unknown[]]> {
+  const params: unknown[] = [];
+  const param = (value: unknown) => {
+    params.push(value);
+    return options.paramPlaceholder(params.length);
+  };
+  return {
+    sql: joinTaggedStrings,
+    raw: identity,
+    param,
+    manyParams: items => items.map(param).join(', '),
+    join: joinStrings,
+    regexp: options.regexp,
+    result: fragment => [fragment, params],
+  };
+}
 
-  constructor(options: SqlQueryOptions, fieldPrefix = '', relationContext?: unknown) {
+function joinTaggedStrings(strings: TemplateStringsArray, ...values: unknown[]) {
+  let result = '';
+  for (let i = 0; i < strings.length; i++) {
+    const value = i ? String(values[i - 1]) : '';
+    result += value + strings[i];
+  }
+  return result;
+}
+
+export class Query<F = string, R = [string, unknown[]]> {
+  public readonly options: SqlQueryOptions<F>;
+  public readonly backend: SqlBackend<F, R>;
+  private _fieldPrefix: string;
+  private _fragments: F[] = [];
+  private _relationCounter = { value: 0 };
+  public readonly relationContext: unknown;
+  public readonly rootAlias?: string;
+
+  constructor(
+    options: SqlQueryOptions<F>, backend: SqlBackend<F, R>,
+    fieldPrefix = '', relationContext?: unknown
+  ) {
     this.options = options;
     this._fieldPrefix = fieldPrefix;
     this.relationContext = relationContext;
     this.rootAlias = options.rootAlias;
-    this._rootAlias = options.rootAlias ? `${options.escapeField(options.rootAlias)}.` : '';
-
+    this.backend = backend;
   }
 
-  field(rawName: string) {
-    const name = this._fieldPrefix + rawName;
-    return this.renderProperty(name);
+  field(rawName: string): F {
+    return this.rootField(this._fieldPrefix + rawName);
   }
 
-  rootField(name: string) {
-    return this.renderProperty(name);
-  }
-
-  private renderProperty(field: string) {
-    const helpers = { escape: this.options.escapeField, relationContext: this.relationContext };
-    const localField = this.options.localField
-      ? this.options.localField(field, helpers)
-      : this.options.escapeField(field);
-    return this._rootAlias + localField;
-  }
-
-  param(value: unknown) {
-    const index = this._lastPlaceholderIndex + this._params.length;
-    this._params.push(value);
-    return this.options.paramPlaceholder(index);
-  }
-
-  manyParams(items: unknown[]) {
-    return items.map(item => this.param(item));
+  rootField(name: string): F {
+    const helpers = {
+      escape: this.options.escapeIdentifier,
+      relationContext: this.relationContext,
+    };
+    const local = this.options.localField
+      ? this.options.localField(name, helpers)
+      : this.options.escapeIdentifier(name);
+    const qualified = (this.rootAlias ? `${this.options.escapeIdentifier(this.rootAlias)}.` : '') + local;
+    return this.backend.raw(qualified);
   }
 
   nextRelationAlias(prefix: string) {
     return `${prefix}_${this._relationCounter.value++}`;
   }
 
-  child(options?: ChildOptions) {
-    let queryOptions: SqlQueryOptions = this.options;
-    let canLinkParams = false;
-
+  child(options?: ChildOptions<F>) {
+    let queryOptions = this.options;
     if (options) {
-      const { linkParams, ...overrideOptions } = options;
+      const { ...overrideOptions } = options;
+      delete overrideOptions.relationContext;
       queryOptions = { ...this.options, ...overrideOptions };
-      canLinkParams = !!linkParams;
     }
-
     const relationContext = options?.relationContext ?? this.relationContext;
-    const query = new Query(queryOptions, this._fieldPrefix, relationContext);
+    const query = new Query(queryOptions, this.backend, this._fieldPrefix, relationContext);
     query._relationCounter = this._relationCounter;
-
-    if (canLinkParams) {
-      query._params = this._params;
-    } else {
-      query._lastPlaceholderIndex = this._lastPlaceholderIndex + this._params.length;
-    }
     return query;
   }
 
-  where(field: string, operator: string, value: unknown) {
-    return this.whereRaw(`${this.field(field)} ${operator} ${this.param(value)}`);
-  }
-
-  whereRaw(sql: string) {
-    this._sql.push(sql);
+  where(fragment: F) {
+    this._fragments.push(fragment);
     return this;
   }
 
-  merge(query: Query, operator: 'and' | 'or' = 'and', isInverted = false) {
-    const sql = query._sql.join(` ${operator} `);
+  fragment(): F {
+    return this.backend.join(this._fragments, ' and ');
+  }
 
-    this._sql.push(`${isInverted ? 'not ' : ''}(${sql})`);
-
-    if (this._params !== query._params) {
-      this._params.push(...query._params);
-    }
+  merge(query: Query<F, R>, operator: 'and' | 'or' = 'and', isInverted = false) {
+    const fragment = this.backend.join(query._fragments, ` ${operator} `);
+    const inverted = this.backend.raw(isInverted ? 'not ' : '');
+    this._fragments.push(this.backend.sql`${inverted}(${fragment})`);
     return this;
   }
 
   usingFieldPrefix(prefix: string, callback: () => void) {
     const prevPrefix = this._fieldPrefix;
-
     try {
       this._fieldPrefix = `${prefix}.`;
       callback();
@@ -158,28 +184,42 @@ export class Query {
       this._fieldPrefix = prevPrefix;
     }
   }
-
-  toJSON(): [string, unknown[]] {
-    return [this._sql.join(' and '), this._params];
-  }
 }
 
 export type SqlOperator<C extends Condition> = (
   condition: C,
-  query: Query,
-  context: InterpretationContext<SqlOperator<C>>,
-) => Query;
+  query: Query<any, any>,
+  context: SqlInterpretationContext<any, any>,
+) => Query<any, any>;
 
-interface SqlInterpreterOptions {
-  getInterpreterName?: InterpreterOptions['getInterpreterName']
+interface SqlInterpreterOptions<F, R> {
+  backend?: SqlBackendFactory<F, R>;
+  getInterpreterName?: InterpreterOptions['getInterpreterName'];
 }
 
-export function createSqlInterpreter(
+export function createSqlInterpreter<F = string, R = [string, unknown[]]>(
   operators: Record<string, SqlOperator<any>>,
-  options?: SqlInterpreterOptions
+  options?: SqlInterpreterOptions<F, R>
 ) {
-  const interpret = createInterpreter<SqlOperator<any>>(operators, options);
-  return (condition: Condition, sqlOptions: SqlQueryOptions, relationContext?: unknown) => {
-    return interpret(condition, new Query(sqlOptions, '', relationContext)).toJSON();
+  const interpret = (condition: Condition, query: Query<F, R>): Query<F, R> => {
+    const name = options?.getInterpreterName
+      ? options.getInterpreterName(condition, options)
+      : condition.operator;
+    const operator = operators[name];
+    if (typeof operator !== 'function') {
+      throw new Error(`Unable to interpret "${String(name)}" condition. Did you forget to register interpreter for it?`);
+    }
+    const { sql, raw, param, manyParams, join, regexp } = query.backend;
+    const context = { sql, raw, param, manyParams, join, regexp, interpret };
+    return operator(condition, query, context);
+  };
+  const createSqlBackend = options?.backend ?? createDefaultSqlBackend;
+
+  return (
+    condition: Condition, sqlOptions: SqlQueryOptions<F>, relationContext?: unknown
+  ): R => {
+    const backend = createSqlBackend(sqlOptions) as SqlBackend<F, R>;
+    const query = new Query(sqlOptions, backend, '', relationContext);
+    return backend.result(interpret(condition, query).fragment());
   };
 }
