@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/stalniy/ucast/compare/@ucast/sql@0.2.1...@ucast/sql@0.3.0) (2026-10-15)
+
+
+### Features
+
+* **sql:** map model properties to database columns ([#90](https://github.com/stalniy/ucast/issues/90)) ([ecbabc0](https://github.com/stalniy/ucast/commit/ecbabc0515abe029d8814cc6a2ea0e53aaf2da64))
+
+
+### Bug Fixes
+
+* **sql:** fixes types build for ucast/sql ([d63e1f1](https://github.com/stalniy/ucast/commit/d63e1f16f9ed3bb592312878c76a239dc91b667b))
+
+
+### Code Refactoring
+
+* uses double quotes for sqlite escaping instead of backticks which requires backslashes in tests ([a24b785](https://github.com/stalniy/ucast/commit/a24b785409de6eaa42338ad8b2293b8551500f3f))
+
 ## [0.2.1](https://github.com/stalniy/ucast/compare/@ucast/sql@0.2.0...@ucast/sql@0.2.1) (2026-06-28)
 
 
