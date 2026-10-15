@@ -113,7 +113,7 @@ describe('Condition interpreter for TypeORM', () => {
 
   it('accepts a query builder as the relation metadata context', () => {
     const metadata = getRelationMetadata('projects', {
-      escape: pg.escapeField,
+      escape: pg.escapeIdentifier,
       relationContext: conn.createQueryBuilder(User, 'u'),
     })
 
@@ -344,11 +344,11 @@ describe('Condition interpreter for TypeORM', () => {
           buildRelationQuery(relation) {
             const tenantProjectAlias = 'tenant_projects'
             const tenantProjectField = (field: string) => {
-              return `${relation.escapeField(tenantProjectAlias)}.${relation.escapeField(field)}`
+              return `${relation.escapeIdentifier(tenantProjectAlias)}.${relation.escapeIdentifier(field)}`
             }
 
-            return `SELECT 1 FROM ${relation.escapeField('tenant_projects')} as ${relation.escapeField(tenantProjectAlias)}` +
-            ` INNER JOIN ${relation.escapeField('project')} as ${relation.escapeField(relation.relationAlias)}` +
+            return `SELECT 1 FROM ${relation.escapeIdentifier('tenant_projects')} as ${relation.escapeIdentifier(tenantProjectAlias)}` +
+            ` INNER JOIN ${relation.escapeIdentifier('project')} as ${relation.escapeIdentifier(relation.relationAlias)}` +
             ` ON ${relation.relationField('id')} = ${tenantProjectField('projectId')}` +
             ` WHERE ${relation.parentField('tenantId')} = ${tenantProjectField('tenantId')}` +
             ` AND ${tenantProjectField('kind')} = ${relation.param('owned')}` +

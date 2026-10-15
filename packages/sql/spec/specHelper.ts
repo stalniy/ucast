@@ -13,3 +13,7 @@ export function linearize(value: TemplateStringsArray) {
     .replace(/\( +(\(?)/g, '($1')
   ;
 }
+
+if (!spy.object && typeof (spy as any).interface === 'function') {
+  spy.object = (spy as any).interface;
+}

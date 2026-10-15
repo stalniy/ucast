@@ -90,8 +90,8 @@ function createTypeOrmDialects(typeormOptions: TypeOrmInterpreterOptions = {}) {
     paramPlaceholder: index => `:${index - 1}`
   });
 
-  dialects.sqlite.escapeField = dialects.sqlite3.escapeField =
-    dialects['better-sqlite3'].escapeField = dialects.pg.escapeField;
+  dialects.sqlite.escapeIdentifier = dialects.sqlite3.escapeIdentifier =
+    dialects['better-sqlite3'].escapeIdentifier = dialects.pg.escapeIdentifier;
   return dialects;
 }
 

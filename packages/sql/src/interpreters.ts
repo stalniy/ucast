@@ -9,77 +9,66 @@ import {
   type RelationMetadata,
   type SimpleRelationMetadata,
   type SqlOperator,
-  type Query
+  type Query,
+  type SqlInterpretationContext,
+  type RelationQueryContext
 } from './interpreter.ts';
 
-export const eq: SqlOperator<FieldCondition> = (condition, query) => {
-  if (condition.value === null) {
-    return query.whereRaw(`${query.field(condition.field)} is null`);
-  }
-  return query.where(condition.field, '=', condition.value);
+export const eq: SqlOperator<FieldCondition> = (condition, query, { sql, param }) => {
+  const fragment =  condition.value === null
+    ? sql`${query.field(condition.field)} is null`
+    : sql`${query.field(condition.field)} = ${param(condition.value)}`;
+  return query.where(fragment);
 };
 
-export const ne: typeof eq = (condition, query) => {
-  if (condition.value === null) {
-    return query.whereRaw(`${query.field(condition.field)} is not null`);
-  }
-  return query.where(condition.field, '<>', condition.value);
+export const ne: SqlOperator<FieldCondition> = (condition, query, { sql, param }) => {
+  const fragment =  condition.value === null
+    ? sql`${query.field(condition.field)} is not null`
+    : sql`${query.field(condition.field)} <> ${param(condition.value)}`;
+  return query.where(fragment);
 };
 
-export const lt: SqlOperator<FieldCondition<Comparable>> = (condition, query) => {
-  return query.where(condition.field, '<', condition.value);
+export const lt: SqlOperator<FieldCondition<Comparable>> = (condition, query, { sql, param }) => {
+  return query.where(sql`${query.field(condition.field)} < ${param(condition.value)}`);
+};
+export const lte: SqlOperator<FieldCondition<Comparable>> = (condition, query, { sql, param }) => {
+  return query.where(sql`${query.field(condition.field)} <= ${param(condition.value)}`);
+};
+export const gt: SqlOperator<FieldCondition<Comparable>> = (condition, query, { sql, param }) => {
+  return query.where(sql`${query.field(condition.field)} > ${param(condition.value)}`);
+};
+export const gte: SqlOperator<FieldCondition<Comparable>> = (condition, query, { sql, param }) => {
+  return query.where(sql`${query.field(condition.field)} >= ${param(condition.value)}`);
 };
 
-export const lte: SqlOperator<FieldCondition<Comparable>> = (condition, query) => {
-  return query.where(condition.field, '<=', condition.value);
-};
+export const exists: SqlOperator<FieldCondition<Comparable>> = (condition, query, { sql, raw }) =>
+  query.where(sql`${query.field(condition.field)} is ${raw(condition.value ? 'not ' : '')}null`);
 
-export const gt: SqlOperator<FieldCondition<Comparable>> = (condition, query) => {
-  return query.where(condition.field, '>', condition.value);
-};
+export const within: SqlOperator<FieldCondition<unknown[]>> = (
+  condition, query, { sql, manyParams }
+) => query.where(sql`${query.field(condition.field)} in(${manyParams(condition.value)})`);
+export const nin: SqlOperator<FieldCondition<unknown[]>> = (
+  condition, query, { sql, manyParams }
+) => query.where(sql`${query.field(condition.field)} not in(${manyParams(condition.value)})`);
 
-export const gte: SqlOperator<FieldCondition<Comparable>> = (condition, query) => {
-  return query.where(condition.field, '>=', condition.value);
-};
-
-export const exists: SqlOperator<FieldCondition<Comparable>> = (condition, query) => {
-  return query.whereRaw(`${query.field(condition.field)} is ${condition.value ? 'not ' : ''}null`);
-};
-
-function manyParamsOperator(name: 'in' | 'not in'): SqlOperator<FieldCondition<unknown[]>> {
-  return (condition, query) => {
-    return query.whereRaw(
-      `${query.field(condition.field)} ${name}(${query.manyParams(condition.value).join(', ')})`,
-    );
-  };
-}
-
-export const within = manyParamsOperator('in');
-export const nin = manyParamsOperator('not in');
-
-export const mod: SqlOperator<FieldCondition<[number, number]>> = (condition, query) => {
-  const params = query.manyParams(condition.value);
-  return query.whereRaw(`mod(${query.field(condition.field)}, ${params[0]}) = ${params[1]}`);
-};
+export const mod: SqlOperator<FieldCondition<[number, number]>> = (
+  condition, query, { sql, param }
+) => query.where(sql`mod(${query.field(condition.field)}, ${param(condition.value[0])}) = ${param(condition.value[1])}`);
 
 type IElemMatch = SqlOperator<FieldCondition<Condition>>;
 export const elemMatch: IElemMatch = (condition, query, { interpret }) => {
   return query.usingFieldPrefix(condition.field, () => interpret(condition.value, query));
 };
 
-export const regex: SqlOperator<FieldCondition<RegExp>> = (condition, query) => {
-  const sql = query.options.regexp(
-    query.field(condition.field),
-    query.param(condition.value.source),
-    condition.value.ignoreCase
-  );
-  return query.whereRaw(sql);
+export const regex: SqlOperator<FieldCondition<RegExp>> = (condition, query, { param, regexp }) => {
+  const field = query.field(condition.field);
+  const value = param(condition.value.source);
+  return query.where(regexp(field, value, condition.value.ignoreCase));
 };
 
 function compoundOperator(combinator: 'and' | 'or', isInverted = false) {
-  const childOptions = { linkParams: true };
   return ((node, query, { interpret }) => {
-    const childQuery = query.child(childOptions);
+    const childQuery = query.child();
     node.value.forEach(condition => interpret(condition, childQuery));
     return query.merge(childQuery, combinator, isInverted);
   }) as SqlOperator<CompoundCondition>;
@@ -97,7 +86,7 @@ export const isRelation = someRelation;
 export const isNotRelation = noneRelation;
 
 function getRelationMetadata(query: Query, relationName: string) {
-  const escape = query.options.escapeField;
+  const escape = query.options.escapeIdentifier;
   const relation = query.options.getRelationMetadata?.(
     relationName,
     {
@@ -116,7 +105,8 @@ function relationOperator(
   isInverted: boolean,
   invertCondition: boolean
 ): SqlOperator<FieldCondition<Condition>> {
-  return (condition, query, { interpret }) => {
+  return (condition, query, context) => {
+    const { interpret } = context;
     const relation = getRelationMetadata(query, condition.field);
     const relationAlias = query.nextRelationAlias(condition.field);
     const conditionSql = createRelationConditionSql(
@@ -126,16 +116,17 @@ function relationOperator(
       relationAlias,
       invertCondition,
       interpret,
+      context,
     );
     const relationSql = buildRelationQuery(
       query,
       condition.field,
       relation,
       relationAlias,
-      conditionSql
+      conditionSql,
     );
 
-    return query.whereRaw(`${isInverted ? 'NOT ' : ''}EXISTS (${relationSql})`);
+    return query.where(context.sql`${context.raw(isInverted ? 'NOT ' : '')}EXISTS (${relationSql})`);
   };
 }
 
@@ -146,24 +137,24 @@ function createRelationConditionSql(
   relationAlias: string,
   shouldInvert: boolean,
   interpret: (condition: Condition, query: Query) => Query,
+  context: SqlInterpretationContext,
 ) {
-  let sql: string | undefined;
+  let fragment: ReturnType<Query['fragment']> | undefined;
 
   return () => {
-    if (sql !== undefined) {
-      return sql;
+    if (fragment !== undefined) {
+      return fragment;
     }
 
     const childQuery = query.child({
-      linkParams: true,
       rootAlias: relationAlias,
       relationContext: relation.relationContext,
     });
 
     interpret(condition.value, childQuery);
-    const [whereSql] = childQuery.toJSON();
-    sql = shouldInvert ? `NOT (${whereSql})` : whereSql;
-    return sql;
+    const whereSql = childQuery.fragment();
+    fragment = shouldInvert ? context.sql`NOT (${whereSql})` : whereSql;
+    return fragment;
   };
 }
 
@@ -172,9 +163,9 @@ function buildRelationQuery(
   relationName: string,
   relation: RelationMetadata,
   relationAlias: string,
-  conditionSql: () => string,
+  conditionSql: () => any,
 ) {
-  const escapeField = query.options.escapeField;
+  const escapeIdentifier = query.options.escapeIdentifier;
   const relatedQuery = query.child({
     rootAlias: relationAlias,
     relationContext: relation.relationContext,
@@ -183,11 +174,16 @@ function buildRelationQuery(
     relationName,
     relationAlias,
     parentAlias: query.rootAlias,
-    escapeField,
+    sql: query.backend.sql,
+    raw: query.backend.raw,
+    param: query.backend.param,
+    manyParams: query.backend.manyParams,
+    join: query.backend.join,
+    regexp: query.backend.regexp,
+    escapeIdentifier: (name: string) => query.backend.raw(escapeIdentifier(name)),
     parentField: (field: string) => query.rootField(field),
     relationField: (field: string) => relatedQuery.rootField(field),
     conditionSql,
-    param: (value: unknown) => query.param(value),
   };
 
   if (isCustomRelationMetadata(relation)) {
@@ -199,17 +195,9 @@ function buildRelationQuery(
 
 function buildSimpleRelationQuery(
   relation: SimpleRelationMetadata,
-  context: {
-    relationAlias: string;
-    escapeField(field: string): string;
-    parentField(field: string): string;
-    relationField(field: string): string;
-    conditionSql(): string;
-  },
+  context: RelationQueryContext<any>,
 ) {
-  return `SELECT 1 FROM ${context.escapeField(relation.relationTable)} as ${context.escapeField(context.relationAlias)}` +
-  ` WHERE ${context.parentField(relation.parentField)} = ${context.relationField(relation.relationField)}` +
-  ` AND (${context.conditionSql()})`;
+  return context.sql`SELECT 1 FROM ${context.escapeIdentifier(relation.relationTable)} as ${context.escapeIdentifier(context.relationAlias)} WHERE ${context.parentField(relation.parentField)} = ${context.relationField(relation.relationField)} AND (${context.conditionSql()})`;
 }
 
 function isCustomRelationMetadata(relation: RelationMetadata): relation is CustomRelationMetadata {

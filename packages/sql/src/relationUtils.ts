@@ -10,41 +10,36 @@ export interface ThroughRelationColumnPair {
   throughField: string;
 }
 
-export function buildDirectRelationQuery(
+export function buildDirectRelationQuery<F = string>(
   relationTable: string,
   columnPairs: readonly RelationColumnPair[],
 ) {
-  return (ctx: RelationQueryContext) => {
-    const relationConditions = columnPairs
-      .map(pair => `${ctx.parentField(pair.parentField)} = ${ctx.relationField(pair.relationField)}`)
-      .join(' AND ');
+  return (ctx: RelationQueryContext<F>): F => {
+    const relationConditions = ctx.join(columnPairs.map(pair =>
+      ctx.sql`${ctx.parentField(pair.parentField)} = ${ctx.relationField(pair.relationField)}`
+    ), ' AND ');
 
-    return `SELECT 1 FROM ${ctx.escapeField(relationTable)} as ${ctx.escapeField(ctx.relationAlias)}` +
-      ` WHERE ${relationConditions}` +
-      ` AND (${ctx.conditionSql()})`;
+    return ctx.sql`SELECT 1 FROM ${ctx.escapeIdentifier(relationTable)} as ${ctx.escapeIdentifier(ctx.relationAlias)} WHERE ${relationConditions} AND (${ctx.conditionSql()})`;
   };
 }
 
-export function buildManyToManyRelationQuery(
+export function buildManyToManyRelationQuery<F = string>(
   throughTable: string,
   foreignTable: string,
   localColumns: readonly ThroughRelationColumnPair[],
   foreignColumns: readonly ThroughRelationColumnPair[],
 ) {
-  return (ctx: RelationQueryContext) => {
-    const throughAlias = ctx.escapeField(`${ctx.relationAlias}_through`);
-    const throughField = (field: string) => `${throughAlias}.${ctx.escapeField(field)}`;
-    const joinConditions = foreignColumns
-      .map(column => `${ctx.relationField(column.relationField)} = ${throughField(column.throughField)}`)
-      .join(' AND ');
-    const whereConditions = localColumns
-      .map(column => `${ctx.parentField(column.relationField)} = ${throughField(column.throughField)}`)
-      .join(' AND ');
+  return (ctx: RelationQueryContext<F>): F => {
+    const throughAlias = `${ctx.relationAlias}_through`;
+    const throughField = (field: string) =>
+      ctx.sql`${ctx.escapeIdentifier(throughAlias)}.${ctx.escapeIdentifier(field)}`;
+    const joinConditions = ctx.join(foreignColumns.map(column =>
+      ctx.sql`${ctx.relationField(column.relationField)} = ${throughField(column.throughField)}`
+    ), ' AND ');
+    const whereConditions = ctx.join(localColumns.map(column =>
+      ctx.sql`${ctx.parentField(column.relationField)} = ${throughField(column.throughField)}`
+    ), ' AND ');
 
-    return `SELECT 1 FROM ${ctx.escapeField(throughTable)} as ${throughAlias}` +
-      ` INNER JOIN ${ctx.escapeField(foreignTable)} as ${ctx.escapeField(ctx.relationAlias)}` +
-      ` ON ${joinConditions}` +
-      ` WHERE ${whereConditions}` +
-      ` AND (${ctx.conditionSql()})`;
+    return ctx.sql`SELECT 1 FROM ${ctx.escapeIdentifier(throughTable)} as ${ctx.escapeIdentifier(throughAlias)} INNER JOIN ${ctx.escapeIdentifier(foreignTable)} as ${ctx.escapeIdentifier(ctx.relationAlias)} ON ${joinConditions} WHERE ${whereConditions} AND (${ctx.conditionSql()})`;
   };
 }
