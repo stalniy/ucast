@@ -35,7 +35,7 @@ describe('Condition interpreter for MikroORM', () => {
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
     expect(query).to.be.instanceof(QueryBuilder)
-    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`name` = ?)')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ("u0"."name" = ?)')
   })
 
   it('maps a model property to its configured database column', () => {
@@ -43,7 +43,7 @@ describe('Condition interpreter for MikroORM', () => {
       new FieldCondition('eq', 'displayName', 'Ada'),
       orm.em.createQueryBuilder(ctx.Profile).select('*'),
     )
-    expect(query.getQuery()).to.contain('`display_name` = ?')
+    expect(query.getQuery()).to.contain('"display_name" = ?')
     expect(query.getParams()).to.eql(['Ada'])
   })
 
@@ -58,10 +58,10 @@ describe('Condition interpreter for MikroORM', () => {
     expect(query.getQuery()).to.equal(linearize`
       select \`p\`.* from \`profile\` as \`p\`
       where (
-        (\`p\`.\`display_name\` = ? and EXISTS (
+        ("p"."display_name" = ? and EXISTS (
           SELECT 1
-          FROM \`user\` as \`user_0\`
-          WHERE \`p\`.\`user_id\` = \`user_0\`.\`id\` AND (\`user_0\`.\`tenant_id\` = ?)
+          FROM "user" as "user_0"
+          WHERE "p"."user_id" = "user_0"."id" AND ("user_0"."tenant_id" = ?)
         ))
       )
     `)
@@ -79,14 +79,14 @@ describe('Condition interpreter for MikroORM', () => {
     const condition = new FieldCondition('in', 'age', [1, 2, 3])
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`age` in(?, ?, ?))')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ("u0"."age" in(?, ?, ?))')
   })
 
   it('treats dotted field names as literal fields', () => {
     const condition = new FieldCondition('eq', 'projects.name', 'test')
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (`u0`.`projects.name` = ?)')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ("u0"."projects.name" = ?)')
   })
 
   it("doesn't auto join dotted fields in compound conditions", () => {
@@ -96,7 +96,7 @@ describe('Condition interpreter for MikroORM', () => {
     ])
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ((`u0`.`projects.name` = ? and `u0`.`projects.active` = ?))')
+    expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (("u0"."projects.name" = ? and "u0"."projects.active" = ?))')
   })
 
   it('generates nested EXISTS queries for nested relations', () => {
@@ -113,11 +113,11 @@ describe('Condition interpreter for MikroORM', () => {
 
     expect(query.getQuery()).to.equal([
       'select `u0`.* from `user` as `u0`',
-      'where (EXISTS (SELECT 1 FROM `project` as `projects_0`',
-      'WHERE `u0`.`id` = `projects_0`.`user_id`',
-      'AND (EXISTS (SELECT 1 FROM `deadline` as `deadlines_1`',
-      'WHERE `projects_0`.`id` = `deadlines_1`.`project_id`',
-      'AND (`deadlines_1`.`date` = ?)))))'
+      'where (EXISTS (SELECT 1 FROM "project" as "projects_0"',
+      'WHERE "u0"."id" = "projects_0"."user_id"',
+      'AND (EXISTS (SELECT 1 FROM "deadline" as "deadlines_1"',
+      'WHERE "projects_0"."id" = "deadlines_1"."project_id"',
+      'AND ("deadlines_1"."date" = ?)))))'
     ].join(' '))
   })
 
@@ -130,13 +130,13 @@ describe('Condition interpreter for MikroORM', () => {
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
     const sql = query.getQuery()
 
-    expect(sql).to.contain('SELECT 1 FROM `user_roles` as `roles_')
-    expect(sql).to.contain('_through` INNER JOIN `role` as `roles_')
-    expect(sql).to.contain('`.`id` = `roles_')
-    expect(sql).to.contain('_through`.`role_id`')
-    expect(sql).to.contain('`u0`.`id` = `roles_')
-    expect(sql).to.contain('_through`.`user_id`')
-    expect(sql).to.contain('`.`name` = ?')
+    expect(sql).to.contain('SELECT 1 FROM "user_roles" as "roles_')
+    expect(sql).to.contain('_through" INNER JOIN "role" as "roles_')
+    expect(sql).to.contain('"."id" = "roles_')
+    expect(sql).to.contain('_through"."role_id"')
+    expect(sql).to.contain('"u0"."id" = "roles_')
+    expect(sql).to.contain('_through"."user_id"')
+    expect(sql).to.contain('"."name" = ?')
   })
 
   it('allows custom relation SQL to add domain joins and parameters', () => {
@@ -171,8 +171,8 @@ describe('Condition interpreter for MikroORM', () => {
     )
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.contain('`tenant_projects`.`kind` = ? AND (')
-    expect(query.getQuery()).to.contain('`.`active` = ?')
+    expect(query.getQuery()).to.contain('"tenant_projects"."kind" = ? AND (')
+    expect(query.getQuery()).to.contain('"."active" = ?')
   })
 
   describe('SQLite relation e2e', () => {

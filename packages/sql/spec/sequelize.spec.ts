@@ -16,7 +16,7 @@ describe('Condition interpreter for Sequelize', () => {
 
   it('maps a model property to its configured database column', () => {
     const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile)
-    expect(query.where.val).to.contain('`display_name` = \'Ada\'')
+    expect(query.where.val).to.contain(`"display_name" = 'Ada'`)
   })
 
   it('maps a model property to its configured database column for related models', () => {
@@ -30,10 +30,10 @@ describe('Condition interpreter for Sequelize', () => {
     )
 
     expect(query.where.val).to.equal(linearize`
-      (\`p\`.\`display_name\` = 'Alice Profile' and EXISTS (
+      ("p"."display_name" = 'Alice Profile' and EXISTS (
         SELECT 1
-        FROM \`users\` as \`user_0\`
-        WHERE \`p\`.\`userId\` = \`user_0\`.\`id\` AND (\`user_0\`.\`tenant_id\` = 1)
+        FROM "users" as "user_0"
+        WHERE "p"."userId" = "user_0"."id" AND ("user_0"."tenant_id" = 1)
       ))
     `)
   })
@@ -41,7 +41,7 @@ describe('Condition interpreter for Sequelize', () => {
   it('keeps unresolved fields as literal identifiers', () => {
     const run = createInterpreter({ eq })
     const query = run(new FieldCondition('eq', 'legacy_column', 'Ada'), User)
-    expect(query.where.val).to.contain('`legacy_column` = \'Ada\'')
+    expect(query.where.val).to.contain(`"legacy_column" = 'Ada'`)
   })
 
   it('reports unknown relations before producing SQL', () => {
@@ -70,7 +70,7 @@ describe('Condition interpreter for Sequelize', () => {
     try {
       delete attribute.field
       const query = interpret(new FieldCondition('eq', 'name', 'Ada'), User)
-      expect(query.where.val).to.equal("`users`.`name` = 'Ada'")
+      expect(query.where.val).to.equal(`"users"."name" = 'Ada'`)
     } finally {
       attribute.field = originalField
     }
@@ -85,8 +85,8 @@ describe('Condition interpreter for Sequelize', () => {
     try {
       delete association.throughModel
       const query = interpret(relationConditions.manyToMany, User)
-      expect(query.where.val).to.contain('FROM `user_roles` as `roles_0_through`')
-      expect(query.where.val).to.contain("`roles_0`.`display_name` = 'admin'")
+      expect(query.where.val).to.contain('FROM "user_roles" as "roles_0_through"')
+      expect(query.where.val).to.contain(`"roles_0"."display_name" = 'admin'`)
     } finally {
       association.throughModel = originalThroughModel
     }
@@ -110,9 +110,9 @@ describe('Condition interpreter for Sequelize', () => {
     const query = interpret(condition, User)
 
     expect(query.where.val).to.equal(
-      "EXISTS (SELECT 1 FROM `projects` as `projects_0` WHERE `users`.`id` = `projects_0`.`userId` " +
-      "AND (EXISTS (SELECT 1 FROM `deadlines` as `deadlines_1` WHERE `projects_0`.`id` = `deadlines_1`.`projectId` " +
-      "AND (`deadlines_1`.`date` = '2026-06-28'))))"
+      'EXISTS (SELECT 1 FROM "projects" as "projects_0" WHERE "users"."id" = "projects_0"."userId" ' +
+      'AND (EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1" WHERE "projects_0"."id" = "deadlines_1"."projectId" ' +
+      `AND ("deadlines_1"."date" = '2026-06-28'))))`
     )
   })
 
@@ -126,13 +126,13 @@ describe('Condition interpreter for Sequelize', () => {
     const query = interpret(condition, User)
     const sql = query.where.val
 
-    expect(sql).to.contain('SELECT 1 FROM `user_roles` as `roles_')
-    expect(sql).to.contain('_through` INNER JOIN `roles` as `roles_')
-    expect(sql).to.contain('`.`id` = `roles_')
-    expect(sql).to.contain('_through`.`roleId`')
-    expect(sql).to.contain('`users`.`id` = `roles_')
-    expect(sql).to.contain('_through`.`userId`')
-    expect(sql).to.contain("`.`name` = 'admin'")
+    expect(sql).to.contain('SELECT 1 FROM "user_roles" as "roles_')
+    expect(sql).to.contain('_through" INNER JOIN "roles" as "roles_')
+    expect(sql).to.contain('"."id" = "roles_')
+    expect(sql).to.contain('_through"."roleId"')
+    expect(sql).to.contain('"users"."id" = "roles_')
+    expect(sql).to.contain('_through"."userId"')
+    expect(sql).to.contain(`"."name" = 'admin'`)
   })
 
   it('allows custom relation SQL to add domain joins and parameters', () => {
@@ -167,8 +167,8 @@ describe('Condition interpreter for Sequelize', () => {
     )
     const query = interpret(condition, User)
 
-    expect(query.where.val).to.contain("`tenant_projects`.`kind` = 'owned' AND (")
-    expect(query.where.val).to.contain('`.`active` = 1')
+    expect(query.where.val).to.contain(`"tenant_projects"."kind" = 'owned' AND (`)
+    expect(query.where.val).to.contain('"."active" = 1')
   })
 
   describe('SQLite relation e2e', () => {

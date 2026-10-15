@@ -15,14 +15,17 @@ export const oracle = {
   paramPlaceholder: $indexPlaceholder,
   escapeIdentifier: (name: string) => `"${name}"`,
 };
-export const pg = oracle;
+export const pg = { ...oracle };
 
 export const mysql = {
   regexp,
   paramPlaceholder: questionPlaceholder,
   escapeIdentifier: (name: string) => `\`${name}\``,
 };
-export const sqlite = mysql;
+export const sqlite = {
+  ...mysql,
+  escapeIdentifier: (name: string) => `"${name}"`,
+};
 
 export const mssql = {
   regexp() {
