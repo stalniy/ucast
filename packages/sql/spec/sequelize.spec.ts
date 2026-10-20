@@ -1,8 +1,8 @@
 import { FieldCondition, buildAnd } from '@ucast/core'
 import { Model, Sequelize, DataTypes } from 'sequelize'
-import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/sequelize.ts'
+import { createSequelizeInterpreter, interpret } from '../src/lib/sequelize.ts'
 import { expect, linearize } from './specHelper.ts'
-import { eq, someRelation } from '../src/interpreters.ts'
+import { eq } from '../src/interpreters.ts'
 import {
   expectedRelationNames,
   namesOf,
@@ -10,90 +10,91 @@ import {
   relationSeeds
 } from './relationTestsConfig.ts'
 
-describe('Condition interpreter for Sequelize', () => {
+describe(createSequelizeInterpreter.name, () => {
   const orm = configureORM()
   const { Project, User, sequelize } = orm
 
+  after(async () => {
+    await sequelize.close()
+  })
+
   it('maps a model property to its configured database column', () => {
     const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile)
-    expect(query.where.val).to.contain(`"display_name" = 'Ada'`)
+    expect(query.where.val).to.contain(`"display_name" = ?`)
+    expect(query.replacements).to.deep.equal(['Ada'])
   })
 
   it('maps a model property to its configured database column for related models', () => {
     const query = interpret(
       buildAnd([
         new FieldCondition('eq', 'displayName', 'Alice Profile'),
-        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+        new FieldCondition('some', 'user', new FieldCondition('eq', 'tenantId', 1))
       ]),
       orm.Profile,
-      { rootAlias: 'p' },
+      { alias: 'p' },
     )
 
     expect(query.where.val).to.equal(linearize`
-      ("p"."display_name" = 'Alice Profile' and EXISTS (
+      ("p"."display_name" = ? and EXISTS (
         SELECT 1
-        FROM "users" as "user_0"
-        WHERE "p"."userId" = "user_0"."id" AND ("user_0"."tenant_id" = 1)
+        FROM "users" as "user_ucast0"
+        WHERE "p"."userId" = "user_ucast0"."id" AND "user_ucast0"."tenant_id" = ?
       ))
     `)
+    expect(query.replacements).to.deep.equal(['Alice Profile', 1])
   })
 
   it('keeps unresolved fields as literal identifiers', () => {
-    const run = createInterpreter({ eq })
+    const run = createSequelizeInterpreter({ eq })
     const query = run(new FieldCondition('eq', 'legacy_column', 'Ada'), User)
-    expect(query.where.val).to.contain(`"legacy_column" = 'Ada'`)
+    expect(query.where.val).to.contain(`"legacy_column" = ?`)
+    expect(query.replacements).to.deep.equal(['Ada'])
   })
 
   it('reports unknown relations before producing SQL', () => {
     expect(() => interpret(
       new FieldCondition('some', 'missingRelation', new FieldCondition('eq', 'name', 'Ada')),
       User,
-    )).to.throw('Relation metadata for "missingRelation" not found')
+    )).to.throw('Relation metadata for "users.missingRelation" not found')
   })
 
   it('rejects unsupported database dialects', () => {
-    const originalDialect = sequelize.getDialect
-
-    try {
-      sequelize.getDialect = () => 'unsupported' as ReturnType<typeof sequelize.getDialect>
-      expect(() => interpret(new FieldCondition('eq', 'name', 'Ada'), User))
-        .to.throw('Unsupported database dialect: unsupported')
-    } finally {
-      sequelize.getDialect = originalDialect
+    const customSequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+    })
+    class AnyModel extends Model {
+      static {
+        AnyModel.init({}, { sequelize: customSequelize })
+      }
     }
+    customSequelize.getDialect = () => 'unsupported' as ReturnType<typeof customSequelize.getDialect>
+
+    expect(() => interpret(new FieldCondition('eq', 'name', 'Ada'), AnyModel))
+      .to.throw('Unsupported database dialect: unsupported')
   })
 
   it('uses the property name when attribute metadata has no column override', () => {
-    const attribute = User.rawAttributes.name
-    const originalField = attribute.field
-
-    try {
-      delete attribute.field
-      const query = interpret(new FieldCondition('eq', 'name', 'Ada'), User)
-      expect(query.where.val).to.equal(`"users"."name" = 'Ada'`)
-    } finally {
-      attribute.field = originalField
+    const customSequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: ':memory:',
+      logging: false,
+    })
+    class AnyModel extends Model {
+      static {
+        AnyModel.init({
+          name: { type: DataTypes.STRING },
+          age: { type: DataTypes.INTEGER, field: 'years' }
+        }, { sequelize: customSequelize, tableName: 'anyModel' })
+      }
     }
-  })
 
-  it('uses the through model when a many-to-many association lacks throughModel', () => {
-    const association = User.associations.roles as typeof User.associations.roles & {
-      throughModel?: typeof Model;
-    }
-    const originalThroughModel = association.throughModel
+    const query = interpret(new FieldCondition('eq', 'name', 'Ada'), AnyModel)
+    expect(query.where.val).to.equal(`"anyModel"."name" = ?`)
 
-    try {
-      delete association.throughModel
-      const query = interpret(relationConditions.manyToMany, User)
-      expect(query.where.val).to.contain('FROM "user_roles" as "roles_0_through"')
-      expect(query.where.val).to.contain(`"roles_0"."display_name" = 'admin'`)
-    } finally {
-      association.throughModel = originalThroughModel
-    }
-  })
-
-  after(async () => {
-    await sequelize.close()
+    const anotherQuery = interpret(new FieldCondition('eq', 'age', 1), AnyModel)
+    expect(anotherQuery.where.val).to.equal(`"anyModel"."years" = ?`)
   })
 
   it('generates nested EXISTS queries for nested relations', () => {
@@ -109,11 +110,18 @@ describe('Condition interpreter for Sequelize', () => {
 
     const query = interpret(condition, User)
 
-    expect(query.where.val).to.equal(
-      'EXISTS (SELECT 1 FROM "projects" as "projects_0" WHERE "users"."id" = "projects_0"."userId" ' +
-      'AND (EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1" WHERE "projects_0"."id" = "deadlines_1"."projectId" ' +
-      `AND ("deadlines_1"."date" = '2026-06-28'))))`
-    )
+    expect(query.where.val).to.equal(linearize`
+      EXISTS (
+        SELECT 1 FROM "projects" as "projects_ucast0"
+        WHERE "users"."id" = "projects_ucast0"."userId"
+          AND EXISTS (
+            SELECT 1 FROM "deadlines" as "deadlines_ucast1"
+            WHERE "projects_ucast0"."id" = "deadlines_ucast1"."projectId"
+              AND "deadlines_ucast1"."date" = ?
+          )
+      )
+    `)
+    expect(query.replacements).to.deep.equal(['2026-06-28'])
   })
 
   it('uses the through table for BelongsToMany relations', () => {
@@ -124,97 +132,93 @@ describe('Condition interpreter for Sequelize', () => {
     )
 
     const query = interpret(condition, User)
-    const sql = query.where.val
 
-    expect(sql).to.contain('SELECT 1 FROM "user_roles" as "roles_')
-    expect(sql).to.contain('_through" INNER JOIN "roles" as "roles_')
-    expect(sql).to.contain('"."id" = "roles_')
-    expect(sql).to.contain('_through"."roleId"')
-    expect(sql).to.contain('"users"."id" = "roles_')
-    expect(sql).to.contain('_through"."userId"')
-    expect(sql).to.contain(`"."name" = 'admin'`)
+    expect(query.where.val).to.equal(linearize`
+      EXISTS (
+        SELECT 1 FROM "roles" as "roles_ucast0"
+          INNER JOIN "user_roles" as "roles_ucast0_through" ON "roles_ucast0"."id" = "roles_ucast0_through"."roleId"
+        WHERE "users"."id" = "roles_ucast0_through"."userId"
+          AND "roles_ucast0"."name" = ?
+      )
+    `)
+    expect(query.replacements).to.deep.equal(['admin'])
   })
 
-  it('allows custom relation SQL to add domain joins and parameters', () => {
-    const interpret = createInterpreter({ eq, some: someRelation }, {
-      getRelationMetadata(relationName, ctx) {
-        if (relationName !== 'projects') {
-          return getRelationMetadata(relationName, ctx)
-        }
+  describe('named replacements', () => {
+    const cases = [
+      {
+        name: 'one parameter',
+        condition: new FieldCondition('eq', 'name', 'Alice'),
+        values: ['Alice'],
+        names: ['Alice'],
+      },
+      {
+        name: 'multiple parameters',
+        condition: buildAnd([
+          new FieldCondition('eq', 'name', 'Alice'),
+          new FieldCondition('eq', 'tenantId', 'tenant-a'),
+        ]),
+        values: ['Alice', 'tenant-a'],
+        names: ['Alice'],
+      },
+      {
+        name: 'nested relations',
+        condition: buildAnd([
+          new FieldCondition('eq', 'tenantId', 'tenant-a'),
+          new FieldCondition('some', 'projects', buildAnd([
+            new FieldCondition('eq', 'name', 'Launch'),
+            new FieldCondition('some', 'deadlines', new FieldCondition('eq', 'id', 1)),
+          ])),
+        ]),
+        values: ['tenant-a', 'Launch', 1],
+        names: ['Alice'],
+      },
+    ]
 
-        return {
-          relationContext: Project,
-          buildRelationQuery(relation) {
-            const tenantProjectAlias = 'tenant_projects'
-            const tenantProjectField = (field: string) => {
-              return `${relation.escapeIdentifier(tenantProjectAlias)}.${relation.escapeIdentifier(field)}`
-            }
+    for (const testCase of cases) {
+      it(`matches placeholder names to replacement keys for ${testCase.name}`, () => {
+        const query = interpret(testCase.condition, User, { replacementMode: 'named' })
+        const placeholders = (query.where.val as string).match(/:ucast_\d+_\d+/g)!
+          .map(name => name.slice(1))
 
-            return `SELECT 1 FROM ${relation.escapeIdentifier('tenant_projects')} as ${relation.escapeIdentifier(tenantProjectAlias)}` +
-            ` INNER JOIN ${relation.escapeIdentifier('projects')} as ${relation.escapeIdentifier(relation.relationAlias)}` +
-            ` ON ${relation.relationField('id')} = ${tenantProjectField('projectId')}` +
-            ` WHERE ${relation.parentField('tenantId')} = ${tenantProjectField('tenantId')}` +
-            ` AND ${tenantProjectField('kind')} = ${relation.param('owned')}` +
-            ` AND (${relation.conditionSql()})`
-          }
-        }
-      }
-    })
-    const condition = new FieldCondition(
-      'some',
-      'projects',
-      new FieldCondition('eq', 'active', true)
-    )
-    const query = interpret(condition, User)
-
-    expect(query.where.val).to.contain(`"tenant_projects"."kind" = 'owned' AND (`)
-    expect(query.where.val).to.contain('"."active" = 1')
+        expect(Object.keys(query.replacements)).to.deep.equal(placeholders)
+        expect(Object.values(query.replacements)).to.deep.equal(testCase.values)
+      })
+    }
   })
 
-  describe('SQLite relation e2e', () => {
+  describe('e2e execution', () => {
     before(async () => {
       await seedSequelize(orm)
+      await User.create({ id: 4, tenantId: 'tenant-b', name: 'Dana' })
     })
 
-    it('filters HasMany relations', async () => {
-      const users = await User.findAll({
-        ...interpret(relationConditions.hasMany, User, { rootAlias: 'user' }),
-        order: [['name', 'ASC']],
-        raw: true,
+    for (const relationType of ['hasMany', 'belongsTo', 'hasOne', 'manyToMany'] as const) {
+      it(`filters ${relationType} relations with findAll`, async () => {
+        const Model = relationType === 'belongsTo' ? Project : User
+        const query = interpret(relationConditions[relationType], Model, { alias: Model.name })
+        const records = await Model.findAll({ ...query })
+
+        expect(namesOf(records)).to.deep.equal(expectedRelationNames[relationType])
       })
+    }
 
-      expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasMany)
-    })
+    for (const testCase of [
+      { operator: 'some', expected: ['Alice', 'Bob'] },
+      { operator: 'none', expected: ['Carol', 'Dana'] },
+      { operator: 'every', expected: ['Bob', 'Dana'] },
+    ]) {
+      it(`evaluates ${testCase.operator} including parents without related rows`, async () => {
+        const condition = new FieldCondition(
+          testCase.operator,
+          'projects',
+          new FieldCondition('eq', 'active', true),
+        )
+        const records = await User.findAll({ ...interpret(condition, User, { alias: User.name }) })
 
-    it('filters BelongsTo relations', async () => {
-      const projects = await Project.findAll({
-        ...interpret(relationConditions.belongsTo, Project, { rootAlias: 'project' }),
-        order: [['name', 'ASC']],
-        raw: true,
+        expect(namesOf(records)).to.deep.equal(testCase.expected)
       })
-
-      expect(namesOf(projects)).to.deep.equal(expectedRelationNames.belongsTo)
-    })
-
-    it('filters HasOne relations', async () => {
-      const users = await User.findAll({
-        ...interpret(relationConditions.hasOne, User, { rootAlias: 'user' }),
-        order: [['name', 'ASC']],
-        raw: true,
-      })
-
-      expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasOne)
-    })
-
-    it('filters BelongsToMany relations', async () => {
-      const users = await User.findAll({
-        ...interpret(relationConditions.manyToMany, User, { rootAlias: 'user' }),
-        order: [['name', 'ASC']],
-        raw: true,
-      })
-
-      expect(namesOf(users)).to.deep.equal(expectedRelationNames.manyToMany)
-    })
+    }
   })
 })
 
@@ -226,46 +230,63 @@ function configureORM() {
   })
 
   class User extends Model {
-    name!: string
+    declare name: string
+
+    static {
+      User.init({
+        tenantId: { type: DataTypes.STRING, field: 'tenant_id' },
+        name: { type: DataTypes.STRING },
+        email: { type: DataTypes.STRING },
+      }, { sequelize, modelName: 'user' })
+    }
   }
-  class Profile extends Model {}
+
+  class Profile extends Model {
+    static {
+      Profile.init({
+        displayName: { type: DataTypes.STRING, field: 'display_name' },
+      }, { sequelize, modelName: 'profile' })
+    }
+  }
+
   class Project extends Model {
-    name!: string
+    declare name: string
+
+    static {
+      Project.init({
+        name: { type: DataTypes.STRING },
+        active: { type: DataTypes.BOOLEAN }
+      }, { sequelize, modelName: 'project' })
+    }
   }
-  class Deadline extends Model {}
-  class Role extends Model {}
-  class UserRole extends Model {}
 
-  User.init({
-    tenantId: { type: DataTypes.STRING, field: 'tenant_id' },
-    name: { type: DataTypes.STRING },
-    email: { type: DataTypes.STRING },
-  }, { sequelize, modelName: 'user' })
+  class Deadline extends Model {
+    static {
+      Deadline.init({
+        date: { type: DataTypes.DATE }
+      }, { sequelize, modelName: 'deadline' })
+    }
+  }
 
-  Profile.init({
-    displayName: { type: DataTypes.STRING, field: 'display_name' },
-  }, { sequelize, modelName: 'profile' })
+  class Role extends Model {
+    static {
+      Role.init({
+        name: { type: DataTypes.STRING },
+        displayName: { type: DataTypes.STRING, field: 'display_name' },
+      }, { sequelize, modelName: 'role' })
+    }
+  }
 
-  Project.init({
-    name: { type: DataTypes.STRING },
-    active: { type: DataTypes.BOOLEAN }
-  }, { sequelize, modelName: 'project' })
-
-  Deadline.init({
-    date: { type: DataTypes.DATE }
-  }, { sequelize, modelName: 'deadline' })
-
-  Role.init({
-    name: { type: DataTypes.STRING },
-    displayName: { type: DataTypes.STRING, field: 'display_name' },
-  }, { sequelize, modelName: 'role' })
-
-  UserRole.init({}, {
-    sequelize,
-    modelName: 'userRole',
-    tableName: 'user_roles',
-    timestamps: false,
-  })
+  class UserRole extends Model {
+    static {
+      UserRole.init({}, {
+        sequelize,
+        modelName: 'userRole',
+        tableName: 'user_roles',
+        timestamps: false,
+      })
+    }
+  }
 
   User.hasOne(Profile, { as: 'profile', foreignKey: 'userId' })
   Profile.belongsTo(User, { as: 'user', foreignKey: 'userId' })

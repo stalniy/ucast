@@ -51,7 +51,7 @@ export interface SqlComposer<F> {
 
 export interface RelationScope<F> {
   composer: SqlComposer<F>;
-  subquery(predicate: F, invertCondition?: boolean): F;
+  subquery(predicate: F): F;
 }
 
 export interface SqlComposition<F, R = F> extends SqlComposer<F> {
@@ -69,10 +69,15 @@ export interface SqlEntityMetadata {
 }
 
 export interface RelationMetadata {
+  metadata: SqlEntityMetadata;
+  relatedTable: string;
   ownField: string;
   relatedField: string;
-  relatedTable: string;
-  metadata: SqlEntityMetadata;
+  through?: {
+    table: string;
+    ownRelationField: string;
+    relatedRelationField: string;
+  }
 }
 
 export interface SqlInterpretationContext<F> {
@@ -115,7 +120,9 @@ function createStringComposer(
       return options.paramPlaceholder(params.length);
     }),
     manyParams: parent?.manyParams ?? ((conditionOrValues) => {
-      const values = conditionOrValues instanceof Condition ? conditionOrValues.value : conditionOrValues;
+      const values = conditionOrValues instanceof Condition
+        ? conditionOrValues.value
+        : conditionOrValues;
       let result = '';
       for (let i = 0, l = values.length; i < l; i++) {
         result += composer.param(values[i]);
@@ -141,14 +148,25 @@ function createStringComposer(
 
       return {
         composer: relationComposer,
-        subquery(predicate, invertCondition) {
-          const condition = invertCondition ? `NOT (${predicate})` : `(${predicate})`;
+        subquery(predicate) {
+          if (relation.through) {
+            const throughAlias = options.escapeIdentifier(`${relationAlias}_through`);
+            const ownRelationField = `${throughAlias}.${options.escapeIdentifier(relation.through.ownRelationField)}`;
+            const relatedRelationField = `${throughAlias}.${options.escapeIdentifier(relation.through.relatedRelationField)}`;
+
+            return `SELECT 1 FROM ${options.escapeIdentifier(relation.relatedTable)} as ${options.escapeIdentifier(relationAlias)} ` +
+              `INNER JOIN ${options.escapeIdentifier(relation.through.table)} as ${throughAlias} ` +
+              `ON ${relationComposer.field(relation.relatedField)} = ${relatedRelationField} ` +
+              `WHERE ${composer.field(relation.ownField)} = ${ownRelationField} AND ${predicate}`;
+          }
+
           return `SELECT 1 FROM ${options.escapeIdentifier(relation.relatedTable)} as ${options.escapeIdentifier(relationAlias)} ` +
-            `WHERE ${composer.field(relation.ownField)} = ${relationComposer.field(relation.relatedField)} AND ${condition}`;
+            `WHERE ${composer.field(relation.ownField)} = ${relationComposer.field(relation.relatedField)} AND ${predicate}`;
         }
       };
     },
-    result: (parent as SqlComposition<string, SqlStringComposerResult>)?.result ?? ((sql) => [sql, params])
+    result: (parent as SqlComposition<string, SqlStringComposerResult>)?.result
+      ?? ((sql) => [sql, params])
   };
 
   return composer;

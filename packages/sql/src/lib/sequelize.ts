@@ -1,95 +1,33 @@
 import { type Condition } from '@ucast/core';
-import { type Association, type ModelStatic, Utils, literal } from 'sequelize';
+import { literal, type Association, type BindOrReplacements, type ModelStatic } from 'sequelize';
 import {
-  createSqlInterpreter,
   allInterpreters,
-  type SqlOperator,
   createDialects,
+  createSqlInterpreter,
   mysql,
-  type SqlQueryOptions,
+  type SqlEntityMetadata,
+  type SqlOperator,
 } from '../index.ts';
-import { buildManyToManyRelationQuery } from '../relationUtils.ts';
 
 const hasOwn: (object: object, key: PropertyKey) => boolean = (Object as {
   hasOwn?: (object: object, key: PropertyKey) => boolean
 }).hasOwn || ((object, key) => Object.prototype.hasOwnProperty.call(object, key));
 
-type GetRelationMetadata = Exclude<SqlQueryOptions['getRelationMetadata'], undefined>;
-
-export interface SequelizeInterpreterOptions {
-  getRelationMetadata?: GetRelationMetadata;
-}
-
-function mapColumnName(field: string, relationContext: unknown) {
-  const Model = relationContext as ModelStatic<any>;
-  const attribute = Model?.rawAttributes?.[field];
-  if (!attribute) return undefined;
-  return attribute.field ?? field;
-}
-
-export const getRelationMetadata: GetRelationMetadata = (
-  relationName,
-  ctx,
-) => {
-  const Model = ctx.relationContext as ModelStatic<any>;
-  if (!hasOwn(Model.associations, relationName)) return;
-
-  const association = Model.associations[relationName] as RuntimeAssociation;
-
-  if (association.associationType === 'BelongsTo') {
-    return {
-      parentField: association.identifierField,
-      relationField: association.targetKeyField,
-      relationTable: association.target.tableName,
-      relationContext: association.target,
-    };
-  }
-
-  if (association.associationType === 'HasOne' || association.associationType === 'HasMany') {
-    return {
-      parentField: association.sourceKeyField,
-      relationField: association.identifierField,
-      relationTable: association.target.tableName,
-      relationContext: association.target,
-    };
-  }
-
-  if (association.associationType === 'BelongsToMany') {
-    const throughTable = association.throughModel?.tableName ?? association.through.model.tableName;
-
-    return {
-      relationContext: association.target,
-      buildRelationQuery: buildManyToManyRelationQuery(
-        throughTable,
-        association.target.tableName,
-        [{
-          relationField: association.sourceKeyField,
-          throughField: association.identifierField,
-        }],
-        [{
-          relationField: association.targetKeyField,
-          throughField: association.foreignIdentifierField,
-        }],
-      ),
-    };
-  }
-
-  return undefined;
-};
-
-export function createInterpreter(
-  interpreters: Record<string, SqlOperator<any>>,
-  sequelizeOptions: SequelizeInterpreterOptions = {},
-) {
+export function createSequelizeInterpreter(interpreters: Record<string, SqlOperator<any>>) {
   const interpretSQL = createSqlInterpreter(interpreters);
-  const dialects = createDialects({
-    getRelationMetadata: sequelizeOptions.getRelationMetadata ?? getRelationMetadata,
+  const numericPlaceholderDialects = createDialects({
     paramPlaceholder: mysql.paramPlaceholder,
   });
+  let callNumber = 0;
+  const namedPlaceholderDialects = createDialects({
+    paramPlaceholder: (index) => `:ucast_${callNumber}_${index}`
+  });
 
-  return (condition: Condition, Model: ModelStatic<any>, callOptions?: { rootAlias?: string }) => {
-    const dialect = Model.sequelize!.getDialect() as keyof typeof dialects;
-    const options = dialects[dialect];
+  return (condition: Condition, Model: ModelStatic<any>, queryOptions?: SequelizeQueryOptions): SequelizeInterpretationResult => {
+    const dialect = Model.sequelize!.getDialect() as keyof typeof numericPlaceholderDialects;
+    const options = queryOptions?.replacementMode === 'named'
+      ? namedPlaceholderDialects[dialect]
+      : numericPlaceholderDialects[dialect];
 
     if (!options) {
       throw new Error(`Unsupported database dialect: ${dialect}`);
@@ -97,17 +35,92 @@ export function createInterpreter(
 
     const [sql, params] = interpretSQL(condition, {
       ...options,
-      rootAlias: callOptions?.rootAlias ?? Model.tableName,
-      localField: (field, { escape, relationContext }) =>
-        escape(mapColumnName(field, relationContext) ?? field),
-    }, Model);
+      alias: queryOptions?.alias ?? Model.tableName,
+      metadata: sequelizeToSqlMetadata(Model)
+    });
+    const where = literal(sql);
+    const replacements = queryOptions?.replacementMode === 'named'
+      ? paramsToNamedReplacements(params, `ucast_${callNumber}`)
+      : params.slice();
+    callNumber++;
+
     return {
-      where: literal(Utils.format([sql, ...(params as string[])], dialect)),
+      where,
+      replacements
     };
   };
 }
 
-export const interpret = createInterpreter(allInterpreters);
+export interface SequelizeInterpretationResult {
+  where: ReturnType<typeof literal>;
+  replacements: BindOrReplacements;
+}
+
+function paramsToNamedReplacements(params: readonly unknown[], placeholderPrefix: string) {
+  const replacements: Record<string, unknown> = {};
+  for (let i = 0, l = params.length; i < l; i++) {
+    replacements[`${placeholderPrefix}_${i + 1}`] = params[i];
+  }
+  return replacements;
+}
+
+function sequelizeToSqlMetadata(Model: ModelStatic<any>): SqlEntityMetadata {
+  return {
+    toColumnName(fieldName) {
+      const attribute = Model?.rawAttributes?.[fieldName];
+      return attribute?.field ?? fieldName;
+    },
+    resolveRelation(relationName) {
+      if (!hasOwn(Model.associations, relationName)) return;
+
+      const association = Model.associations[relationName] as RuntimeAssociation;
+
+      if (association.associationType === 'BelongsTo') {
+        return {
+          metadata: sequelizeToSqlMetadata(association.target),
+          relatedTable: association.target.tableName,
+          ownField: association.identifierField,
+          relatedField: association.targetKeyField,
+        };
+      }
+
+      if (association.associationType === 'HasOne' || association.associationType === 'HasMany') {
+        return {
+          metadata: sequelizeToSqlMetadata(association.target),
+          relatedTable: association.target.tableName,
+          ownField: association.sourceKeyField,
+          relatedField: association.identifierField,
+        };
+      }
+
+      if (association.associationType === 'BelongsToMany') {
+        const throughTable = association.throughModel?.tableName
+          ?? association.through.model.tableName;
+
+        return {
+          metadata: sequelizeToSqlMetadata(association.target),
+          relatedTable: association.target.tableName,
+          ownField: association.sourceKeyField,
+          relatedField: association.targetKeyField,
+          through: {
+            table: throughTable,
+            ownRelationField: association.identifierField,
+            relatedRelationField: association.foreignIdentifierField
+          }
+        };
+      }
+
+      return undefined;
+    }
+  };
+}
+
+export interface SequelizeQueryOptions {
+  alias?: string;
+  replacementMode?: 'numeric' | 'named';
+}
+
+export const interpret = createSequelizeInterpreter(allInterpreters);
 
 type BelongsToAssociation = Association & {
   associationType: 'BelongsTo';

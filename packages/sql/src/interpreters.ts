@@ -55,7 +55,10 @@ export const mod: SqlOperator<FieldCondition<[number, number]>> = (
 //   return query.usingFieldPrefix(condition.field, () => interpret(condition.value, query));
 // };
 
-export const regex: SqlOperator<FieldCondition<RegExp>> = (condition, { sql, field, param, regexp, raw }) => {
+export const regex: SqlOperator<FieldCondition<RegExp>> = (
+  condition,
+  { sql, field, param, regexp, raw }
+) => {
   const regexpDetails = regexp(condition.value.ignoreCase);
   return sql`${field(condition.field)} ${raw(regexpDetails.operator)} ${param(condition.value.source)}${raw(regexpDetails.comparator)}`;
 };
@@ -78,16 +81,18 @@ export const someRelation = relationOperator(false, false);
 export const noneRelation = relationOperator(true, false);
 export const everyRelation = relationOperator(true, true);
 
-function relationOperator(isInverted: boolean, invertCondition: boolean): SqlOperator<FieldCondition<Condition>> {
+function relationOperator(
+  isInverted: boolean,
+  invertCondition: boolean
+): SqlOperator<FieldCondition<Condition>> {
   return (condition, { sql, relation }, context) => {
     const related = relation(condition.field);
     const predicate = context.interpret(
       condition.value,
       related.composer,
     );
+    const subquery = related.subquery(invertCondition ? sql`NOT (${predicate})` : predicate);
 
-    return isInverted
-      ? sql`NOT EXISTS (${related.subquery(predicate, invertCondition)})`
-      : sql`EXISTS (${related.subquery(predicate, invertCondition)})`;
+    return isInverted ? sql`NOT EXISTS (${subquery})` : sql`EXISTS (${subquery})`;
   };
 }

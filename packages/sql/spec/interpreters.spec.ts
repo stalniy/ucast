@@ -310,7 +310,7 @@ describe('Condition Interpreter', () => {
       expect(sql).to.equal(
         '(EXISTS (SELECT 1 FROM "projects" as "projects_ucast0" ' +
         'WHERE "users"."user_id" = "projects_ucast0"."userId" ' +
-        'AND ("projects_ucast0"."displayName" = $1)) and "users"."user_displayName" = $2)'
+        'AND "projects_ucast0"."displayName" = $1) and "users"."user_displayName" = $2)'
       )
       expect(params).to.deep.equal(['Launch', 'Alice'])
     })
@@ -372,17 +372,23 @@ describe('Condition Interpreter', () => {
       expect(sql).to.equal(
         '("users"."user_name" = $1 and EXISTS (' +
         'SELECT 1 FROM "projects" as "projects_ucast0" WHERE "users"."other_id" = "projects_ucast0"."user_id" ' +
-        'AND (' +
+        'AND ' +
         '("projects_ucast0"."project_title" = $2 and EXISTS (' +
         'SELECT 1 FROM "deadlines" as "deadlines_ucast1" WHERE "projects_ucast0"."other_project_id" = "deadlines_ucast1"."project_id" ' +
-        'AND ("deadlines_ucast1"."deadline_title" = $3))))))'
+        'AND "deadlines_ucast1"."deadline_title" = $3))))'
       )
       expect(params).to.deep.equal(['Alice', 'Launch', 'Tomorrow'])
     })
   })
 
   describe('relation operators', () => {
-    const interpret = createSqlInterpreter({ eq, and, some: someRelation, none: noneRelation, every: everyRelation })
+    const interpret = createSqlInterpreter({
+      eq,
+      and,
+      some: someRelation,
+      none: noneRelation,
+      every: everyRelation
+    })
     const relationOptions: SqlQueryOptions = {
       ...pg,
       alias: 'users',
@@ -401,7 +407,7 @@ describe('Condition Interpreter', () => {
 
       expect(sql).to.equal(
         'EXISTS (SELECT 1 FROM "project" as "projects_ucast0" ' +
-        'WHERE "users"."id" = "projects_ucast0"."userId" AND ("projects_ucast0"."active" = $1))'
+        'WHERE "users"."id" = "projects_ucast0"."userId" AND "projects_ucast0"."active" = $1)'
       )
       expect(params).to.deep.equal([true])
     })
@@ -411,7 +417,7 @@ describe('Condition Interpreter', () => {
 
       expect(sql).to.equal(
         'NOT EXISTS (SELECT 1 FROM "project" as "projects_ucast0" ' +
-        'WHERE "users"."id" = "projects_ucast0"."userId" AND ("projects_ucast0"."active" = $1))'
+        'WHERE "users"."id" = "projects_ucast0"."userId" AND "projects_ucast0"."active" = $1)'
       )
       expect(params).to.deep.equal([true])
     })
@@ -453,10 +459,10 @@ describe('Condition Interpreter', () => {
 
       expect(sql).to.equal(
         'EXISTS (SELECT 1 FROM "nodes" as "children_ucast0" ' +
-        'WHERE "nodes"."id" = "children_ucast0"."parentId" AND (' +
+        'WHERE "nodes"."id" = "children_ucast0"."parentId" AND ' +
         'EXISTS (SELECT 1 FROM "nodes" as "children_ucast1" ' +
         'WHERE "children_ucast0"."id" = "children_ucast1"."parentId" ' +
-        'AND ("children_ucast1"."active" = $1))))'
+        'AND "children_ucast1"."active" = $1))'
       )
       expect(params).to.deep.equal([true])
       expect(interpret(condition, { ...pg, alias: 'nodes', metadata })).to.deep.equal([sql, params])
