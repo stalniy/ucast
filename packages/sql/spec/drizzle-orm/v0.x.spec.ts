@@ -1,6 +1,6 @@
 import { CompoundCondition, FieldCondition } from '@ucast/core'
 import { and as drizzleAnd, eq as drizzleEq, relations, sql, Table } from 'drizzle-orm'
-import { alias, customType, integer, SQLiteSyncDialect, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { customType, integer, SQLiteSyncDialect, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { MySqlDialect, mysqlTable, int } from 'drizzle-orm/mysql-core'
 import { PgDialect, pgSchema, pgTable, integer as pgInteger } from 'drizzle-orm/pg-core'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
@@ -64,17 +64,9 @@ describe(`${createDrizzleInterpreter.name} v0.x`, () => {
       .to.equal('"users"."camel_case" = ?')
   })
 
-  it('supports configured table aliases and query-specific aliases independently', () => {
+  it('supports query-specific aliases independently', () => {
     const { interpret, dialect, render } = setup()
     const condition = new FieldCondition('eq', 'displayName', 'A')
-    const withAlias = createDrizzleInterpreter({
-      schema: {
-        u: alias(users, 'u'),
-        userRelations
-      }
-    })
-    expect(dialect.sqlToQuery(withAlias(condition, 'u')).sql).to.equal('"u"."display_name" = ?')
-
     const first = interpret(condition, 'users', { alias: 'first' })
     expect(dialect.sqlToQuery(first).sql).to.equal('"first"."display_name" = ?')
 
@@ -141,7 +133,7 @@ describe(`${createDrizzleInterpreter.name} v0.x`, () => {
     expect(() => interpret(new FieldCondition('gt', 'age', 2), 'users')).to.throw('Unable to interpret')
   })
 
-  it('rejects unsupported tables, non-table keys, and relation conditions', () => {
+  it('rejects unsupported tables, non-table keys, and unknown relations', () => {
     const { interpret } = setup()
     const condition = new FieldCondition('eq', 'age', 1)
 
@@ -153,7 +145,7 @@ describe(`${createDrizzleInterpreter.name} v0.x`, () => {
     expect(() => unsupported(condition, 'table')).to.throw('Uknown table type "Table". Supported PgTable, MySqlTable, SQLiteTable')
     ;['some', 'none', 'every'].forEach(operator => {
       expect(() => interpret(new FieldCondition(operator, 'posts', condition), 'users'))
-        .to.throw('Not Supported')
+        .to.throw('Relation metadata for "users.posts" not found')
     })
   })
 
