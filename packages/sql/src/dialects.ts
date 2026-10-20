@@ -1,10 +1,25 @@
-function posixRegex(field: string, placeholder: string, ignoreCase: boolean) {
-  const operator = ignoreCase ? '~*' : '~';
-  return `${field} ${operator} ${placeholder}`;
+const POSIX_REGEXP = Object.freeze({
+  true: {
+    operator: '~*',
+    comparator: '',
+  },
+  false: {
+    operator: '~',
+    comparator: ''
+  }
+} as const);
+
+function posixRegex(ignoreCase: boolean) {
+  const type = ignoreCase ? 'true' : 'false';
+  return POSIX_REGEXP[type];
 }
 
-function regexp(field: string, placeholder: string) {
-  return `${field} regexp ${placeholder} = 1`;
+const REGEXP = Object.freeze({
+  operator: 'regexp',
+  comparator: ' = 1'
+});
+function regexp() {
+  return REGEXP;
 }
 
 const questionPlaceholder = () => '?';
@@ -36,7 +51,7 @@ export const mssql = {
 };
 
 export interface DialectOptions {
-  regexp(field: string, placeholder: string, ignoreCase: boolean): string
+  regexp(ignoreCase: boolean): { operator: string; comparator: string; }
   escapeIdentifier(name: string, relationName?: string): string
   paramPlaceholder(index: number): string
 }

@@ -2,7 +2,7 @@ import { FieldCondition as Field, CompoundCondition } from '@ucast/core'
 import { expect, spy } from './specHelper.ts'
 import {
   createSqlInterpreter,
-  createDefaultSqlBackend,
+  createDefaultSqlComposer,
   eq,
   ne,
   lte,
@@ -19,7 +19,7 @@ import {
   mod,
   regex,
   pg,
-  elemMatch,
+  // elemMatch,
   oracle,
   mysql,
   mssql,
@@ -27,7 +27,8 @@ import {
   someRelation,
   noneRelation,
   everyRelation,
-  type SqlBackend,
+  type SqlComposer,
+  type SqlEntityMetadata,
 } from '../src/index.ts'
 
 const options: SqlQueryOptions = {
@@ -35,200 +36,6 @@ const options: SqlQueryOptions = {
 }
 
 describe('Condition Interpreter', () => {
-  describe('property mapping', () => {
-    const interpret = createSqlInterpreter({ eq, and, some: someRelation })
-
-    it('allows localField to translate model properties into database columns', () => {
-      const condition = new CompoundCondition('and', [
-        new Field('eq', 'displayName', 'Alice'),
-        new Field('eq', 'legacy_column', null),
-      ])
-      const [sql, params] = interpret(condition, {
-        ...pg,
-        rootAlias: 'users',
-        localField: (field, { escape }) => escape(field === 'displayName' ? 'display_name' : field),
-      })
-
-      expect(sql).to.equal('("users"."display_name" = $1 and "users"."legacy_column" is null)')
-      expect(params).to.deep.equal(['Alice'])
-      expect(condition.value[0].field).to.equal('displayName')
-    })
-
-    it('calls localField once with the original model property', () => {
-      const localField = spy((field: string) => pg.escapeIdentifier(field === 'displayName' ? 'display_name' : field))
-      const [sql] = interpret(new Field('eq', 'displayName', 'Ada'), {
-        ...pg,
-        localField,
-      })
-
-      expect(sql).to.equal('"display_name" = $1')
-      expect(localField).to.have.been.called.once
-      expect(localField).to.have.been.called.with('displayName')
-    })
-
-    it('resolves the same condition independently for each model', () => {
-      const condition = new Field('eq', 'label', 'same value')
-      const render = {
-        ...pg,
-        localField: (field: string, { escape, relationContext }: {
-          escape(field: string): string;
-          relationContext: unknown;
-        }) => escape((relationContext as { label: string }).label ?? field),
-      }
-      const first = interpret(condition, render, { label: 'user_label' })[0]
-      const second = interpret(condition, render, { label: 'project_label' })[0]
-
-      expect(first).to.equal('"user_label" = $1')
-      expect(second).to.equal('"project_label" = $1')
-      expect(condition.field).to.equal('label')
-    })
-
-    it('allows localField to map fields of both root and nested models', () => {
-      const user = { displayName: 'user_name', id: 'other_id' }
-      const project = { displayName: 'project_title', id: 'other_project_id' }
-      const deadline = { displayName: 'deadline_title' }
-      const condition = new CompoundCondition('and', [
-        new Field('eq', 'displayName', 'Alice'),
-        new Field('some', 'projects', new CompoundCondition('and', [
-          new Field('eq', 'displayName', 'Launch'),
-          new Field('some', 'deadlines', new Field('eq', 'displayName', 'Tomorrow')),
-        ])),
-      ])
-      const [sql, params] = interpret(condition, {
-        ...pg,
-        rootAlias: 'users',
-        localField: (field, { escape, relationContext }) => escape(
-          (relationContext as Record<string, string>)[field] ?? field,
-        ),
-        getRelationMetadata: name => ({
-          parentField: 'id',
-          relationField: name === 'projects' ? 'user_id' : 'project_id',
-          relationTable: name,
-          relationContext: name === 'projects' ? project : deadline,
-        }),
-      }, user)
-
-      expect(sql).to.equal([
-        '("users"."user_name" = $1 and EXISTS (SELECT 1 FROM "projects" as "projects_0"',
-        'WHERE "users"."other_id" = "projects_0"."user_id"',
-        'AND (("projects_0"."project_title" = $2 and EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1"',
-        'WHERE "projects_0"."other_project_id" = "deadlines_1"."project_id"',
-        'AND ("deadlines_1"."deadline_title" = $3))))))',
-      ].join(' '))
-      expect(params).to.deep.equal(['Alice', 'Launch', 'Tomorrow'])
-    })
-
-    it('passes the prefixed field, escape helper, and current model context to localField', () => {
-      const rootContext = { displayName: 'display_name' }
-      const localField = spy((field: string) => pg.escapeIdentifier(
-        field === 'profile.displayName' ? 'profile_display_name' : field,
-      ))
-      const mapped = createSqlInterpreter({ eq, elemMatch })
-      const [sql, params] = mapped(
-        new Field('elemMatch', 'profile', new Field('eq', 'displayName', 'Ada')),
-        {
-          ...pg,
-          localField,
-        },
-        rootContext,
-      )
-
-      expect(sql).to.equal('"profile_display_name" = $1')
-      expect(params).to.deep.equal(['Ada'])
-      expect(localField).to.have.been.called.once
-      expect(localField).to.have.been.called.with('profile.displayName', {
-        escape: pg.escapeIdentifier,
-        relationContext: rootContext,
-      })
-    })
-
-    const scalarCases: [string, unknown, string][] = [
-      ['eq', 'Ada', '"display_name" = $1'],
-      ['ne', 'Ada', '"display_name" <> $1'],
-      ['lt', 1, '"display_name" < $1'],
-      ['lte', 1, '"display_name" <= $1'],
-      ['gt', 1, '"display_name" > $1'],
-      ['gte', 1, '"display_name" >= $1'],
-      ['eq', null, '"display_name" is null'],
-      ['ne', null, '"display_name" is not null'],
-      ['exists', true, '"display_name" is not null'],
-      ['exists', false, '"display_name" is null'],
-      ['within', ['Ada', 'Lin'], '"display_name" in($1, $2)'],
-      ['nin', ['Ada'], '"display_name" not in($1)'],
-      ['mod', [2, 0], 'mod("display_name", $1) = $2'],
-      ['regex', /Ada/i, '"display_name" ~* $1'],
-    ]
-
-    scalarCases.forEach(([operator, value, expectedSql]) => {
-      it(`uses localField for ${operator} with ${String(value)}`, () => {
-        const localField = spy(() => '"display_name"')
-        const mapped = createSqlInterpreter({
-          eq, ne, lt, lte, gt, gte, exists, within, nin, mod, regex,
-        })
-        const [sql] = mapped(new Field(operator, 'displayName', value), { ...pg, localField })
-
-        expect(sql).to.equal(expectedSql)
-        expect(localField).to.have.been.called.once
-        expect(localField).to.have.been.called.with('displayName')
-      })
-    })
-
-    it('allows custom builders to map parent and related fields through localField', () => {
-      const mapped = createSqlInterpreter({ eq, some: someRelation })
-      const parent = { tenantId: 'tenant_id' }
-      const related = { ownerId: 'owner_id', id: 'physical_id' }
-      const [sql] = mapped(new Field('some', 'records', new Field('eq', 'id', 1)), {
-        ...pg,
-        rootAlias: 'parents',
-        localField: (field, { escape, relationContext }) => escape(
-          (relationContext as Record<string, string>)[field] ?? field,
-        ),
-        getRelationMetadata: () => ({
-          relationContext: related,
-          buildRelationQuery: relation =>
-            `SELECT 1 FROM "records" as "${relation.relationAlias}"` +
-            ` WHERE ${relation.parentField('tenantId')} = ${relation.relationField('ownerId')}` +
-            ` AND (${relation.conditionSql()})`,
-        }),
-      }, parent)
-
-      expect(sql).to.contain('"parents"."tenant_id" = "records_0"."owner_id"')
-      expect(sql).to.contain('"records_0"."physical_id" = $1')
-    })
-
-    it('passes each relation correlation field to localField with its model context', () => {
-      const mapped = createSqlInterpreter({ eq, some: someRelation })
-      const parent = { tenantId: 'tenant_id' }
-      const related = { parentId: 'parent_id', displayName: 'display_name' }
-      const localField = spy((field: string, { escape, relationContext }: {
-        escape(field: string): string;
-        relationContext: unknown;
-      }) => escape((relationContext as Record<string, string>)[field] ?? field))
-      const [sql] = mapped(new Field('some', 'records', new Field('eq', 'displayName', 'Ada')), {
-        ...pg,
-        rootAlias: 'parents',
-        localField,
-        getRelationMetadata: () => ({
-          relationContext: related,
-          relationTable: 'records',
-          parentField: 'tenantId',
-          relationField: 'parentId',
-        }),
-      }, parent)
-
-      expect(sql).to.contain('"parents"."tenant_id" = "records_0"."parent_id"')
-      expect(sql).to.contain('"records_0"."display_name" = $1')
-      expect(localField).to.have.been.called.with('tenantId', {
-        escape: pg.escapeIdentifier,
-        relationContext: parent,
-      })
-      expect(localField).to.have.been.called.with('parentId', {
-        escape: pg.escapeIdentifier,
-        relationContext: related,
-      })
-    })
-  })
-
   describe('primitive operators', () => {
     const interpret = createSqlInterpreter({ eq, ne, lt, lte, gt, gte, mod })
 
@@ -439,6 +246,13 @@ describe('Condition Interpreter', () => {
   describe('regex', () => {
     const interpret = createSqlInterpreter({ regex })
 
+    it('generates case-insensitive posix operator', () => {
+      const [sql, params] = interpret(new Field('regex', 'email', /pattern/i), pg)
+
+      expect(sql).to.equal('"email" ~* $1')
+      expect(params).to.deep.equal(['pattern'])
+    })
+
     it('generates posix operator for PostgreSQL', () => {
       const condition = new Field('regex', 'email', /@/)
       const [sql, params] = interpret(condition, { ...pg })
@@ -471,58 +285,235 @@ describe('Condition Interpreter', () => {
     })
   })
 
-  describe('relation conditions', () => {
-    const interpret = createSqlInterpreter({
-      eq,
-      some: someRelation,
-      every: everyRelation,
-      none: noneRelation
+  describe('property mapping', () => {
+    const interpret = createSqlInterpreter({ eq, and, some: someRelation })
+
+    it('isolates child metadata and preserves parent mapping after a relation', () => {
+      const condition = new CompoundCondition('and', [
+        new Field('some', 'projects', new Field('eq', 'displayName', 'Launch')),
+        new Field('eq', 'displayName', 'Alice'),
+      ])
+      const [sql, params] = interpret(condition, {
+        ...pg,
+        alias: 'users',
+        metadata: {
+          toColumnName: name => `user_${name}`,
+          resolveRelation: () => ({
+            relatedTable: 'projects',
+            ownField: 'id',
+            relatedField: 'userId',
+            metadata: {},
+          }),
+        },
+      })
+
+      expect(sql).to.equal(
+        '(EXISTS (SELECT 1 FROM "projects" as "projects_ucast0" ' +
+        'WHERE "users"."user_id" = "projects_ucast0"."userId" ' +
+        'AND ("projects_ucast0"."displayName" = $1)) and "users"."user_displayName" = $2)'
+      )
+      expect(params).to.deep.equal(['Launch', 'Alice'])
     })
-    const condition = new Field('some', 'wallets', new Field('eq', 'balance', 5))
 
-    it('generates EXISTS query for simple relation metadata', () => {
-      const interpreterOptions: SqlQueryOptions = {
-        ...options,
-        rootAlias: 'users',
-        getRelationMetadata: () => ({
-          parentField: 'id',
-          relationField: 'userId',
-          relationTable: 'user_wallets',
-        })
-      }
-      const [sql, params] = interpret(condition, interpreterOptions)
+    it('allows `toColumnName` to translate model properties into database columns', () => {
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'displayName', 'Alice'),
+        new Field('eq', 'legacy_column', null),
+      ])
+      const toColumnName = spy((name: string) => ({ displayName: 'display_name' })[name] ?? name)
+      const [sql, params] = interpret(condition, {
+        ...pg,
+        alias: 'users',
+        metadata: { toColumnName }
+      })
 
-      expect(sql).to.equal('EXISTS (SELECT 1 FROM "user_wallets" as "wallets_0" WHERE "users"."id" = "wallets_0"."userId" AND ("wallets_0"."balance" = $1))')
-      expect(params).to.deep.equal([5])
+      expect(sql).to.equal('("users"."display_name" = $1 and "users"."legacy_column" is null)')
+      expect(params).to.deep.equal(['Alice'])
+      expect(toColumnName).to.have.been.called.exactly(2)
+      expect(toColumnName).to.have.been.called.with('displayName')
+      expect(toColumnName).to.have.been.called.with('legacy_column')
     })
 
-    it('allows custom relation SQL to add parameters before nested condition SQL', () => {
-      const interpreterOptions: SqlQueryOptions = {
-        ...options,
-        rootAlias: 'users',
-        getRelationMetadata: () => ({
-          buildRelationQuery(relation) {
-            return `SELECT 1 FROM ${relation.escapeIdentifier('wallets')} as ${relation.escapeIdentifier(relation.relationAlias)}` +
-            ` WHERE ${relation.parentField('id')} = ${relation.relationField('userId')}` +
-            ` AND ${relation.relationField('kind')} = ${relation.param('primary')}` +
-            ` AND (${relation.conditionSql()})`
-          }
-        })
-      }
-      const [sql, params] = interpret(condition, interpreterOptions)
+    it('calls `toColumnName` corresponding to its entity', () => {
+      const userColumns: Record<string, string> = { displayName: 'user_name', id: 'other_id' }
+      const projectColumns: Record<string, string> = { displayName: 'project_title', id: 'other_project_id', userId: 'user_id' }
+      const deadlineColumns: Record<string, string> = { displayName: 'deadline_title', projectId: 'project_id' }
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'displayName', 'Alice'),
+        new Field('some', 'projects', new CompoundCondition('and', [
+          new Field('eq', 'displayName', 'Launch'),
+          new Field('some', 'deadlines', new Field('eq', 'displayName', 'Tomorrow')),
+        ])),
+      ])
+      const [sql, params] = interpret(condition, {
+        ...pg,
+        alias: 'users',
+        metadata: {
+          toColumnName: (field) => userColumns[field],
+          resolveRelation: () => ({
+            relatedTable: 'projects',
+            relatedField: 'userId',
+            ownField: 'id',
+            metadata: {
+              toColumnName: (field) => projectColumns[field],
+              resolveRelation: () => ({
+                relatedTable: 'deadlines',
+                ownField: 'id',
+                relatedField: 'projectId',
+                metadata: {
+                  toColumnName: (name) => deadlineColumns[name],
+                }
+              })
+            }
+          })
+        }
+      })
 
-      expect(sql).to.equal('EXISTS (SELECT 1 FROM "wallets" as "wallets_0" WHERE "users"."id" = "wallets_0"."userId" AND "wallets_0"."kind" = $1 AND ("wallets_0"."balance" = $2))')
-      expect(params).to.deep.equal(['primary', 5])
+      expect(sql).to.equal(
+        '("users"."user_name" = $1 and EXISTS (' +
+        'SELECT 1 FROM "projects" as "projects_ucast0" WHERE "users"."other_id" = "projects_ucast0"."user_id" ' +
+        'AND (' +
+        '("projects_ucast0"."project_title" = $2 and EXISTS (' +
+        'SELECT 1 FROM "deadlines" as "deadlines_ucast1" WHERE "projects_ucast0"."other_project_id" = "deadlines_ucast1"."project_id" ' +
+        'AND ("deadlines_ucast1"."deadline_title" = $3))))))'
+      )
+      expect(params).to.deep.equal(['Alice', 'Launch', 'Tomorrow'])
+    })
+  })
+
+  describe('relation operators', () => {
+    const interpret = createSqlInterpreter({ eq, and, some: someRelation, none: noneRelation, every: everyRelation })
+    const relationOptions: SqlQueryOptions = {
+      ...pg,
+      alias: 'users',
+      metadata: {
+        resolveRelation: name => name === 'projects' ? {
+          relatedTable: 'project',
+          ownField: 'id',
+          relatedField: 'userId',
+          metadata: {},
+        } : undefined,
+      },
+    }
+
+    it('generates EXISTS condition for "some" operator', () => {
+      const [sql, params] = interpret(new Field('some', 'projects', new Field('eq', 'active', true)), relationOptions)
+
+      expect(sql).to.equal(
+        'EXISTS (SELECT 1 FROM "project" as "projects_ucast0" ' +
+        'WHERE "users"."id" = "projects_ucast0"."userId" AND ("projects_ucast0"."active" = $1))'
+      )
+      expect(params).to.deep.equal([true])
+    })
+
+    it('generates NOT EXISTS for "none" operator', () => {
+      const [sql, params] = interpret(new Field('none', 'projects', new Field('eq', 'active', true)), relationOptions)
+
+      expect(sql).to.equal(
+        'NOT EXISTS (SELECT 1 FROM "project" as "projects_ucast0" ' +
+        'WHERE "users"."id" = "projects_ucast0"."userId" AND ("projects_ucast0"."active" = $1))'
+      )
+      expect(params).to.deep.equal([true])
+    })
+
+    it('generates NOT EXISTS with an inverted predicate for "every" operator', () => {
+      const condition = new Field('every', 'projects', new CompoundCondition('and', [
+        new Field('eq', 'active', true),
+        new Field('eq', 'status', 'published'),
+      ]))
+      const [sql, params] = interpret(condition, relationOptions)
+
+      expect(sql).to.equal(
+        'NOT EXISTS (SELECT 1 FROM "project" as "projects_ucast0" ' +
+        'WHERE "users"."id" = "projects_ucast0"."userId" ' +
+        'AND NOT (("projects_ucast0"."active" = $1 and "projects_ucast0"."status" = $2)))'
+      )
+      expect(params).to.deep.equal([true, 'published'])
+    })
+
+    it('throws exception if relation cannot be found', () => {
+      const condition = new Field('some', 'missing', new Field('eq', 'active', true))
+
+      expect(() => interpret(condition, relationOptions)).to.throw('Relation metadata for "users.missing" not found')
+      expect(() => interpret(condition, pg)).to.throw('Relation metadata for "missing" not found')
+    })
+
+    it('uses distinct aliases for nested relations with the same name', () => {
+      const metadata: SqlEntityMetadata = {
+        resolveRelation: () => ({
+          relatedTable: 'nodes',
+          ownField: 'id',
+          relatedField: 'parentId',
+          metadata,
+        }),
+      }
+      const condition = new Field('some', 'children',
+        new Field('some', 'children', new Field('eq', 'active', true)))
+      const [sql, params] = interpret(condition, { ...pg, alias: 'nodes', metadata })
+
+      expect(sql).to.equal(
+        'EXISTS (SELECT 1 FROM "nodes" as "children_ucast0" ' +
+        'WHERE "nodes"."id" = "children_ucast0"."parentId" AND (' +
+        'EXISTS (SELECT 1 FROM "nodes" as "children_ucast1" ' +
+        'WHERE "children_ucast0"."id" = "children_ucast1"."parentId" ' +
+        'AND ("children_ucast1"."active" = $1))))'
+      )
+      expect(params).to.deep.equal([true])
+      expect(interpret(condition, { ...pg, alias: 'nodes', metadata })).to.deep.equal([sql, params])
     })
   })
 
   describe('SQL interpreter', () => {
-    const createBackend = () => spy.object(createDefaultSqlBackend(pg))
+    it('creates a composer for each call with query options and finalizes the fragment', () => {
+      const composers: SqlComposer<string>[] = []
+      const result = spy((fragment: string) => ({ sql: fragment }))
+      const createSqlComposer = spy((sqlOptions: SqlQueryOptions) => {
+        const composer = { ...createDefaultSqlComposer(sqlOptions), result }
+        composers.push(composer)
+        return composer
+      })
+      const interpret = createSqlInterpreter({ eq }, { createSqlComposer })
+      const condition = new Field('eq', 'name', 'Ada')
+
+      expect(interpret(condition, options)).to.deep.equal({ sql: '"name" = $1' })
+      expect(interpret(condition, options)).to.deep.equal({ sql: '"name" = $1' })
+      expect(createSqlComposer).to.have.been.called.exactly(2)
+      expect(createSqlComposer).to.have.been.called.with.exactly(options)
+      expect(composers[0]).not.to.equal(composers[1])
+      expect(result).to.have.been.called.exactly(2)
+      expect(result).to.have.been.called.with.exactly('"name" = $1')
+    })
+
+    it('returns non-string compound fragments directly when the composer has no result method', () => {
+      type Fragment = { text: string }
+      const composer: SqlComposer<Fragment> = {
+        field: name => ({ text: name }),
+        param: () => ({ text: '?' }),
+        manyParams: () => { throw new Error('not used') },
+        relation: () => { throw new Error('not used') },
+        regexp: pg.regexp,
+        raw: text => ({ text }),
+        join: (fragments, separator) => ({
+          text: fragments.map(fragment => fragment.text).join(separator.text),
+        }),
+        sql: (strings, ...values) => ({
+          text: strings.reduce((text, part, index) => text + (index ? (values[index - 1] as Fragment).text : '') + part, ''),
+        }),
+      }
+      const interpret = createSqlInterpreter<Fragment, Fragment>({ eq, and }, {
+        createSqlComposer: () => composer,
+      })
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'name', 'Ada'),
+        new Field('eq', 'active', true),
+      ])
+
+      expect(interpret(condition, options)).to.deep.equal({ text: '(name = ? and active = ?)' })
+    })
 
     it('uses `getInterpreterName` to detect interpreter name from condition', () => {
       const interpret = createSqlInterpreter({
-        $eq: (_condition, query, { sql, param }) =>
-          query.where(sql`chosen = ${param('empty')}`),
+        $eq: (_condition, { sql, param }) => sql`chosen = ${param('empty')}`,
       }, {
         getInterpreterName: (condition) => `$${condition.operator}`,
       })
@@ -535,108 +526,19 @@ describe('Condition Interpreter', () => {
       const interpret = createSqlInterpreter({ eq, and, someRelation })
       const condition = new CompoundCondition('and', [
         new Field('eq', 'name', 'Ada'),
-        new Field('someRelation', 'projects', new Field('eq', 'active', true)),
         new Field('eq', 'role', 'admin'),
       ])
-      const sqlOptions = {
+      const sqlOptions: SqlQueryOptions = {
         ...pg,
-        rootAlias: 'users',
-        getRelationMetadata: () => ({
-          parentField: 'id',
-          relationField: 'user_id',
-          relationTable: 'projects',
-        }),
-      }
-      const first = interpret(condition, sqlOptions)
-      const second = interpret(condition, sqlOptions)
-      expect(first).to.deep.equal(second)
-      expect(first[0]).to.contain('$1')
-      expect(first[0]).to.contain('$2')
-      expect(first[0]).to.contain('$3')
-      expect(first[1]).to.deep.equal(['Ada', true, 'admin'])
-    })
-
-    it('shares one sql backend across root, Boolean and relation children per call', () => {
-      const backends: SqlBackend<string, [string, unknown[]]>[] = []
-      const backend = spy(() => {
-        const instance = createBackend()
-        backends.push(instance)
-        return instance
-      })
-      const interpret = createSqlInterpreter({ eq, and, someRelation }, {
-        backend,
-      })
-      const condition = new CompoundCondition('and', [
-        new Field('eq', 'name', 'Ada'),
-        new Field('someRelation', 'projects', new Field('eq', 'active', true)),
-      ])
-      const sqlOptions = {
-        ...pg,
-        rootAlias: 'users',
-        getRelationMetadata: () => ({
-          parentField: 'id', relationField: 'user_id', relationTable: 'projects',
-        }),
+        alias: 'users',
       }
       const first = interpret(condition, sqlOptions)
       const second = interpret(condition, sqlOptions)
 
-      expect(backend).to.have.been.called.exactly(2)
-      expect(backends[0]).not.to.equal(backends[1])
       expect(first).to.deep.equal(second)
-      expect(first[0]).to.equal('("users"."name" = $1 and EXISTS (SELECT 1 FROM "projects" as "projects_0" WHERE "users"."id" = "projects_0"."user_id" AND ("projects_0"."active" = $2)))')
-      expect(first[1]).to.deep.equal(['Ada', true])
-      for (const instance of backends) {
-        expect(instance.param).to.have.been.called.exactly(2)
-        expect(instance.param).to.have.been.called.with('Ada')
-        expect(instance.param).to.have.been.called.with(true)
-        expect(instance.result).to.have.been.called.once
-      }
-    })
-
-    it('keeps backend-owned helper identity through custom relation builders', () => {
-      const instance = createBackend()
-      const interpret = createSqlInterpreter({ someRelation, eq }, { backend: () => instance })
-      const [sql, params] = interpret(
-        new Field('someRelation', 'projects', new Field('eq', 'active', true)),
-        {
-          ...pg,
-          getRelationMetadata: () => ({
-            buildRelationQuery(context) {
-              expect(context.sql).to.equal(instance.sql)
-              expect(context.raw).to.equal(instance.raw)
-              expect(context.param).to.equal(instance.param)
-              expect(context.manyParams).to.equal(instance.manyParams)
-              expect(context.join).to.equal(instance.join)
-              expect(context.regexp).to.equal(instance.regexp)
-              return context.sql`SELECT 1 WHERE ${context.conditionSql()}`
-            },
-          }),
-        }
-      )
-      expect(sql).to.equal('EXISTS (SELECT 1 WHERE "projects_0"."active" = $1)')
-      expect(params).to.deep.equal([true])
-    })
-
-    it('passes native fragments to the backend regexp builder', () => {
-      const field = { raw: '"name"' }
-      const value = { value: 'ada' }
-      const fragment = { regexp: true }
-      const backend: SqlBackend<object, object> = {
-        sql: () => fragment,
-        raw: spy(() => field),
-        param: spy(() => value),
-        manyParams: () => value,
-        join: fragments => fragments[0],
-        regexp: spy(() => fragment),
-        result: result => result,
-      }
-      const interpret = createSqlInterpreter({ regex }, { backend: () => backend })
-      const result = interpret(new Field('regex', 'name', /ada/i), pg)
-
-      expect(backend.raw).to.have.been.called.with('"name"')
-      expect(backend.param).to.have.been.called.with('ada')
-      expect(backend.regexp).to.have.been.called.with.exactly(field, value, true)
-      expect(result).to.equal(fragment)
+      expect(first[0]).to.contain(' $1')
+      expect(first[0]).to.contain(' $2')
+      expect(first[1]).to.deep.equal(['Ada', 'admin'])
     })
   })
 })

@@ -1,11 +1,10 @@
 import * as interpreters from './interpreters.ts';
 
+const { someRelation, noneRelation, everyRelation, ...otherInterpreters } = interpreters;
 export const allInterpreters = {
-  ...interpreters,
+  ...otherInterpreters,
   in: interpreters.within,
-  some: interpreters.someRelation,
-  none: interpreters.noneRelation,
-  every: interpreters.everyRelation,
-  is: interpreters.isRelation,
-  isNot: interpreters.isNotRelation,
+  some: someRelation,
+  none: noneRelation,
+  every: everyRelation,
 };

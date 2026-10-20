@@ -37,11 +37,14 @@ const interpret = createSqlInterpreter({ eq, lt, lte });
 const interpret = createSqlInterpreter(allInterpreters);
 ```
 
-`interpret` is a function that takes up to 3 parameters:
+`interpret` is a function that takes 2 parameters:
 
-1. `Condition`, condition to interpret
-2. `options`, SQL dialect specific options that tells how to escape field names and create placeholders. `@ucast/sql` provides options for the most popular SQL dialects.
-3. `relationContext`, optional, this value is passed to `getRelationMetadata` and `localField` and is useful when integrating with ORMs and their metadata.
+1. `condition`, the UCAST condition to interpret.
+2. `options`, SQL dialect options with optional `alias` and entity `metadata`.
+
+By default, it returns `[sql, params]`: a SQL predicate and its bound values.
+The caller adds the predicate to a query and passes the parameters to the database
+client. Each call starts with fresh parameters and relation aliases.
 
 For the sake of an example, we will create AST manually using `Condition` from `@ucast/core`:
 
@@ -76,12 +79,31 @@ console.log(sql) // ("x" > $1 and "y" < $2)
 console.log(replacements) // [5, 10]
 ```
 
+### Supported operators
+
+`allInterpreters` registers these condition operators:
+
+| Operator | SQL behavior |
+| --- | --- |
+| `eq`, `ne` | `=`, `<>`; `null` becomes `is null`, `is not null` |
+| `lt`, `lte`, `gt`, `gte` | `<`, `<=`, `>`, `>=` |
+| `exists` | `is not null` for a truthy value, `is null` otherwise |
+| `in` (also `within`), `nin` | `in(...)`, `not in(...)`, with one parameter per value |
+| `mod` | `mod(field, divisor) = remainder`, with both values bound |
+| `regex` | Dialect-specific regular expression comparison with the pattern bound |
+| `and`, `or` | Parenthesized conditions joined by `and` or `or` |
+| `not`, `nor` | Negated groups joined by `and` or `or`, respectively |
+| `some`, `none`, `every` | Correlated relation subqueries |
+
+The exported function for `in` is named `within`. The relation functions are
+exported as `someRelation`, `noneRelation`, and `everyRelation`; `allInterpreters`
+registers them under `some`, `none`, and `every`.
+
 ### Map model properties to database columns
 
-Use `localField` to resolve a model property and escape the resulting column.
-It receives the field after existing prefix handling and a helper with the
-current `relationContext` and dialect `escape` function. Return the escaped
-column fragment; the interpreter applies the current query alias.
+Use `metadata.toColumnName` to translate a model property into a column name.
+Return an unescaped name; the composer escapes it and applies the query `alias`.
+Without this callback, field names are used as column names directly.
 
 ```ts
 const columns: Record<string, string> = { displayName: 'display_name' };
@@ -89,64 +111,33 @@ const condition = new FieldCondition('eq', 'displayName', 'Alice');
 
 const [sql, params] = interpret(condition, {
   ...pg,
-  rootAlias: 'users',
-  localField(property, { relationContext, escape }) {
-    const column = (relationContext as Record<string, string>)[property];
-    return escape(column ?? property);
+  alias: 'users',
+  metadata: {
+    toColumnName: name => columns[name] ?? name,
   },
-}, columns);
+});
 
 // sql: '"users"."display_name" = $1'
 // params: ['Alice']
 ```
 
-Use your data layer's mapping primitive or metadata in this callback. Boolean
-conditions keep the current context. Conditions inside a relation use the
-`relationContext` returned by that relation's metadata.
-
-The TypeORM, Sequelize, Objection, and MikroORM adapters resolve condition
-properties from their model metadata automatically, including configured column
-names. A property resolving to more than one physical column throws an explicit
-unsupported-mapping error. A field that the model does not resolve remains a
-literal SQL identifier. For unusual property/column name collisions, the property
-mapping takes precedence.
-
-The `parentField` and `relationField` helpers in custom relation builders use
-`localField` with the parent and related model contexts, respectively. They
-resolve and escape fields consistently with condition predicates, then apply
-the appropriate query alias:
-
-```ts
-buildRelationQuery(relation) {
-  return relation.sql`SELECT 1 FROM ${relation.escapeIdentifier('tenant_projects')} as ${relation.escapeIdentifier(relation.relationAlias)} WHERE ${relation.parentField('tenantId')} = ${relation.relationField('ownerId')} AND (${relation.conditionSql()})`;
-}
-```
-
-The ORM adapters use join fields supplied by their data layer. An unresolved
-field remains a literal column name through the adapter's normal fallback.
-Table names, relation names, and aliases remain outside property mapping.
+Each relation has its own metadata. Conditions and join fields use the mapping
+for their corresponding entity.
 
 ### Conditions on related tables
 
 Use `some`, `none`, and `every` to express conditions against related records:
 
-* `some` checks that at least one related record matches the condition
-* `none` checks that no related records match the condition
-* `every` checks that no related record violates the condition
+* `some` checks that at least one related record matches the condition.
+* `none` checks that no related records match the condition.
+* `every` checks that no related record makes the negated condition true.
 
-Relation operators need metadata that describes how the current table is connected to the related table. ORM integrations provide this automatically, so in most cases you can use relation conditions directly:
+`every` uses SQL negation, including SQL's usual NULL behavior. Both `none` and
+`every` match when there are no related records.
 
-```js
-import { FieldCondition } from '@ucast/core';
-
-const condition = new FieldCondition(
-  'some',
-  'projects',
-  new FieldCondition('eq', 'active', true),
-);
-```
-
-When using `createSqlInterpreter` directly, or when your domain model is not mapped 1-to-1 to database tables, provide `getRelationMetadata`:
+When using the default composer, provide `metadata.resolveRelation` to describe
+how the current table connects to the related table. Use an `alias` that matches
+the outer query so the subquery can refer to its columns unambiguously.
 
 ```js
 import { FieldCondition } from '@ucast/core';
@@ -161,60 +152,80 @@ const condition = new FieldCondition(
 
 const [sql, params] = interpret(condition, {
   ...pg,
-  rootAlias: 'users',
-  getRelationMetadata(relationName) {
-    if (relationName !== 'projects') {
-      return undefined;
-    }
+  alias: 'users',
+  metadata: {
+    resolveRelation(name) {
+      if (name !== 'projects') {
+        return undefined;
+      }
 
-    return {
-      parentField: 'id',
-      relationField: 'user_id',
-      relationTable: 'projects',
-    };
+      return {
+        ownField: 'id',
+        relatedField: 'user_id',
+        relatedTable: 'projects',
+      };
+    },
   },
 });
 
 console.log(sql);
-// EXISTS (SELECT 1 FROM "projects" as "projects_0" WHERE "users"."id" = "projects_0"."user_id" AND ("projects_0"."active" = $1))
+// EXISTS (SELECT 1 FROM "projects" as "projects_ucast0" WHERE "users"."id" = "projects_ucast0"."user_id" AND ("projects_ucast0"."active" = $1))
 console.log(params); // [true]
 ```
 
-For composite keys, many-to-many relations, or permission-specific joins, return custom metadata with `buildRelationQuery`. Use `relationContext` when nested relation conditions need to resolve metadata from the related entity.
+Relation metadata contains:
 
-### SQL fragment backends
+* `ownField`: the join field on the current entity.
+* `relatedField`: the join field on the related entity.
+* `relatedTable`: the related table name.
+* `metadata`: the related entity's column mapping and relation resolver. Use `{}`
+  when neither is needed.
 
-`createSqlInterpreter` creates one backend for each interpretation call. Without a
-`backend` option, it creates the built-in string backend and returns `[sql, parameters]`.
-The backend owns its parameter array and placeholder sequence, so repeated calls
-start with a fresh `$1`. Root and child queries use the same backend instance.
+Nested relations use the related entity's `metadata.resolveRelation`. All scopes
+share the root parameter sequence, and generated relation aliases use a counter
+shared across the interpretation. An unresolved relation throws an error.
 
-For native fragments, provide a backend factory in the `createSqlInterpreter` options. It returns a
-`SqlBackend<Fragment, Result>` with `sql`, `raw`, `param`, `manyParams`, `join`, and
-`result` helpers. `sql` is a tagged function that the backend binds to its own state;
-`raw` marks trusted SQL syntax or escaped identifiers, while `param` binds values.
-Custom operators and relation builders receive those same helpers on their context.
-The interpreter calls `result` once after the root query is complete; nested queries
-pass fragments directly to their parents.
+The default composer supports a single equality join per relation. For composite
+keys, many-to-many joins, or other custom relation queries, provide a custom
+composer with its own `relation` implementation.
+
+### SQL composers
+
+`createSqlInterpreter` creates a composer for each interpretation call. The default
+string composer returns `[sql, params]`. To use another fragment representation or
+result shape, pass `createSqlComposer` in the interpreter options:
 
 ```ts
-const interpret = createSqlInterpreter<MyFragment, MyFragment>(allInterpreters, {
-  backend: () => new MyBackend(),
-})
-const predicate = interpret(condition, pg)
+const interpret = createSqlInterpreter<SQL>(allInterpreters, {
+  createSqlComposer: options => new DrizzleComposer(options),
+});
+const result = interpret(condition, pg);
 ```
 
-Direct `Query` construction requires an explicit backend instance, for example
-`new Query(pg, createDefaultSqlBackend(pg))`. A native backend needs `regexp` to
-interpret regex conditions. Dialect `escapeIdentifier(name)` quotes identifiers;
-relation builders use `context.escapeIdentifier(name)` for an identifier fragment.
-String relation builders remain valid with the default backend.
+`SQL`, and `DrizzleComposer` above represent your own types and
+implementation. The factory receives the SQL query options and returns a
+`SqlComposer<Fragment>`, which provides:
+
+| Helper | Purpose |
+| --- | --- |
+| `field(name)` | Map, escape, and qualify a field |
+| `param(conditionOrValue)` | Bind a condition's value or a raw value |
+| `manyParams(conditionOrValues)` | Bind an array of values |
+| `sql` | Compose fragments with a tagged template |
+| `raw(sql)` | Create a fragment from trusted SQL syntax |
+| `join(fragments, separator)` | Join fragments using a fragment separator |
+| `regexp(ignoreCase)` | Return the dialect's regex operator and comparator |
+| `relation(name)` | Return a related `composer` and `subquery(predicate, invertCondition?)` |
+
+`createDefaultSqlComposer(options)` is exported for extending
+the built-in string composer.
 
 ### Custom interpreter
 
-Sometimes you may want to add custom operator or restrict supported operators. To do this, just pass desired operators manually:
+To restrict supported operators, pass only the desired functions:
 
 ```js
+import { FieldCondition } from '@ucast/core';
 import { createSqlInterpreter, eq, lt, gt, pg } from '@ucast/sql';
 
 const interpret = createSqlInterpreter({ eq, lt, gt });
@@ -223,20 +234,23 @@ const condition = new FieldCondition('eq', 'x', true);
 interpret(condition, pg);
 ```
 
-To add a custom operator, all you need to do is to create a function that applies `Condition` to instance of `Query` object. Let's create an operator, that adds condition on `publishedAt` field:
+To add a custom operator, create a function that receives a condition and a
+composer and returns a SQL fragment. A third argument provides
+`interpret(condition, composer)` for recursively interpreting child conditions.
+Let's create an operator that adds a condition on `publishedAt`:
 
 ```ts
 import { DocumentCondition } from '@ucast/core';
 import {
-  SqlOperator,
+  type SqlOperator,
   createSqlInterpreter,
   allInterpreters,
   pg,
 } from '@ucast/sql';
 
-const isActive: SqlOperator<DocumentCondition<boolean>> = (node, query, context) => {
+const isActive: SqlOperator<DocumentCondition<boolean>> = (node, { sql, field, raw, param }) => {
   const operator = node.value ? ' >= ' : ' < ';
-  return query.where(context.sql`${query.field('publishedAt')}${context.raw(operator)}${context.param(new Date())}`);
+  return sql`${field('publishedAt')}${raw(operator)}${param(new Date())}`;
 };
 const interpret = createSqlInterpreter({
   ...allInterpreters,
@@ -245,9 +259,13 @@ const interpret = createSqlInterpreter({
 const condition = new DocumentCondition('isActive', true);
 const [sql, params] = interpret(condition, pg);
 
-console.log(sql) // "publishedAt" >= $1
-console.log(params) // [new Date()]
+console.log(sql); // "publishedAt" >= $1
+console.log(params); // [new Date()]
 ```
+
+Use `param` for values and `field` for identifiers; reserve `raw` for trusted SQL
+syntax. If condition names differ from registered operator names, pass
+`getInterpreterName(condition, options)` in the `createSqlInterpreter` options.
 
 ## Integrations
 
