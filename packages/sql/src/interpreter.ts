@@ -5,9 +5,13 @@ import {
 } from '@ucast/core';
 import { type DialectOptions } from './dialects.ts';
 
-export function createSqlInterpreter<F = string, R = SqlStringComposerResult>(
+export function createSqlInterpreter<
+  F = string,
+  R = SqlStringComposerResult,
+  O extends SqlQueryOptions = SqlQueryOptions
+>(
   operators: Record<string, SqlOperator<any>>,
-  options?: SqlInterpreterOptions<F, R>
+  options?: SqlInterpreterOptions<F, R, O>
 ) {
   const interpret = (condition: Condition, composer: SqlComposer<F>): F => {
     const name = options?.getInterpreterName
@@ -21,7 +25,7 @@ export function createSqlInterpreter<F = string, R = SqlStringComposerResult>(
   };
   const createSqlComposer = (options?.createSqlComposer ?? createDefaultSqlComposer) as Required<SqlInterpreterOptions<F, R>>['createSqlComposer'];
 
-  return (condition: Condition, sqlOptions: SqlQueryOptions): R => {
+  return (condition: Condition, sqlOptions: O): R => {
     const composer = createSqlComposer(sqlOptions);
     const fragment = interpret(condition, composer);
 
@@ -33,9 +37,9 @@ export function createSqlInterpreter<F = string, R = SqlStringComposerResult>(
   };
 }
 
-export interface SqlInterpreterOptions<F, R = F> {
+export interface SqlInterpreterOptions<F, R = F, O extends SqlQueryOptions = SqlQueryOptions> {
   getInterpreterName?: InterpreterOptions['getInterpreterName'];
-  createSqlComposer?(options: SqlQueryOptions): SqlComposition<F, R>;
+  createSqlComposer?(options: O): SqlComposition<F, R>;
 }
 
 export interface SqlComposer<F> {

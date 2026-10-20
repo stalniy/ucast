@@ -23,7 +23,11 @@ export function createSequelizeInterpreter(interpreters: Record<string, SqlOpera
     paramPlaceholder: (index) => `:ucast_${callNumber}_${index}`
   });
 
-  return (condition: Condition, Model: ModelStatic<any>, queryOptions?: SequelizeQueryOptions): SequelizeInterpretationResult => {
+  return (
+    condition: Condition,
+    Model: ModelStatic<any>,
+    queryOptions?: SequelizeQueryOptions
+  ): SequelizeInterpretationResult => {
     const dialect = Model.sequelize!.getDialect() as keyof typeof numericPlaceholderDialects;
     const options = queryOptions?.replacementMode === 'named'
       ? namedPlaceholderDialects[dialect]

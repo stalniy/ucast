@@ -271,6 +271,54 @@ syntax. If condition names differ from registered operator names, pass
 
 This library provides sub-modules that allows quickly integrate SQL interpreter with popular ORMs:
 
+### Drizzle ORM 0.45.x
+
+Install `drizzle-orm` alongside `@ucast/sql`. The adapter targets 0.45.x and is
+validated with 0.45.4. PostgreSQL, MySQL, and SQLite tables are supported; the
+selected table determines the dialect.
+
+```ts
+import { createInterpreter } from '@ucast/sql/drizzle-orm';
+import { FieldCondition } from '@ucast/core';
+import { and, eq, relations } from 'drizzle-orm';
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+const users = sqliteTable('users', {
+  id: integer('id'),
+  displayName: text('display_name'),
+});
+const userRelations = relations(users, () => ({}));
+const interpret = createInterpreter({ schema: { users, userRelations } });
+const predicate = interpret(new FieldCondition('eq', 'displayName', 'Alice'), 'users');
+db.select().from(users).where(and(eq(users.id, 1), predicate));
+```
+
+Configure the schema once. It may contain both tables and native relation
+declarations, but `interpret(condition, tableKey, options?)` accepts only table
+keys. Unknown keys fail at runtime. The result is a synchronous, composable
+Drizzle `SQL` predicate usable in SELECT, UPDATE, and DELETE queries.
+
+For aliased queries, include an aliased table in the schema or pass
+`{ rootAlias: 'u' }` as the third interpretation argument and use the same alias
+in your query. Resolved fields retain native Drizzle columns, including column
+names, schema qualification, casing, and comparison/membership encoders.
+Unresolved properties become literal, escaped identifiers qualified with the
+current table or alias; dots in a property do not introduce a path.
+
+Scalar and Boolean operators reuse the standard SQL interpreters. Pass an
+optional second factory argument to select or extend them:
+`createInterpreter({ schema }, { eq, lt })`. Values are bound parameters; direct
+Drizzle `SQL` objects as condition values are rejected because Drizzle would
+otherwise treat them as executable syntax. Custom column encoders retain their
+native behavior. Regular-expression patterns and modulo operands do not use
+column encoders. SQLite regex execution requires an installed `regexp` database
+function, as with the generic SQL interpreter.
+
+Relation operators (`some`, `none`, and `every`) currently throw
+`Error('Not Supported')`. Relation declarations may remain in the configured
+schema for future relation support. Drizzle 1.x is outside this adapter's current
+compatibility scope.
+
 ### [Sequelize](https://sequelize.org/)
 
 ```js
