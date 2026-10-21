@@ -1,5 +1,5 @@
 import { FieldCondition, CompoundCondition, buildAnd } from '@ucast/core'
-import { Model, QueryBuilder, snakeCaseMappers } from 'objection'
+import { Model, raw, snakeCaseMappers } from 'objection'
 import Knex from 'knex'
 import { createObjectionInterpreter, objectionToSqlMetadata, interpret } from '../src/lib/objection.ts'
 import { expect, linearize } from './specHelper.ts'
@@ -17,18 +17,21 @@ describe(createObjectionInterpreter.name, () => {
   const { Project, User } = orm
 
   it('maps a model property through its configured column mapper', () => {
-    const query = interpret(new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile.query())
+    const query = orm.Profile.query().where(interpret(
+      new FieldCondition('eq', 'displayName', 'Ada'), orm.Profile,
+    ))
     expect(query.toKnexQuery().toString()).to.contain('"display_name" = \'Ada\'')
   })
 
   it('maps a model property to its configured database column for related models', () => {
-    const query = interpret(
+    const query = orm.Profile.query().alias('p').where(interpret(
       buildAnd([
         new FieldCondition('eq', 'displayName', 'Alice Profile'),
         new FieldCondition('some', 'user', new FieldCondition('eq', 'tenantId', 1))
       ]),
-      orm.Profile.query().alias('p'),
-    ).toKnexQuery().toSQL()
+      orm.Profile,
+      { alias: 'p' },
+    )).toKnexQuery().toSQL()
 
     expect(query.sql).to.equal(linearize`
       select "p".* from "profiles" as "p"
@@ -53,36 +56,51 @@ describe(createObjectionInterpreter.name, () => {
       }
     }
 
-    expect(() => interpret(new FieldCondition('eq', 'combined', 'value'), MultiColumnModel.query()))
+    expect(() => interpret(new FieldCondition('eq', 'combined', 'value'), MultiColumnModel))
       .to.throw('maps to multiple database columns')
   })
 
   it('reports unknown relations through the shared metadata boundary', () => {
     expect(() => interpret(
       new FieldCondition('some', 'missing', new FieldCondition('eq', 'name', 'test')),
-      User.query(),
+      User,
     )).to.throw('Relation metadata for "users.missing" not found')
   })
 
-  it('returns `QueryBuilder`', () => {
+  it('returns a native raw condition', () => {
     const condition = new FieldCondition('eq', 'name', 'test')
-    const query = interpret(condition, User.query())
+    const predicate = interpret(condition, User)
 
-    expect(query).to.be.instanceOf(QueryBuilder)
+    expect(predicate).to.be.instanceOf(raw('').constructor)
   })
 
   it('properly binds parameters', () => {
     const condition = new FieldCondition('eq', 'name', 'test')
-    const query = interpret(condition, User.query())
+    const query = User.query().where(interpret(condition, User))
 
     expect(query.toKnexQuery().toString()).to.equal(`
       select "users".* from "users" where "users"."name" = 'test'
     `.trim())
   })
 
+  it('composes raw conditions with existing filters and preserves their bindings', () => {
+    const name = "test' OR 1 = 1 --"
+    const query = User.query()
+      .where('tenant_id', 'tenant-a')
+      .andWhere(interpret(new FieldCondition('eq', 'name', name), User))
+      .andWhere(interpret(new FieldCondition('in', 'id', [1, 2]), User))
+      .toKnexQuery().toSQL()
+
+    expect(query.sql).to.equal(
+      'select "users".* from "users" where "tenant_id" = ?' +
+      ' and "users"."name" = ? and "users"."id" in(?, ?)'
+    )
+    expect(query.bindings).to.eql(['tenant-a', name, 1, 2])
+  })
+
   it('properly binds parameters for "IN" operator', () => {
     const condition = new FieldCondition('in', 'age', [1, 2, 3])
-    const query = interpret(condition, User.query())
+    const query = User.query().where(interpret(condition, User))
 
     expect(query.toKnexQuery().toString()).to.equal(`
       select "users".* from "users" where "users"."age" in(1, 2, 3)
@@ -91,7 +109,7 @@ describe(createObjectionInterpreter.name, () => {
 
   it('treats dotted field names as literal fields', () => {
     const condition = new FieldCondition('eq', 'projects.name', 'test')
-    const query = interpret(condition, User.query())
+    const query = User.query().where(interpret(condition, User))
 
     expect(query.toKnexQuery().toString()).to.equal(`
       select "users".* from "users" where "users"."projects.name" = 'test'
@@ -104,7 +122,7 @@ describe(createObjectionInterpreter.name, () => {
       new FieldCondition('eq', 'projects.active', true),
     ])
 
-    const query = interpret(condition, User.query())
+    const query = User.query().where(interpret(condition, User))
 
     expect(query.toKnexQuery().toString()).to.equal(`
       select "users".* from "users" where ("users"."projects.name" = 'test' and "users"."projects.active" = true)
@@ -121,7 +139,7 @@ describe(createObjectionInterpreter.name, () => {
         new FieldCondition('eq', 'date', '2026-06-28')
       )
     )
-    const query = interpret(condition, User.query())
+    const query = User.query().where(interpret(condition, User))
 
     expect(query.toKnexQuery().toString()).to.equal(
       'select "users".* from "users" where EXISTS (SELECT 1 FROM "projects" as "projects_ucast0" ' +
@@ -136,7 +154,7 @@ describe(createObjectionInterpreter.name, () => {
       'roles',
       new FieldCondition('eq', 'name', 'admin')
     )
-    const query = interpret(condition, User.query())
+    const query = User.query().where(interpret(condition, User))
     const sql = query.toKnexQuery().toString()
 
     expect(sql).to.contain('SELECT 1 FROM "roles" as "roles_')
@@ -155,7 +173,7 @@ describe(createObjectionInterpreter.name, () => {
       'projects',
       new FieldCondition('eq', 'active', true)
     )
-    const query = interpret(condition, User.query())
+    const query = User.query().where(interpret(condition, User))
 
     expect(query.toKnexQuery().toString()).to.contain('"tenant_projects"."kind" = \'owned\'')
     expect(query.toKnexQuery().toString()).to.contain('"."active" = true')
@@ -180,51 +198,54 @@ describe(createObjectionInterpreter.name, () => {
     })
 
     it('executes mapped root properties together with mapped related properties and aliases', async () => {
-      const profiles = await interpret(
+      const profiles = await orm.Profile.query().alias('p').where(interpret(
         buildAnd([
           new FieldCondition('eq', 'displayName', 'Alice Profile'),
           new FieldCondition('some', 'user', new FieldCondition('eq', 'tenantId', 'tenant-a')),
         ]),
-        orm.Profile.query().alias('p'),
-      )
+        orm.Profile,
+        { alias: 'p' },
+      ))
 
       expect(profiles.map(profile => profile.displayName)).to.deep.equal(['Alice Profile'])
     })
 
     it('executes nested relation conditions with shared parameter bindings', async () => {
-      const users = await interpret(
+      const users = await User.query().alias('u').where(interpret(
         buildAnd([
           new FieldCondition('eq', 'tenantId', 'tenant-a'),
           new FieldCondition('some', 'projects', new FieldCondition(
             'some', 'deadlines', new FieldCondition('eq', 'date', '2026-06-28'),
           )),
         ]),
-        User.query().alias('u'),
-      )
+        User,
+        { alias: 'u' },
+      ))
 
       expect(namesOf(users)).to.deep.equal(['Alice'])
     })
 
     it('filters HasMany relations', async () => {
-      const users = await interpret(relationConditions.hasMany, User.query()).orderBy('name')
+      const users = await User.query().where(interpret(relationConditions.hasMany, User)).orderBy('name')
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasMany)
     })
 
     it('filters BelongsToOne relations', async () => {
-      const projects = await interpret(relationConditions.belongsTo, Project.query()).orderBy('name')
+      const projects = await Project.query()
+        .where(interpret(relationConditions.belongsTo, Project)).orderBy('name')
 
       expect(namesOf(projects)).to.deep.equal(expectedRelationNames.belongsTo)
     })
 
     it('filters HasOne relations', async () => {
-      const users = await interpret(relationConditions.hasOne, User.query()).orderBy('name')
+      const users = await User.query().where(interpret(relationConditions.hasOne, User)).orderBy('name')
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasOne)
     })
 
     it('filters ManyToMany relations', async () => {
-      const users = await interpret(relationConditions.manyToMany, User.query()).orderBy('name')
+      const users = await User.query().where(interpret(relationConditions.manyToMany, User)).orderBy('name')
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.manyToMany)
     })
@@ -240,10 +261,11 @@ describe(createObjectionInterpreter.name, () => {
         { tenant_id: 'tenant-b', project_id: 3, kind: 'shared' },
       ])
       const interpret = createDomainInterpreter(Project)
-      const users = await interpret(
+      const users = await User.query().alias('u').where(interpret(
         new FieldCondition('some', 'projects', new FieldCondition('eq', 'active', true)),
-        User.query().alias('u'),
-      )
+        User,
+        { alias: 'u' },
+      ))
 
       expect(namesOf(users)).to.deep.equal(['Alice', 'Bob'])
     })
@@ -258,22 +280,22 @@ describe(createObjectionInterpreter.name, () => {
         { id: 2, parent_tenant_id: 'tenant-b', parent_id: 1, display_name: 'one key only' },
         { id: 3, parent_tenant_id: 'tenant-a', parent_id: 2, display_name: 'one key only' },
       ])
-      const result = await interpret(
+      const result = await CompositeParent.query().where(interpret(
         new FieldCondition(
           'some',
           'children',
           new FieldCondition('eq', 'displayName', 'selected'),
         ),
-        CompositeParent.query(),
-      ).orderBy('name')
-      const decoyResult = await interpret(
+        CompositeParent,
+      )).orderBy('name')
+      const decoyResult = await CompositeParent.query().where(interpret(
         new FieldCondition(
           'some',
           'children',
           new FieldCondition('eq', 'displayName', 'one key only'),
         ),
-        CompositeParent.query(),
-      )
+        CompositeParent,
+      ))
 
       expect(result.map(parent => parent.name)).to.deep.equal(['both keys'])
       expect(decoyResult).to.have.length(0)

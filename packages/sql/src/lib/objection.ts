@@ -1,5 +1,5 @@
 import { type Condition } from '@ucast/core';
-import { type Model, type ModelClass, type QueryBuilder } from 'objection';
+import { raw, type Model, type ModelClass } from 'objection';
 import {
   createSqlInterpreter,
   allInterpreters,
@@ -16,6 +16,10 @@ export interface ObjectionInterpreterOptions
   extends SqlInterpreterOptions<string, SqlStringComposerResult> {
 }
 
+export interface ObjectionQueryOptions {
+  alias?: string;
+}
+
 export function createObjectionInterpreter(
   interpreters: Record<string, SqlOperator<any>>,
   objectionOptions: ObjectionInterpreterOptions = {},
@@ -23,8 +27,10 @@ export function createObjectionInterpreter(
   const interpretSQL = createSqlInterpreter(interpreters, objectionOptions);
   const dialects = createDialects({ paramPlaceholder: mysql.paramPlaceholder });
 
-  return <T extends Model>(condition: Condition, query: QueryBuilder<T>) => {
-    const dialect = query.modelClass().knex().client.config.client as keyof typeof dialects;
+  return <T extends Model>(
+    condition: Condition, Model: ModelClass<T>, queryOptions?: ObjectionQueryOptions,
+  ) => {
+    const dialect = Model.knex().client.config.client as keyof typeof dialects;
     const options = dialects[dialect];
 
     if (!options) {
@@ -33,22 +39,14 @@ export function createObjectionInterpreter(
 
     const [sql, params] = interpretSQL(condition, {
       ...options,
-      alias: getRootAlias(query),
-      metadata: objectionToSqlMetadata(query.modelClass()),
+      alias: queryOptions?.alias ?? Model.tableName,
+      metadata: objectionToSqlMetadata(Model),
     });
-    return query.whereRaw(sql, params);
+    return raw(sql, params);
   };
 }
 
 export const interpret = createObjectionInterpreter(allInterpreters);
-
-function getRootAlias<T extends Model>(query: QueryBuilder<T>) {
-  const queryWithTableRefs = query as QueryBuilder<T> & {
-    tableRefFor?(modelClass: ModelClass<Model>): string | undefined;
-  };
-
-  return queryWithTableRefs.tableRefFor?.(query.modelClass()) ?? query.modelClass().tableName;
-}
 
 export function objectionToSqlMetadata(Model: ModelClass<Model>): SqlEntityMetadata {
   return new ObjectionSqlMetadata(Model);

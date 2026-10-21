@@ -121,8 +121,8 @@ const [sql, params] = interpret(condition, {
 // params: ['Alice']
 ```
 
-Each relation has its own metadata. Conditions and join fields use the mapping
-for their corresponding entity.
+Each relation has its own metadata. Conditions use the related entity's mapping;
+join fields already identify physical database columns.
 
 ### Conditions on related tables
 
@@ -163,13 +163,14 @@ const [sql, params] = interpret(condition, {
         ownField: 'id',
         relatedField: 'user_id',
         relatedTable: 'projects',
+        metadata: {},
       };
     },
   },
 });
 
 console.log(sql);
-// EXISTS (SELECT 1 FROM "projects" as "projects_ucast0" WHERE "users"."id" = "projects_ucast0"."user_id" AND ("projects_ucast0"."active" = $1))
+// EXISTS (SELECT 1 FROM "projects" as "projects_ucast0" WHERE "users"."id" = "projects_ucast0"."user_id" AND "projects_ucast0"."active" = $1)
 console.log(params); // [true]
 ```
 
@@ -185,9 +186,13 @@ Nested relations use the related entity's `metadata.resolveRelation`. All scopes
 share the root parameter sequence, and generated relation aliases use a counter
 shared across the interpretation. An unresolved relation throws an error.
 
-The default composer supports a single equality join per relation. For composite
-keys, many-to-many joins, or other custom relation queries, provide a custom
-composer with its own `relation` implementation.
+Join fields are physical database column names and bypass property mapping.
+For composite keys, provide matching arrays in `ownField` and `relatedField`.
+Many-to-many metadata also supplies `through: { table, ownRelationField,
+relatedRelationField }`, whose fields can likewise be matching arrays.
+
+Relation metadata describes joins and column mappings. For domain-specific SQL,
+provide a custom composer and implement its `relation` handler.
 
 ### SQL composers
 
@@ -196,7 +201,7 @@ string composer returns `[sql, params]`. To use another fragment representation 
 result shape, pass `createSqlComposer` in the interpreter options:
 
 ```ts
-const interpret = createSqlInterpreter<SQL>(allInterpreters, {
+const interpret = createSqlInterpreter<SQL, SQL>(allInterpreters, {
   createSqlComposer: options => new DrizzleComposer(options),
 });
 const result = interpret(condition, pg);
@@ -215,10 +220,19 @@ implementation. The factory receives the SQL query options and returns a
 | `raw(sql)` | Create a fragment from trusted SQL syntax |
 | `join(fragments, separator)` | Join fragments using a fragment separator |
 | `regexp(ignoreCase)` | Return the dialect's regex operator and comparator |
-| `relation(name)` | Return a related `composer` and `subquery(predicate, invertCondition?)` |
+| `relation(name)` | Return a related `composer` and `subquery(predicate)` |
+
+To return a different result shape, implement the optional
+`result(fragment)` method on the composer and specify its return type as the
+second generic argument. Without `result`, the interpreter returns the fragment
+directly.
 
 `createDefaultSqlComposer(options)` is exported for extending
-the built-in string composer.
+the built-in string composer. A custom `relation` handler can create a child with
+`createDefaultSqlComposer(childOptions, parentComposer)` to share parameter binding.
+The interpreter compiles the related predicate before calling `subquery(predicate)`.
+Place that predicate before additional bound filters in the generated SQL so
+positional placeholders follow parameter order.
 
 ### Custom interpreter
 
@@ -420,6 +434,9 @@ Drizzle 1.x is outside this adapter's compatibility scope.
 
 ### [Sequelize](https://sequelize.org/)
 
+For custom relation SQL, pass `{ createSqlComposer }` as the second argument to
+`createSequelizeInterpreter` and implement the composer's `relation` handler.
+
 ```js
 import { interpret } from '@ucast/sql/sequelize';
 import { CompoundCondition, FieldCondition } from '@ucast/core';
@@ -432,21 +449,35 @@ class User extends Model {}
 User.init({
   name: { type: DataTypes.STRING },
   blocked: { type: DataTypes.BOOLEAN },
-  lastLoggedIn: { type: DataTypes.DATETIME },
-});
+  lastLoggedIn: { type: DataTypes.DATE },
+}, { sequelize });
 
 const condition = new CompoundCondition('and', [
   new FieldCondition('eq', 'blocked', false),
-  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+  new FieldCondition('lt', 'lastLoggedIn', new Date(Date.now() - 24 * 3600 * 1000)),
 ]);
 
-// {
-//  where: literal('(`blocked` = 0 and lastLoggedIn < 1597594415354)')
-// }
-const query = interpret(condition, User)
+const queryOptions = interpret(condition, User, { alias: User.name });
+// Pass both the SQL literal and its bound replacements to Sequelize.
+const users = await User.findAll(queryOptions);
 ```
 
+`interpret(condition, Model, options?)` returns `{ where, replacements }`.
+The optional third argument accepts `alias` and `replacementMode` (`'numeric'`,
+the default positional `?` placeholders, or `'named'`). Named placeholders use
+an interpreter-local call counter; consumers combining predicates own replacement
+ordering and name collisions across interpreter instances.
+The default alias is `Model.tableName`; pass the query's model alias explicitly
+when it differs, as with `User.findAll()` above.
+
 ### [Objection.js](https://vincit.github.io/objection.js/)
+
+The adapter translates model properties and relations with
+`objectionToSqlMetadata(Model)`. To customize that mapping, pass
+`{ createSqlComposer }` as the second argument to `createObjectionInterpreter`.
+The factory receives query options including the model's `SqlEntityMetadata`;
+pass customized metadata to `createDefaultSqlComposer`. For custom relation SQL,
+implement the composer's `relation` handler.
 
 ```js
 import { interpret } from '@ucast/sql/objection';
@@ -456,7 +487,9 @@ import Knex from 'knex';
 
 Model.knex(Knex({ client: 'pg' }));
 
-class User extends Model {}
+class User extends Model {
+  static tableName = 'users';
+}
 
 const condition = new CompoundCondition('and', [
   new FieldCondition('eq', 'blocked', false),
@@ -466,49 +499,60 @@ const condition = new CompoundCondition('and', [
 // the next code produces:
 // User.query()
 //   .where('blocked', false)
-//   .where('lastLoggedIn', Date.now() - 24 * 3600 * 1000)
-const query = interpret(condition, User.query())
+//   .where('lastLoggedIn', '<', Date.now() - 24 * 3600 * 1000)
+const query = User.query().where(interpret(condition, User));
+```
+
+`interpret(condition, Model, options?)` returns an Objection `RawBuilder` with
+bound values. Pass it to `.where()` or `.andWhere()` to compose it with other
+conditions. The model supplies the dialect and property/relation metadata.
+For aliased queries, pass the same alias explicitly:
+
+```js
+const query = User.query().alias('u').where(interpret(condition, User, { alias: 'u' }));
 ```
 
 ### [MikroORM](https://mikro-orm.io/)
 
-```js
+This example uses the SQLite driver package, `@mikro-orm/sqlite`.
+
+```ts
 import { interpret } from '@ucast/sql/mikro-orm';
 import { CompoundCondition, FieldCondition } from '@ucast/core';
-import { MikroORM, Entity, PrimaryKey, Property } from 'mikro-orm';
+import { EntitySchema, MikroORM } from '@mikro-orm/sqlite';
 
-@Entity()
 class User {
-  @PrimaryKey()
   id!: number;
-
-  @Property()
-  blocked: boolean;
-
-  @Property()
+  blocked!: boolean;
   name!: string;
-
-  @Property()
   lastLoggedIn = new Date();
 }
 
+const userSchema = new EntitySchema({
+  class: User,
+  properties: {
+    id: { type: 'number', primary: true },
+    blocked: { type: 'boolean' },
+    name: { type: 'string' },
+    lastLoggedIn: { type: 'Date' },
+  },
+});
+
 const condition = new CompoundCondition('and', [
   new FieldCondition('eq', 'blocked', false),
-  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+  new FieldCondition('lt', 'lastLoggedIn', new Date(Date.now() - 24 * 3600 * 1000)),
 ]);
 
 async function main() {
   const orm = await MikroORM.init({
-    entities: [User],
+    entities: [userSchema],
     dbName: ':memory:',
-    type: 'sqlite',
   });
 
-  // the next code produces:
-  // orm.em.createQueryBuilder(User)
-  //   .where('blocked = ?', [false])
-  //   .andWhere('lastLoggedIn = ?', [Date.now() - 24 * 3600 * 1000])
-  const qb = interpret(condition, orm.em.createQueryBuilder(User));
+  // Adds one compound WHERE predicate with both values bound as parameters.
+  const qb = interpret(condition, orm.em.fork().createQueryBuilder(User));
+  console.log(qb.getQuery(), qb.getParams());
+  await orm.close();
 }
 
 main().catch(console.error);
@@ -516,48 +560,52 @@ main().catch(console.error);
 
 ### [TypeORM](https://typeorm.io/)
 
-```js
+The adapter translates entity metadata with `typeormToSqlMetadata(metadata)`.
+Pass `createSqlComposer` to `createTypeOrmInterpreter` and provide custom
+`SqlEntityMetadata` to `createDefaultSqlComposer` to extend that mapping. Composite relation joins
+and owning or inverse many-to-many joins use their physical database columns.
+
+This example uses the `better-sqlite3` driver package.
+
+```ts
 import { interpret } from '@ucast/sql/typeorm';
 import { CompoundCondition, FieldCondition } from '@ucast/core';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  createConnection
-} from 'typeorm';
+import { DataSource, EntitySchema } from 'typeorm';
 
-@Entity()
 class User {
-  @PrimaryGeneratedColumn()
   id!: number;
-
-  @Column()
-  blocked: boolean;
-
-  @Column()
+  blocked!: boolean;
   name!: string;
-
-  @Column()
   lastLoggedIn = new Date();
 }
 
+const userSchema = new EntitySchema({
+  name: 'User',
+  target: User,
+  columns: {
+    id: { type: Number, primary: true, generated: true },
+    blocked: { type: Boolean },
+    name: { type: String },
+    lastLoggedIn: { type: Date },
+  },
+});
+
 const condition = new CompoundCondition('and', [
   new FieldCondition('eq', 'blocked', false),
-  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+  new FieldCondition('lt', 'lastLoggedIn', new Date(Date.now() - 24 * 3600 * 1000)),
 ]);
 
 async function main() {
-  const conn = await createConnection({
-    type: 'sqlite',
+  const conn = await new DataSource({
+    type: 'better-sqlite3',
     database: ':memory:',
-    entities: [User]
-  });
+    entities: [userSchema]
+  }).initialize();
 
-  // the next code produces:
-  // conn.createQueryBuilder(User, 'u')
-  //   .where('blocked = ?', [false])
-  //   .andWhere('lastLoggedIn = ?', [Date.now() - 24 * 3600 * 1000])
+  // Adds one compound WHERE predicate with named parameters (:0 and :1).
   const qb = interpret(condition, conn.createQueryBuilder(User, 'u'));
+  console.log(qb.getQuery(), qb.getParameters());
+  await conn.destroy();
 }
 
 main().catch(console.error);
