@@ -3,179 +3,129 @@ import { type EntityMetadata, type ObjectLiteral, type SelectQueryBuilder } from
 import {
   createSqlInterpreter,
   allInterpreters,
+  type SqlEntityMetadata,
+  type SqlInterpreterOptions,
+  type SqlStringComposerResult,
+  type RelationMetadata,
   type SqlOperator,
   createDialects,
-  type SqlQueryOptions
 } from '../index.ts';
-import {
-  buildDirectRelationQuery,
-  buildManyToManyRelationQuery,
-  RelationColumnPair,
-  type ThroughRelationColumnPair,
-} from '../relationUtils.ts';
 
-type GetRelationMetadata = Exclude<SqlQueryOptions['getRelationMetadata'], undefined>;
-
-export interface TypeOrmInterpreterOptions {
-  getRelationMetadata?: GetRelationMetadata;
+export interface TypeOrmInterpreterOptions
+  extends SqlInterpreterOptions<string, SqlStringComposerResult> {
 }
-
-function mapColumnName(field: string, relationContext: unknown) {
-  const meta = getEntityMetadata(relationContext);
-  if (!meta) return undefined;
-  const metadata = meta as EntityMetadata & {
-    columns?: TypeOrmColumn[];
-    findColumnsWithPropertyPath?(propertyPath: string): TypeOrmColumn[];
-    findRelationWithPropertyPath?(propertyPath: string): {
-      joinColumns?: TypeOrmColumn[];
-    } | undefined;
-  };
-  const propertyColumns = metadata.columns?.filter(column => column.propertyPath === field) ?? [];
-  const columns = metadata.findColumnsWithPropertyPath
-    ? metadata.findColumnsWithPropertyPath(field)
-    : propertyColumns.length
-      ? propertyColumns
-      : metadata.findRelationWithPropertyPath?.(field)?.joinColumns ?? [];
-  if (columns.length > 1) {
-    throw new Error(`Property "${field}" maps to multiple database columns, which is not supported`);
-  }
-  return columns[0]?.databaseName;
-}
-
-export const getRelationMetadata: GetRelationMetadata = (relationName, ctx) => {
-  const meta = getEntityMetadata(ctx.relationContext);
-  const relation = meta?.findRelationWithPropertyPath(relationName) as TypeOrmRelation | undefined;
-
-  if (!relation) {
-    return undefined;
-  }
-
-  if (relation.isManyToMany) {
-    return buildManyToManyRelationMetadata(relation);
-  }
-
-  const isOwningSide = relation.joinColumns.length > 0;
-  const joinColumns = isOwningSide ? relation.joinColumns : relation.inverseRelation?.joinColumns;
-
-  if (!joinColumns?.length) {
-    return undefined;
-  }
-
-  const columnPairs: RelationColumnPair[] = joinColumns.map(column => ({
-    parentField: isOwningSide ? column.databaseName : column.referencedColumn!.databaseName,
-    relationField: isOwningSide ? column.referencedColumn!.databaseName : column.databaseName,
-  }));
-
-  if (columnPairs.length === 1) {
-    return {
-      parentField: columnPairs[0].parentField,
-      relationField: columnPairs[0].relationField,
-      relationTable: relation.inverseEntityMetadata.tableName,
-      relationContext: relation.inverseEntityMetadata,
-    };
-  }
-
-  return {
-    relationContext: relation.inverseEntityMetadata,
-    buildRelationQuery: buildDirectRelationQuery(
-      relation.inverseEntityMetadata.tableName,
-      columnPairs,
-    ),
-  };
-};
-
-function createTypeOrmDialects(typeormOptions: TypeOrmInterpreterOptions = {}) {
-  const dialects = createDialects({
-    getRelationMetadata: typeormOptions.getRelationMetadata ?? getRelationMetadata,
-    paramPlaceholder: index => `:${index - 1}`
-  });
-
-  dialects.sqlite.escapeIdentifier = dialects.sqlite3.escapeIdentifier =
-    dialects['better-sqlite3'].escapeIdentifier = dialects.pg.escapeIdentifier;
-  return dialects;
-}
-
-export function createInterpreter(
+export function createTypeOrmInterpreter(
   interpreters: Record<string, SqlOperator<any>>,
-  typeormOptions: TypeOrmInterpreterOptions = {},
+  options: TypeOrmInterpreterOptions = {},
 ) {
-  const interpretSQL = createSqlInterpreter(interpreters);
-  const dialects = createTypeOrmDialects(typeormOptions);
+  const interpretSQL = createSqlInterpreter(interpreters, options);
+  const dialects = createDialects({ paramPlaceholder: index => `:${index - 1}` });
 
   return <Entity extends ObjectLiteral>(
-    condition: Condition,
-    query: SelectQueryBuilder<Entity>,
+    condition: Condition, query: SelectQueryBuilder<Entity>,
   ) => {
     const dialect = getQueryDataSource(query)?.options.type as keyof typeof dialects;
-    const options = dialects[dialect];
-
-    if (!options) {
+    const dialectOptions = dialects[dialect];
+    if (!dialectOptions) {
       throw new Error(`Unsupported database dialect: ${dialect}`);
     }
 
+    const metadata = query.expressionMap.mainAlias!.metadata;
     const [sql, params] = interpretSQL(condition, {
-      ...options,
-      rootAlias: query.alias,
-      localField: (field, { escape, relationContext }) =>
-        escape(mapColumnName(field, relationContext) ?? field),
-    }, query.expressionMap.mainAlias!.metadata);
-    return query.where(sql, params);
+      ...dialectOptions,
+      alias: query.alias,
+      metadata: typeormToSqlMetadata(metadata),
+    });
+    return query.where(sql, Object.assign({}, params));
   };
 }
 
-export const interpret = createInterpreter(allInterpreters);
+export const interpret = createTypeOrmInterpreter(allInterpreters);
+
+export function typeormToSqlMetadata(
+  context: EntityMetadata | SelectQueryBuilder<any>,
+): SqlEntityMetadata {
+  return new TypeOrmSqlMetadata(getEntityMetadata(context));
+}
+
+class TypeOrmSqlMetadata implements SqlEntityMetadata {
+  private readonly _meta: EntityMetadata | undefined;
+
+  constructor(meta: EntityMetadata | undefined) {
+    this._meta = meta;
+  }
+
+  toColumnName(field: string): string {
+    const meta = this._meta;
+    if (!meta) return field;
+    const propertyColumns = meta.columns?.filter(column => column.propertyPath === field) ?? [];
+    const columns = meta.findColumnsWithPropertyPath
+      ? meta.findColumnsWithPropertyPath(field)
+      : propertyColumns.length
+        ? propertyColumns
+        : meta.findRelationWithPropertyPath(field)?.joinColumns ?? [];
+    if (columns.length > 1) {
+      throw new Error(`Property "${field}" maps to multiple database columns, which is not supported`);
+    }
+    return columns[0]?.databaseName ?? field;
+  }
+
+  resolveRelation(name: string): RelationMetadata | undefined {
+    const relation = this._meta?.findRelationWithPropertyPath(name) as TypeOrmRelation | undefined;
+    if (!relation) return undefined;
+    if (relation.isManyToMany) return manyToManyMetadata(relation);
+
+    const isOwningSide = relation.joinColumns.length > 0;
+    const columns = isOwningSide ? relation.joinColumns : relation.inverseRelation?.joinColumns;
+    if (!columns?.length) return undefined;
+
+    const columnPairs = columns.map(column => ({
+      ownField: isOwningSide ? column.databaseName : column.referencedColumn!.databaseName,
+      relatedField: isOwningSide ? column.referencedColumn!.databaseName : column.databaseName,
+    }));
+    return {
+      metadata: typeormToSqlMetadata(relation.inverseEntityMetadata),
+      relatedTable: relation.inverseEntityMetadata.tableName,
+      ownField: columnPairs.map(pair => pair.ownField),
+      relatedField: columnPairs.map(pair => pair.relatedField),
+    };
+  }
+}
 
 function getQueryDataSource<Entity extends ObjectLiteral>(query: SelectQueryBuilder<Entity>) {
   const typeormQuery = query as SelectQueryBuilder<Entity> & {
     connection?: TypeOrmDataSource;
     dataSource?: TypeOrmDataSource;
   };
-
   return typeormQuery.dataSource ?? typeormQuery.connection;
 }
 
-function buildManyToManyRelationMetadata(relation: TypeOrmRelation) {
-  const ownerRelation = relation.isOwning ? relation : relation.inverseRelation;
+function manyToManyMetadata(relation: TypeOrmRelation): RelationMetadata | undefined {
+  const owner = relation.isOwning ? relation : relation.inverseRelation;
+  if (!owner?.junctionEntityMetadata) return undefined;
 
-  if (!ownerRelation?.junctionEntityMetadata) {
-    return undefined;
-  }
-
-  const localColumns = relation.isOwning
-    ? ownerRelation.joinColumns
-    : ownerRelation.inverseJoinColumns;
-  const foreignColumns = relation.isOwning
-    ? ownerRelation.inverseJoinColumns
-    : ownerRelation.joinColumns;
+  const ownColumns = relation.isOwning ? owner.joinColumns : owner.inverseJoinColumns;
+  const relatedColumns = relation.isOwning ? owner.inverseJoinColumns : owner.joinColumns;
+  if (!ownColumns.length || !relatedColumns.length) return undefined;
 
   return {
-    relationContext: relation.inverseEntityMetadata,
-    buildRelationQuery: buildManyToManyRelationQuery(
-      ownerRelation.junctionEntityMetadata.tableName,
-      relation.inverseEntityMetadata.tableName,
-      localColumns.map(toJoinColumnPair),
-      foreignColumns.map(toJoinColumnPair),
-    ),
+    metadata: typeormToSqlMetadata(relation.inverseEntityMetadata),
+    relatedTable: relation.inverseEntityMetadata.tableName,
+    ownField: ownColumns.map(column => column.referencedColumn!.databaseName),
+    relatedField: relatedColumns.map(column => column.referencedColumn!.databaseName),
+    through: {
+      table: owner.junctionEntityMetadata.tableName,
+      ownRelationField: ownColumns.map(column => column.databaseName),
+      relatedRelationField: relatedColumns.map(column => column.databaseName),
+    },
   };
 }
 
-function getEntityMetadata(context: unknown) {
-  if (isEntityMetadata(context)) {
-    return context;
+function getEntityMetadata(context: EntityMetadata | SelectQueryBuilder<any>) {
+  if (typeof (context as EntityMetadata)?.findRelationWithPropertyPath === 'function') {
+    return context as EntityMetadata;
   }
-
-  return (context as SelectQueryBuilder<ObjectLiteral>).expressionMap?.mainAlias?.metadata;
-}
-
-function isEntityMetadata(context: unknown): context is EntityMetadata {
-  return typeof (context as EntityMetadata | undefined)?.findRelationWithPropertyPath === 'function';
-}
-
-function toJoinColumnPair(column: TypeOrmColumn): ThroughRelationColumnPair {
-  return {
-    throughField: column.databaseName,
-    relationField: column.referencedColumn!.databaseName,
-  };
+  return (context as SelectQueryBuilder<ObjectLiteral>)?.expressionMap?.mainAlias?.metadata;
 }
 
 interface TypeOrmRelation {
@@ -189,14 +139,10 @@ interface TypeOrmRelation {
 }
 
 interface TypeOrmColumn {
-  propertyPath?: string;
-  propertyName?: string;
   databaseName: string;
   referencedColumn?: TypeOrmColumn;
 }
 
 interface TypeOrmDataSource {
-  options: {
-    type?: string;
-  };
+  options: { type?: string };
 }
