@@ -43,7 +43,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist/* && tsc -p tsconfig.build.json && tsdown -c tsdown.config.mjs && node scripts/prepare-drizzle-types.cjs",
+    "build": "rm -rf dist/* && tsc -p tsconfig.build.json && tsdown -c tsdown.config.mjs",
     "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register/transpile-only \"spec/**/*.spec.ts\"",
     "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
