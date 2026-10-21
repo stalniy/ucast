@@ -6,89 +6,22 @@ import {
   type SqlOperator,
   createDialects,
   mysql,
-  type SqlQueryOptions,
+  type SqlEntityMetadata,
+  type RelationMetadata,
+  type SqlInterpreterOptions,
+  type SqlStringComposerResult,
 } from '../index.ts';
-import {
-  buildDirectRelationQuery,
-  buildManyToManyRelationQuery,
-  RelationColumnPair,
-} from '../relationUtils.ts';
 
-type GetRelationMetadata = Exclude<SqlQueryOptions['getRelationMetadata'], undefined>;
-
-export interface ObjectionInterpreterOptions {
-  getRelationMetadata?: GetRelationMetadata;
+export interface ObjectionInterpreterOptions
+  extends SqlInterpreterOptions<string, SqlStringComposerResult> {
 }
 
-function mapColumnName(field: string, relationContext: unknown) {
-  const Model = relationContext as ModelClass<Model>;
-  if (typeof Model?.propertyNameToColumnName !== 'function') return undefined;
-  const model = new Model() as Model & { $formatDatabaseJson(json: object): object };
-  const existingColumns = Object.keys(model.$formatDatabaseJson({}));
-  const mappedColumns = Object.keys(model.$formatDatabaseJson({ [field]: null }))
-    .filter(column => !existingColumns.includes(column));
-  if (mappedColumns.length > 1) {
-    throw new Error(`Property "${field}" maps to multiple database columns, which is not supported`);
-  }
-  return Model.propertyNameToColumnName(field);
-}
-
-export const getRelationMetadata: GetRelationMetadata = (relationName, ctx) => {
-  const Model = ctx.relationContext as ModelClass<Model>;
-  const relation = Model.getRelation(relationName) as RuntimeRelation | undefined;
-
-  if (!relation) {
-    return undefined;
-  }
-
-  if (relation.joinTable) {
-    return {
-      relationContext: relation.relatedModelClass,
-      buildRelationQuery: buildManyToManyRelationQuery(
-        relation.joinTable,
-        relation.relatedModelClass.tableName,
-        throughColumnPairs(relation.ownerProp.cols, relation.joinTableOwnerProp.cols),
-        throughColumnPairs(relation.relatedProp.cols, relation.joinTableRelatedProp.cols),
-      ),
-    };
-  }
-
-  const columnPairs: RelationColumnPair[] = relation.ownerProp.cols.map((localField, index) => ({
-    parentField: localField,
-    relationField: relation.relatedProp.cols[index],
-  }));
-
-  if (columnPairs.length === 1) {
-    return {
-      parentField: columnPairs[0].parentField,
-      relationField: columnPairs[0].relationField,
-      relationTable: relation.relatedModelClass.tableName,
-      relationContext: relation.relatedModelClass,
-    };
-  }
-
-  return {
-    relationContext: relation.relatedModelClass,
-    buildRelationQuery: buildDirectRelationQuery(
-      relation.relatedModelClass.tableName,
-      columnPairs,
-    ),
-  };
-};
-
-function createObjectionDialects(objectionOptions: ObjectionInterpreterOptions = {}) {
-  return createDialects({
-    getRelationMetadata: objectionOptions.getRelationMetadata ?? getRelationMetadata,
-    paramPlaceholder: mysql.paramPlaceholder,
-  });
-}
-
-export function createInterpreter(
+export function createObjectionInterpreter(
   interpreters: Record<string, SqlOperator<any>>,
   objectionOptions: ObjectionInterpreterOptions = {},
 ) {
-  const interpretSQL = createSqlInterpreter(interpreters);
-  const dialects = createObjectionDialects(objectionOptions);
+  const interpretSQL = createSqlInterpreter(interpreters, objectionOptions);
+  const dialects = createDialects({ paramPlaceholder: mysql.paramPlaceholder });
 
   return <T extends Model>(condition: Condition, query: QueryBuilder<T>) => {
     const dialect = query.modelClass().knex().client.config.client as keyof typeof dialects;
@@ -100,15 +33,14 @@ export function createInterpreter(
 
     const [sql, params] = interpretSQL(condition, {
       ...options,
-      rootAlias: getRootAlias(query),
-      localField: (field, { escape, relationContext }) =>
-        escape(mapColumnName(field, relationContext) ?? field),
-    }, query.modelClass());
+      alias: getRootAlias(query),
+      metadata: objectionToSqlMetadata(query.modelClass()),
+    });
     return query.whereRaw(sql, params);
   };
 }
 
-export const interpret = createInterpreter(allInterpreters);
+export const interpret = createObjectionInterpreter(allInterpreters);
 
 function getRootAlias<T extends Model>(query: QueryBuilder<T>) {
   const queryWithTableRefs = query as QueryBuilder<T> & {
@@ -118,11 +50,55 @@ function getRootAlias<T extends Model>(query: QueryBuilder<T>) {
   return queryWithTableRefs.tableRefFor?.(query.modelClass()) ?? query.modelClass().tableName;
 }
 
-function throughColumnPairs(relationFields: string[], throughFields: string[]) {
-  return relationFields.map((field, index) => ({
-    relationField: field,
-    throughField: throughFields[index],
-  }));
+export function objectionToSqlMetadata(Model: ModelClass<Model>): SqlEntityMetadata {
+  return new ObjectionSqlMetadata(Model);
+}
+
+class ObjectionSqlMetadata implements SqlEntityMetadata {
+  private readonly _Model: ModelClass<Model>;
+
+  constructor(Model: ModelClass<Model>) {
+    this._Model = Model;
+  }
+
+  toColumnName(field: string): string {
+    const Model = this._Model;
+    if (typeof Model?.propertyNameToColumnName !== 'function') return field;
+    const model = new Model() as Model & { $formatDatabaseJson(json: object): object };
+    const existingColumns = Object.keys(model.$formatDatabaseJson({}));
+    const mappedColumns = Object.keys(model.$formatDatabaseJson({ [field]: null }))
+      .filter(column => !existingColumns.includes(column));
+    if (mappedColumns.length > 1) {
+      throw new Error(`Property "${field}" maps to multiple database columns, which is not supported`);
+    }
+    return Model.propertyNameToColumnName(field);
+  }
+
+  resolveRelation(relationName: string): RelationMetadata | undefined {
+    const mappings = typeof this._Model.relationMappings === 'function'
+      ? this._Model.relationMappings()
+      : this._Model.relationMappings;
+    if (!hasOwn(mappings, relationName)) {
+      return undefined;
+    }
+    const relation = this._Model.getRelation(relationName) as unknown as RuntimeRelation;
+    const metadata: RelationMetadata = {
+      metadata: objectionToSqlMetadata(relation.relatedModelClass),
+      relatedTable: relation.relatedModelClass.tableName,
+      ownField: relation.ownerProp.cols,
+      relatedField: relation.relatedProp.cols,
+    };
+
+    if (relation.joinTable) {
+      metadata.through = {
+        table: relation.joinTable,
+        ownRelationField: relation.joinTableOwnerProp.cols,
+        relatedRelationField: relation.joinTableRelatedProp.cols,
+      };
+    }
+
+    return metadata;
+  }
 }
 
 interface RuntimeRelation {
@@ -138,3 +114,7 @@ interface RuntimeRelation {
 interface RelationProperty {
   cols: string[];
 }
+
+const hasOwn: (object: object, key: PropertyKey) => boolean = (Object as {
+  hasOwn?: (object: object, key: PropertyKey) => boolean
+}).hasOwn || ((object, key) => Object.prototype.hasOwnProperty.call(object, key));

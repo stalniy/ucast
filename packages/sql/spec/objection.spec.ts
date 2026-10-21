@@ -1,9 +1,10 @@
 import { FieldCondition, CompoundCondition, buildAnd } from '@ucast/core'
 import { Model, QueryBuilder, snakeCaseMappers } from 'objection'
 import Knex from 'knex'
-import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/objection.ts'
+import { createObjectionInterpreter, objectionToSqlMetadata, interpret } from '../src/lib/objection.ts'
 import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
+import { createDefaultSqlComposer } from '../src/interpreter.ts'
 import {
   expectedRelationNames,
   namesOf,
@@ -11,7 +12,7 @@ import {
   relationSeeds
 } from './relationTestsConfig.ts'
 
-describe('Condition interpreter for Objection', () => {
+describe(createObjectionInterpreter.name, () => {
   const orm = configureORM()
   const { Project, User } = orm
 
@@ -24,7 +25,7 @@ describe('Condition interpreter for Objection', () => {
     const query = interpret(
       buildAnd([
         new FieldCondition('eq', 'displayName', 'Alice Profile'),
-        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+        new FieldCondition('some', 'user', new FieldCondition('eq', 'tenantId', 1))
       ]),
       orm.Profile.query().alias('p'),
     ).toKnexQuery().toSQL()
@@ -33,8 +34,8 @@ describe('Condition interpreter for Objection', () => {
       select "p".* from "profiles" as "p"
       where ("p"."display_name" = ? and EXISTS (
         SELECT 1
-        FROM "users" as "user_0"
-        WHERE "p"."user_id" = "user_0"."id" AND ("user_0"."tenant_id" = ?)
+        FROM "users" as "user_ucast0"
+        WHERE "p"."user_id" = "user_ucast0"."id" AND "user_ucast0"."tenant_id" = ?
       ))
     `)
     expect(query.bindings).to.eql(['Alice Profile', 1])
@@ -54,6 +55,13 @@ describe('Condition interpreter for Objection', () => {
 
     expect(() => interpret(new FieldCondition('eq', 'combined', 'value'), MultiColumnModel.query()))
       .to.throw('maps to multiple database columns')
+  })
+
+  it('reports unknown relations through the shared metadata boundary', () => {
+    expect(() => interpret(
+      new FieldCondition('some', 'missing', new FieldCondition('eq', 'name', 'test')),
+      User.query(),
+    )).to.throw('Relation metadata for "users.missing" not found')
   })
 
   it('returns `QueryBuilder`', () => {
@@ -116,9 +124,9 @@ describe('Condition interpreter for Objection', () => {
     const query = interpret(condition, User.query())
 
     expect(query.toKnexQuery().toString()).to.equal(
-      'select "users".* from "users" where EXISTS (SELECT 1 FROM "projects" as "projects_0" ' +
-      'WHERE "users"."id" = "projects_0"."user_id" AND (EXISTS (SELECT 1 FROM "deadlines" as "deadlines_1" ' +
-      'WHERE "projects_0"."id" = "deadlines_1"."project_id" AND ("deadlines_1"."date" = \'2026-06-28\'))))'
+      'select "users".* from "users" where EXISTS (SELECT 1 FROM "projects" as "projects_ucast0" ' +
+      'WHERE "users"."id" = "projects_ucast0"."user_id" AND EXISTS (SELECT 1 FROM "deadlines" as "deadlines_ucast1" ' +
+      'WHERE "projects_ucast0"."id" = "deadlines_ucast1"."project_id" AND "deadlines_ucast1"."date" = \'2026-06-28\'))'
     )
   })
 
@@ -131,8 +139,8 @@ describe('Condition interpreter for Objection', () => {
     const query = interpret(condition, User.query())
     const sql = query.toKnexQuery().toString()
 
-    expect(sql).to.contain('SELECT 1 FROM "user_roles" as "roles_')
-    expect(sql).to.contain('_through" INNER JOIN "roles" as "roles_')
+    expect(sql).to.contain('SELECT 1 FROM "roles" as "roles_')
+    expect(sql).to.contain('INNER JOIN "user_roles" as "roles_ucast0_through"')
     expect(sql).to.contain('"."id" = "roles_')
     expect(sql).to.contain('_through"."role_id"')
     expect(sql).to.contain('"users"."id" = "roles_')
@@ -141,30 +149,7 @@ describe('Condition interpreter for Objection', () => {
   })
 
   it('allows custom relation SQL to add domain joins and parameters', () => {
-    const interpret = createInterpreter({ eq, some: someRelation }, {
-      getRelationMetadata(relationName, ctx) {
-        if (relationName !== 'projects') {
-          return getRelationMetadata(relationName, ctx)
-        }
-
-        return {
-          relationContext: Project,
-          buildRelationQuery(relation) {
-            const tenantProjectAlias = 'tenant_projects'
-            const tenantProjectField = (field: string) => {
-              return `${relation.escapeIdentifier(tenantProjectAlias)}.${relation.escapeIdentifier(field)}`
-            }
-
-            return `SELECT 1 FROM ${relation.escapeIdentifier('tenant_projects')} as ${relation.escapeIdentifier(tenantProjectAlias)}` +
-            ` INNER JOIN ${relation.escapeIdentifier('projects')} as ${relation.escapeIdentifier(relation.relationAlias)}` +
-            ` ON ${relation.relationField('id')} = ${tenantProjectField('project_id')}` +
-            ` WHERE ${relation.parentField('tenant_id')} = ${tenantProjectField('tenant_id')}` +
-            ` AND ${tenantProjectField('kind')} = ${relation.param('owned')}` +
-            ` AND (${relation.conditionSql()})`
-          }
-        }
-      }
-    })
+    const interpret = createDomainInterpreter(Project)
     const condition = new FieldCondition(
       'some',
       'projects',
@@ -172,7 +157,7 @@ describe('Condition interpreter for Objection', () => {
     )
     const query = interpret(condition, User.query())
 
-    expect(query.toKnexQuery().toString()).to.contain('"tenant_projects"."kind" = \'owned\' AND (')
+    expect(query.toKnexQuery().toString()).to.contain('"tenant_projects"."kind" = \'owned\'')
     expect(query.toKnexQuery().toString()).to.contain('"."active" = true')
   })
 
@@ -192,6 +177,32 @@ describe('Condition interpreter for Objection', () => {
 
     after(async () => {
       await knex.destroy()
+    })
+
+    it('executes mapped root properties together with mapped related properties and aliases', async () => {
+      const profiles = await interpret(
+        buildAnd([
+          new FieldCondition('eq', 'displayName', 'Alice Profile'),
+          new FieldCondition('some', 'user', new FieldCondition('eq', 'tenantId', 'tenant-a')),
+        ]),
+        orm.Profile.query().alias('p'),
+      )
+
+      expect(profiles.map(profile => profile.displayName)).to.deep.equal(['Alice Profile'])
+    })
+
+    it('executes nested relation conditions with shared parameter bindings', async () => {
+      const users = await interpret(
+        buildAnd([
+          new FieldCondition('eq', 'tenantId', 'tenant-a'),
+          new FieldCondition('some', 'projects', new FieldCondition(
+            'some', 'deadlines', new FieldCondition('eq', 'date', '2026-06-28'),
+          )),
+        ]),
+        User.query().alias('u'),
+      )
+
+      expect(namesOf(users)).to.deep.equal(['Alice'])
     })
 
     it('filters HasMany relations', async () => {
@@ -216,6 +227,25 @@ describe('Condition interpreter for Objection', () => {
       const users = await interpret(relationConditions.manyToMany, User.query()).orderBy('name')
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.manyToMany)
+    })
+
+    it('executes custom composer domain joins with additional parameters', async () => {
+      await knex.schema.createTable('tenant_projects', table => {
+        table.string('tenant_id').notNullable()
+        table.integer('project_id').notNullable()
+        table.string('kind').notNullable()
+      })
+      await knex('tenant_projects').insert([
+        { tenant_id: 'tenant-a', project_id: 1, kind: 'owned' },
+        { tenant_id: 'tenant-b', project_id: 3, kind: 'shared' },
+      ])
+      const interpret = createDomainInterpreter(Project)
+      const users = await interpret(
+        new FieldCondition('some', 'projects', new FieldCondition('eq', 'active', true)),
+        User.query().alias('u'),
+      )
+
+      expect(namesOf(users)).to.deep.equal(['Alice', 'Bob'])
     })
 
     it('requires both composite relation keys when filtering mapped child properties', async () => {
@@ -250,6 +280,41 @@ describe('Condition interpreter for Objection', () => {
     })
   })
 })
+
+function createDomainInterpreter(Project: typeof Model) {
+  return createObjectionInterpreter({ eq, some: someRelation }, {
+    createSqlComposer(options) {
+      const composer = createDefaultSqlComposer(options)
+      return {
+        ...composer,
+        relation(name) {
+          if (name !== 'projects') return composer.relation(name)
+          const relationAlias = 'domain_projects'
+          const child = createDefaultSqlComposer({
+            ...options,
+            alias: relationAlias,
+            metadata: objectionToSqlMetadata(Project),
+          }, composer)
+          const tenantProjectField = (field: string) => {
+            return `${options.escapeIdentifier('tenant_projects')}.${options.escapeIdentifier(field)}`
+          }
+
+          return {
+            composer: child,
+            subquery(predicate) {
+              return `SELECT 1 FROM ${options.escapeIdentifier('tenant_projects')} as ${options.escapeIdentifier('tenant_projects')}` +
+                ` INNER JOIN ${options.escapeIdentifier('projects')} as ${options.escapeIdentifier(relationAlias)}` +
+                ` ON ${child.field('id')} = ${tenantProjectField('project_id')}` +
+                ` WHERE ${composer.field('tenantId')} = ${tenantProjectField('tenant_id')}` +
+                ` AND (${predicate})` +
+                ` AND ${tenantProjectField('kind')} = ${composer.param('owned')}`
+            }
+          }
+        }
+      }
+    }
+  })
+}
 
 function configureORM() {
   Model.knex(Knex({ client: 'pg' }))
