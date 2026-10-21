@@ -584,6 +584,20 @@ platform instead.
 
 ### [TypeORM](https://typeorm.io/)
 
+`interpret(condition)` returns a native TypeORM `Brackets` predicate. Pass it to
+query-builder `where`, `andWhere`, or `orWhere` methods. This replaces the previous
+`interpret(condition, queryBuilder)` interface, which modified the builder.
+
+Translation happens when the predicate is added to a query. The query builder
+provides its alias, entity metadata, and database dialect; no metadata storage
+needs to be configured on `createTypeOrmInterpreter`. Each application generates
+fresh parameter names of the form `:ucast_<call>_<index>`, including across
+interpreter instances. Predicates can be reused with different query aliases and
+combined without overwriting each other's parameters. Reserve the `ucast_`
+parameter prefix for the adapter.
+
+This integration supports query builders, not repository `find` options.
+
 The adapter translates entity metadata with `typeormToSqlMetadata(metadata)`.
 Pass `createSqlComposer` to `createTypeOrmInterpreter` and provide custom
 `SqlEntityMetadata` to `createDefaultSqlComposer` to extend that mapping. Composite relation joins
@@ -626,8 +640,9 @@ async function main() {
     entities: [userSchema]
   }).initialize();
 
-  // Adds one compound WHERE predicate with named parameters (:0 and :1).
-  const qb = interpret(condition, conn.createQueryBuilder(User, 'u'));
+  const qb = conn.createQueryBuilder(User, 'u')
+    .where('u.name = :name', { name: 'Alice' })
+    .andWhere(interpret(condition));
   console.log(qb.getQuery(), qb.getParameters());
   await conn.destroy();
 }

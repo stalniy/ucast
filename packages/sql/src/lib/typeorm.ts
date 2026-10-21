@@ -1,5 +1,5 @@
 import { type Condition } from '@ucast/core';
-import { type EntityMetadata, type ObjectLiteral, type SelectQueryBuilder } from 'typeorm';
+import { Brackets, type EntityMetadata, type ObjectLiteral, type SelectQueryBuilder } from 'typeorm';
 import {
   createSqlInterpreter,
   allInterpreters,
@@ -14,16 +14,19 @@ import {
 export interface TypeOrmInterpreterOptions
   extends SqlInterpreterOptions<string, SqlStringComposerResult> {
 }
+
+let interpretationNumber = 0;
+
 export function createTypeOrmInterpreter(
   interpreters: Record<string, SqlOperator<any>>,
   options: TypeOrmInterpreterOptions = {},
 ) {
   const interpretSQL = createSqlInterpreter(interpreters, options);
-  const dialects = createDialects({ paramPlaceholder: index => `:${index - 1}` });
-
-  return <Entity extends ObjectLiteral>(
-    condition: Condition, query: SelectQueryBuilder<Entity>,
-  ) => {
+  return (condition: Condition): Brackets => new Brackets((where) => {
+    // TypeORM creates this child builder with the outer query's alias and connection.
+    const query = where as SelectQueryBuilder<ObjectLiteral>;
+    const prefix = `ucast_${interpretationNumber++}`;
+    const dialects = createDialects({ paramPlaceholder: index => `:${prefix}_${index}` });
     const dialect = getQueryDataSource(query)?.options.type as keyof typeof dialects;
     const dialectOptions = dialects[dialect];
     if (!dialectOptions) {
@@ -36,8 +39,12 @@ export function createTypeOrmInterpreter(
       alias: query.alias,
       metadata: typeormToSqlMetadata(metadata),
     });
-    return query.where(sql, Object.assign({}, params));
-  };
+    const parameters: ObjectLiteral = {};
+    for (let i = 0; i < params.length; i++) {
+      parameters[`${prefix}_${i + 1}`] = params[i];
+    }
+    query.where(sql, parameters);
+  });
 }
 
 export const interpret = createTypeOrmInterpreter(allInterpreters);
