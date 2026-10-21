@@ -13,7 +13,7 @@ export default config.map(options => ({
   ...options,
   entry,
   copy: {
-    // Drizzle distributs different d.ts files for different modules
+    // Drizzle distributes different d.ts files for different modules
     // this causes issues for us, since types from drizzle's 2 modules are not assignable to each other
     from: 'dist/types/lib/drizzle-orm/v0.x.d.ts',
     to: 'dist/types/lib/drizzle-orm',
