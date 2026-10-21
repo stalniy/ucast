@@ -7,8 +7,8 @@
 This package is a part of [ucast] ecosystem. It combines [@ucast/mongo] and [@ucast/js] into a package that allows to evaluate [MongoDB query](https://docs.mongodb.com/manual/reference/operator/query/) conditions in JavaScript runtime.
 
 [ucast]: https://github.com/stalniy/ucast
-[@ucast/mongo]: https://github.com/stalniy/ucast/tree/master/packages/mongo
-[@ucast/js]: https://github.com/stalniy/ucast/tree/master/packages/js
+[@ucast/mongo]: https://github.com/stalniy/ucast/tree/main/packages/mongo
+[@ucast/js]: https://github.com/stalniy/ucast/tree/main/packages/js
 
 ## Installation
 
@@ -71,7 +71,7 @@ test(9) // false
 
 ### Custom Operator
 
-In order to implement a custom operator, you need to create a [custom parsing instruction for `MongoQueryParser`](https://github.com/stalniy/ucast/tree/master/packages/mongo#custom-operator) and [custom `JsInterpreter`](https://github.com/stalniy/ucast/tree/master/packages/js#custom-operator-interpreter) to interpret this operator in JavaScript runtime.
+In order to implement a custom operator, you need to create a [custom parsing instruction for `MongoQueryParser`](https://github.com/stalniy/ucast/tree/main/packages/mongo#custom-operator) and [custom `JsInterpreter`](https://github.com/stalniy/ucast/tree/main/packages/js#custom-operator-interpreter) to interpret this operator in JavaScript runtime.
 
 This package re-exports all symbols from `@ucast/mongo` and `@ucast/js`, so you don't need to install them separately. For example, to add support for [json-schema](https://json-schema.org/) operator:
 
@@ -184,4 +184,4 @@ Want to file a bug, contribute some code, or improve documentation? Excellent! R
 
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
-[contributing]: https://github.com/stalniy/ucast/blob/master/CONTRIBUTING.md
+[contributing]: https://github.com/stalniy/ucast/blob/main/CONTRIBUTING.md
