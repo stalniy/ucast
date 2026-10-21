@@ -1,6 +1,6 @@
 import { FieldCondition, CompoundCondition, buildAnd } from '@ucast/core'
-import { Collection, EntitySchema, MikroORM, QueryBuilder, UnderscoreNamingStrategy } from '@mikro-orm/sqlite'
-import { createMikroORMInterpreter, mikroOrmToSqlMetadata, interpret } from '../src/lib/mikro-orm.ts'
+import { Collection, EntitySchema, MikroORM, UnderscoreNamingStrategy } from '@mikro-orm/sqlite'
+import { createMikroORMInterpreter, mikroOrmToSqlMetadata } from '../src/lib/mikro-orm.ts'
 import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
 import { createDefaultSqlComposer } from '../src/interpreter.ts'
@@ -18,43 +18,53 @@ describe('Condition interpreter for MikroORM', () => {
   let orm: OrmContext['orm']
   let User: OrmContext['User']
   let Project: OrmContext['Project']
+  let interpret: ReturnType<typeof createMikroORMInterpreter>
 
   before(async () => {
     ctx = await configureORM()
     orm = ctx.orm
     User = ctx.User
     Project = ctx.Project
+    interpret = createMikroORMInterpreter({
+      metadata: orm.getMetadata(),
+      platform: orm.em.getPlatform(),
+    })
   })
 
   after(async () => {
     await orm?.close()
   })
 
-  it('returns a `QueryBuilder<T>`', () => {
+  it('returns a raw condition accepted by a query builder', () => {
     const condition = new FieldCondition('eq', 'name', 'test')
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
+    const query = orm.em.createQueryBuilder(User).select('*').where(interpret(condition, User))
 
-    expect(query).to.be.instanceof(QueryBuilder)
     expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ("u0"."name" = ?)')
   })
 
+  it('rejects unregistered entities', () => {
+    class MissingEntity {}
+
+    expect(() => interpret(new FieldCondition('eq', 'id', 1), MissingEntity))
+      .to.throw(/metadata/i)
+  })
+
   it('maps a model property to its configured database column', () => {
-    const query = interpret(
-      new FieldCondition('eq', 'displayName', 'Ada'),
-      orm.em.createQueryBuilder(ctx.Profile).select('*'),
-    )
+    const query = orm.em.createQueryBuilder(ctx.Profile).select('*').where(interpret(
+      new FieldCondition('eq', 'displayName', 'Ada'), ctx.Profile,
+    ))
     expect(query.getQuery()).to.contain('"display_name" = ?')
     expect(query.getParams()).to.eql(['Ada'])
   })
 
   it('maps a model property to its configured database column for related models', () => {
-    const query = interpret(
+    const query = orm.em.fork().createQueryBuilder(ctx.Profile, 'p').select('*').where(interpret(
       buildAnd([
         new FieldCondition('eq', 'displayName', 'Alice Profile'),
         new FieldCondition('some', 'user', new FieldCondition('eq', 'tenantId', 1))
       ]),
-      orm.em.fork().createQueryBuilder(ctx.Profile, 'p').select('*'),
-    )
+      ctx.Profile,
+    ))
     expect(query.getQuery()).to.equal(linearize`
       select \`p\`.* from \`profile\` as \`p\`
       where (
@@ -71,20 +81,20 @@ describe('Condition interpreter for MikroORM', () => {
   it('rejects scalar conditions on relations with composite foreign keys', () => {
     expect(() => interpret(
       new FieldCondition('eq', 'owner', 1),
-      orm.em.createQueryBuilder(ctx.CompositeItem).select('*'),
+      ctx.CompositeItem,
     )).to.throw('maps to multiple database columns')
   })
 
   it('properly binds parameters for "IN" operator', () => {
     const condition = new FieldCondition('in', 'age', [1, 2, 3])
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
+    const query = orm.em.createQueryBuilder(User).select('*').where(interpret(condition, User))
 
     expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ("u0"."age" in(?, ?, ?))')
   })
 
   it('treats dotted field names as literal fields', () => {
     const condition = new FieldCondition('eq', 'projects.name', 'test')
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
+    const query = orm.em.createQueryBuilder(User).select('*').where(interpret(condition, User))
 
     expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where ("u0"."projects.name" = ?)')
   })
@@ -94,7 +104,7 @@ describe('Condition interpreter for MikroORM', () => {
       new FieldCondition('eq', 'projects.name', 'test'),
       new FieldCondition('eq', 'projects.active', true),
     ])
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
+    const query = orm.em.createQueryBuilder(User).select('*').where(interpret(condition, User))
 
     expect(query.getQuery()).to.equal('select `u0`.* from `user` as `u0` where (("u0"."projects.name" = ? and "u0"."projects.active" = ?))')
   })
@@ -109,7 +119,7 @@ describe('Condition interpreter for MikroORM', () => {
         new FieldCondition('eq', 'date', '2026-06-28')
       )
     )
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
+    const query = orm.em.createQueryBuilder(User).select('*').where(interpret(condition, User))
 
     expect(query.getQuery()).to.equal([
       'select `u0`.* from `user` as `u0`',
@@ -127,7 +137,7 @@ describe('Condition interpreter for MikroORM', () => {
       'roles',
       new FieldCondition('eq', 'name', 'admin')
     )
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
+    const query = orm.em.createQueryBuilder(User).select('*').where(interpret(condition, User))
     const sql = query.getQuery()
 
     expect(sql).to.contain('INNER JOIN "user_roles" as "roles_')
@@ -140,7 +150,9 @@ describe('Condition interpreter for MikroORM', () => {
   })
 
   it('allows custom relation SQL to add domain joins and parameters', () => {
-    const interpret = createMikroORMInterpreter({ eq, some: someRelation }, {
+    const interpret = createMikroORMInterpreter({
+      metadata: orm.getMetadata(),
+      platform: orm.em.getPlatform(),
       createSqlComposer(options) {
         const composer = createDefaultSqlComposer(options)
         const defaultRelation = composer.relation
@@ -166,13 +178,13 @@ describe('Condition interpreter for MikroORM', () => {
         }
         return composer
       }
-    })
+    }, { eq, some: someRelation })
     const condition = new FieldCondition(
       'some',
       'projects',
       new FieldCondition('eq', 'active', true)
     )
-    const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
+    const query = orm.em.createQueryBuilder(User).select('*').where(interpret(condition, User))
 
     expect(query.getQuery()).to.contain(') AND "tenant_projects"."kind" = ?')
     expect(query.getParams()).to.eql([true, 'owned'])
@@ -184,38 +196,59 @@ describe('Condition interpreter for MikroORM', () => {
       await seedMikroOrm(ctx)
     })
 
+    it('composes independent raw conditions with native conditions', async () => {
+      const users = await orm.em.fork().find(User, {
+        $and: [
+          { tenantId: 'tenant-a', name: { $ne: 'Alice' } },
+          {
+            $or: [
+              interpret(new FieldCondition('eq', 'name', 'Alice'), User),
+              interpret(new FieldCondition('eq', 'name', 'Bob'), User),
+            ],
+          },
+        ],
+      })
+
+      expect(namesOf(users)).to.deep.equal(['Bob'])
+    })
+
+    it('composes relation conditions with an existing WHERE and custom alias', async () => {
+      const query = orm.em.fork().createQueryBuilder(User, 'person').select('*')
+        .where({ tenantId: 'tenant-a' })
+        .andWhere(interpret(relationConditions.hasMany, User))
+
+      expect(query.getParams()).to.deep.equal(['tenant-a', 'Audit'])
+      expect(namesOf(await query.getResultList())).to.deep.equal(['Bob'])
+    })
+
     it('filters 1:m relations', async () => {
-      const users = await interpret(
-        relationConditions.hasMany,
-        orm.em.fork().createQueryBuilder(User).select('*')
-      ).orderBy({ name: 'ASC' }).getResultList()
+      const users = await orm.em.fork().find(
+        User, interpret(relationConditions.hasMany, User), { orderBy: { name: 'ASC' } },
+      )
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasMany)
     })
 
     it('filters m:1 relations', async () => {
-      const projects = await interpret(
-        relationConditions.belongsTo,
-        orm.em.fork().createQueryBuilder(Project).select('*')
-      ).orderBy({ name: 'ASC' }).getResultList()
+      const projects = await orm.em.fork().find(
+        Project, interpret(relationConditions.belongsTo, Project), { orderBy: { name: 'ASC' } },
+      )
 
       expect(namesOf(projects)).to.deep.equal(expectedRelationNames.belongsTo)
     })
 
     it('filters 1:1 relations', async () => {
-      const users = await interpret(
-        relationConditions.hasOne,
-        orm.em.fork().createQueryBuilder(User).select('*')
-      ).orderBy({ name: 'ASC' }).getResultList()
+      const users = await orm.em.fork().find(
+        User, interpret(relationConditions.hasOne, User), { orderBy: { name: 'ASC' } },
+      )
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.hasOne)
     })
 
     it('filters m:n relations', async () => {
-      const users = await interpret(
-        relationConditions.manyToMany,
-        orm.em.fork().createQueryBuilder(User).select('*')
-      ).orderBy({ name: 'ASC' }).getResultList()
+      const users = await orm.em.fork().find(
+        User, interpret(relationConditions.manyToMany, User), { orderBy: { name: 'ASC' } },
+      )
 
       expect(namesOf(users)).to.deep.equal(expectedRelationNames.manyToMany)
     })

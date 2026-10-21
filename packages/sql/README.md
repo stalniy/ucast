@@ -517,7 +517,7 @@ const query = User.query().alias('u').where(interpret(condition, User, { alias: 
 This example uses the SQLite driver package, `@mikro-orm/sqlite`.
 
 ```ts
-import { interpret } from '@ucast/sql/mikro-orm';
+import { createMikroORMInterpreter } from '@ucast/sql/mikro-orm';
 import { CompoundCondition, FieldCondition } from '@ucast/core';
 import { EntitySchema, MikroORM } from '@mikro-orm/sqlite';
 
@@ -549,14 +549,38 @@ async function main() {
     dbName: ':memory:',
   });
 
-  // Adds one compound WHERE predicate with both values bound as parameters.
-  const qb = interpret(condition, orm.em.fork().createQueryBuilder(User));
+  const interpret = createMikroORMInterpreter({
+    metadata: orm.getMetadata(),
+    platform: orm.em.getPlatform(),
+  });
+  const em = orm.em.fork();
+
+  // Compose the raw condition with a native filter and a query alias.
+  const qb = em.createQueryBuilder(User, 'u').select('*')
+    .where({ name: 'Alice' })
+    .andWhere(interpret(condition, User));
   console.log(qb.getQuery(), qb.getParams());
   await orm.close();
 }
 
 main().catch(console.error);
 ```
+
+`createMikroORMInterpreter({ metadata, platform }, operators?)` configures entity
+lookup and the SQL dialect once. Operators default to `allInterpreters`; pass
+`createSqlComposer` in the configuration to customize SQL composition.
+
+`interpret(condition, Entity)` accepts a MikroORM entity class or entity schema
+and returns a raw filter object containing the predicate and its bound values.
+Use it with `em.find(User, interpret(condition, User))`, compose it with native
+filters using `$and`/`$or`, or pass it to a query
+builder's `.where()`/`.andWhere()`. MikroORM supplies the root alias automatically,
+including for correlated relation subqueries. Create a fresh condition for each
+query because MikroORM consumes raw condition keys.
+
+This replaces the previous query-builder argument and return value. The standalone
+`interpret` export is removed; create an interpreter with your ORM's metadata and
+platform instead.
 
 ### [TypeORM](https://typeorm.io/)
 

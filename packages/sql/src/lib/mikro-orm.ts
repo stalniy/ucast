@@ -1,4 +1,11 @@
-import { type EntityMetadata, type EntityProperty } from '@mikro-orm/core';
+import {
+  raw,
+  type EntityMetadata,
+  type EntityName,
+  type EntityProperty,
+  type MetadataStorage,
+  type Platform,
+} from '@mikro-orm/core';
 import { type Condition } from '@ucast/core';
 import {
   allInterpreters,
@@ -12,36 +19,43 @@ import {
 } from '../index.ts';
 
 export function createMikroORMInterpreter(
-  interpreters: Record<string, SqlOperator<any>>,
-  mikroOrmOptions: MikroOrmInterpreterOptions = {},
+  { metadata, platform, ...options }: MikroOrmInterpreterOptions,
+  interpreters: Record<string, SqlOperator<any>> = allInterpreters,
 ) {
-  const interpretSQL = createSqlInterpreter(interpreters, mikroOrmOptions);
-  const dialects = createDialects({
-    paramPlaceholder: mysql.paramPlaceholder,
-  });
+  const interpretSQL = createSqlInterpreter(interpreters, options);
+  const dialects = createDialects({ paramPlaceholder: mysql.paramPlaceholder });
+  const platformName = platform.constructor.name;
+  const dialect = platformName.slice(0, platformName.indexOf('Platform')).toLowerCase() as keyof typeof dialects;
+  const dialectOptions = dialects[dialect];
 
-  return <T extends QueryBuilder>(condition: Condition, query: T): T => {
-    const platformName = (query as any).platform.constructor.name;
-    const dialect = platformName.slice(0, platformName.indexOf('Platform')).toLowerCase() as keyof typeof dialects;
-    const options = dialects[dialect];
+  if (!dialectOptions) {
+    throw new Error(`Unsupported database platform: ${platformName}`);
+  }
 
-    if (!options) {
-      throw new Error(`Unsupported database platform: ${platformName}`);
-    }
+  return <T extends object>(
+    condition: Condition, entity: EntityName<T>,
+  ): Record<string | symbol, []> => {
+    const entityMetadata = mikroOrmToSqlMetadata(metadata.get(entity));
+    const params: unknown[] = [];
+    const predicate = raw(alias => {
+      const [sql, values] = interpretSQL(condition, {
+        ...dialectOptions,
+        alias,
+        metadata: entityMetadata,
+      });
+      // raw evaluates the callback synchronously with MikroORM's alias placeholder.
+      params.push(...values);
+      return `(${sql})`;
+    }, params);
 
-    const [sql, params] = interpretSQL(condition, {
-      ...options,
-      alias: query.alias,
-      metadata: mikroOrmToSqlMetadata(getEntityMetadata(query)),
-    });
-    return query.where(sql, params as unknown[]);
+    return { [predicate]: [] };
   };
 }
 
-export const interpret = createMikroORMInterpreter(allInterpreters);
-
 export interface MikroOrmInterpreterOptions
   extends SqlInterpreterOptions<string, SqlStringComposerResult> {
+  metadata: MetadataStorage;
+  platform: Platform;
 }
 
 export function mikroOrmToSqlMetadata(entityMeta: EntityMetadata): SqlEntityMetadata {
@@ -153,12 +167,6 @@ function pivotTableName(prop: MikroOrmRelation) {
   return pivotEntity!.name!;
 }
 
-function getEntityMetadata(query: QueryBuilder): EntityMetadata {
-  const alias = query.mainAlias!;
-
-  return (alias.meta ?? alias.metadata)!;
-}
-
 function joinColumnPairs(
   joinColumns: readonly string[],
   referencedColumns: readonly string[],
@@ -172,15 +180,6 @@ function joinColumnPairs(
 
 function primaryColumnNames(meta: EntityMetadata) {
   return meta.primaryKeys.map(key => meta.properties[key].fieldNames[0]);
-}
-
-interface QueryBuilder {
-  alias: string;
-  mainAlias?: {
-    meta?: EntityMetadata;
-    metadata?: EntityMetadata;
-  };
-  where(sql: string, params?: unknown[]): this;
 }
 
 type MikroOrmRelation = EntityProperty & {
