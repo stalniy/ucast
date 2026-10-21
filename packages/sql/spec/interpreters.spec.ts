@@ -300,7 +300,7 @@ describe('Condition Interpreter', () => {
           toColumnName: name => `user_${name}`,
           resolveRelation: () => ({
             relatedTable: 'projects',
-            ownField: 'id',
+            ownField: 'user_id',
             relatedField: 'userId',
             metadata: {},
           }),
@@ -352,14 +352,14 @@ describe('Condition Interpreter', () => {
           toColumnName: (field) => userColumns[field],
           resolveRelation: () => ({
             relatedTable: 'projects',
-            relatedField: 'userId',
-            ownField: 'id',
+            relatedField: 'user_id',
+            ownField: 'other_id',
             metadata: {
               toColumnName: (field) => projectColumns[field],
               resolveRelation: () => ({
                 relatedTable: 'deadlines',
-                ownField: 'id',
-                relatedField: 'projectId',
+                ownField: 'other_project_id',
+                relatedField: 'project_id',
                 metadata: {
                   toColumnName: (name) => deadlineColumns[name],
                 }
@@ -442,6 +442,88 @@ describe('Condition Interpreter', () => {
 
       expect(() => interpret(condition, relationOptions)).to.throw('Relation metadata for "users.missing" not found')
       expect(() => interpret(condition, pg)).to.throw('Relation metadata for "missing" not found')
+    })
+
+    it('joins every composite column through a junction without remapping physical names', () => {
+      const condition = new Field('some', 'roles', new Field('eq', 'name', 'admin'))
+      const [sql, params] = interpret(condition, {
+        ...pg,
+        alias: 'users',
+        metadata: {
+          toColumnName: name => `wrong_${name}`,
+          resolveRelation: () => ({
+            relatedTable: 'roles',
+            ownField: ['tenant_id', 'id'],
+            relatedField: ['tenant_id', 'id'],
+            through: {
+              table: 'user_roles',
+              ownRelationField: ['user_tenant', 'user_id'],
+              relatedRelationField: ['role_tenant', 'role_id'],
+            },
+            metadata: { toColumnName: name => name === 'name' ? 'display_name' : `wrong_${name}` },
+          }),
+        },
+      })
+
+      expect(sql).to.equal(
+        'EXISTS (SELECT 1 FROM "roles" as "roles_ucast0" ' +
+        'INNER JOIN "user_roles" as "roles_ucast0_through" ' +
+        'ON "roles_ucast0"."tenant_id" = "roles_ucast0_through"."role_tenant" ' +
+        'AND "roles_ucast0"."id" = "roles_ucast0_through"."role_id" ' +
+        'WHERE "users"."tenant_id" = "roles_ucast0_through"."user_tenant" ' +
+        'AND "users"."id" = "roles_ucast0_through"."user_id" ' +
+        'AND "roles_ucast0"."display_name" = $1)'
+      )
+      expect(params).to.deep.equal(['admin'])
+    })
+
+    it('rejects empty and mismatched composite join columns', () => {
+      const condition = new Field('some', 'projects', new Field('eq', 'active', true))
+      for (const ownField of [[], ['tenant_id', 'id']]) {
+        expect(() => interpret(condition, {
+          ...relationOptions,
+          metadata: {
+            resolveRelation: () => ({
+              relatedTable: 'projects',
+              ownField,
+              relatedField: ['user_id'],
+              metadata: {},
+            }),
+          },
+        })).to.throw('Relation join columns must be nonempty and have matching lengths')
+      }
+    })
+
+    it('lets a custom composer append relation parameters after the eager predicate', () => {
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'name', 'Alice'),
+        new Field('some', 'projects', new Field('eq', 'active', true)),
+        new Field('eq', 'enabled', true),
+      ])
+      const customInterpret = createSqlInterpreter({ eq, and, some: someRelation }, {
+        createSqlComposer(options) {
+          const composer = createDefaultSqlComposer(options)
+          const defaultRelation = composer.relation
+          composer.relation = name => {
+            const related = defaultRelation(name)
+            return {
+              composer: related.composer,
+              subquery: predicate => related.subquery(
+                composer.sql`(${predicate}) AND kind = ${composer.param('owned')}`
+              ),
+            }
+          }
+          return composer
+        },
+      })
+      const [sql, params] = customInterpret(condition, { ...relationOptions, ...mysql })
+
+      expect(sql).to.equal(
+        '(`users`.`name` = ? and EXISTS (SELECT 1 FROM `project` as `projects_ucast0` ' +
+        'WHERE `users`.`id` = `projects_ucast0`.`userId` AND (`projects_ucast0`.`active` = ?) ' +
+        'AND kind = ?) and `users`.`enabled` = ?)'
+      )
+      expect(params).to.deep.equal(['Alice', true, 'owned', true])
     })
 
     it('uses distinct aliases for nested relations with the same name', () => {

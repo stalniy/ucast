@@ -1,8 +1,9 @@
 import { FieldCondition, CompoundCondition, buildAnd } from '@ucast/core'
 import { Collection, EntitySchema, MikroORM, QueryBuilder, UnderscoreNamingStrategy } from '@mikro-orm/sqlite'
-import { createInterpreter, getRelationMetadata, interpret } from '../src/lib/mikro-orm.ts'
+import { createMikroORMInterpreter, mikroOrmToSqlMetadata, interpret } from '../src/lib/mikro-orm.ts'
 import { expect, linearize } from './specHelper.ts'
 import { eq, someRelation } from '../src/interpreters.ts'
+import { createDefaultSqlComposer } from '../src/interpreter.ts'
 import {
   expectedRelationNames,
   namesOf,
@@ -10,8 +11,7 @@ import {
   relationSeeds
 } from './relationTestsConfig.ts'
 
-type Depromisify<T extends Promise<any>> = T extends Promise<infer A> ? A : never
-type OrmContext = Depromisify<ReturnType<typeof configureORM>>
+type OrmContext = Awaited<ReturnType<typeof configureORM>>
 
 describe('Condition interpreter for MikroORM', () => {
   let ctx: OrmContext
@@ -51,7 +51,7 @@ describe('Condition interpreter for MikroORM', () => {
     const query = interpret(
       buildAnd([
         new FieldCondition('eq', 'displayName', 'Alice Profile'),
-        new FieldCondition('is', 'user', new FieldCondition('eq', 'tenantId', 1))
+        new FieldCondition('some', 'user', new FieldCondition('eq', 'tenantId', 1))
       ]),
       orm.em.fork().createQueryBuilder(ctx.Profile, 'p').select('*'),
     )
@@ -60,8 +60,8 @@ describe('Condition interpreter for MikroORM', () => {
       where (
         ("p"."display_name" = ? and EXISTS (
           SELECT 1
-          FROM "user" as "user_0"
-          WHERE "p"."user_id" = "user_0"."id" AND ("user_0"."tenant_id" = ?)
+          FROM "user" as "user_ucast0"
+          WHERE "p"."user_id" = "user_ucast0"."id" AND "user_ucast0"."tenant_id" = ?
         ))
       )
     `)
@@ -113,11 +113,11 @@ describe('Condition interpreter for MikroORM', () => {
 
     expect(query.getQuery()).to.equal([
       'select `u0`.* from `user` as `u0`',
-      'where (EXISTS (SELECT 1 FROM "project" as "projects_0"',
-      'WHERE "u0"."id" = "projects_0"."user_id"',
-      'AND (EXISTS (SELECT 1 FROM "deadline" as "deadlines_1"',
-      'WHERE "projects_0"."id" = "deadlines_1"."project_id"',
-      'AND ("deadlines_1"."date" = ?)))))'
+      'where (EXISTS (SELECT 1 FROM "project" as "projects_ucast0"',
+      'WHERE "u0"."id" = "projects_ucast0"."user_id"',
+      'AND EXISTS (SELECT 1 FROM "deadline" as "deadlines_ucast1"',
+      'WHERE "projects_ucast0"."id" = "deadlines_ucast1"."project_id"',
+      'AND "deadlines_ucast1"."date" = ?)))'
     ].join(' '))
   })
 
@@ -130,8 +130,8 @@ describe('Condition interpreter for MikroORM', () => {
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
     const sql = query.getQuery()
 
-    expect(sql).to.contain('SELECT 1 FROM "user_roles" as "roles_')
-    expect(sql).to.contain('_through" INNER JOIN "role" as "roles_')
+    expect(sql).to.contain('INNER JOIN "user_roles" as "roles_')
+    expect(sql).to.contain('SELECT 1 FROM "role" as "roles_')
     expect(sql).to.contain('"."id" = "roles_')
     expect(sql).to.contain('_through"."role_id"')
     expect(sql).to.contain('"u0"."id" = "roles_')
@@ -140,28 +140,31 @@ describe('Condition interpreter for MikroORM', () => {
   })
 
   it('allows custom relation SQL to add domain joins and parameters', () => {
-    const interpret = createInterpreter({ eq, some: someRelation }, {
-      getRelationMetadata(relationName, ctx) {
-        if (relationName !== 'projects') {
-          return getRelationMetadata(relationName, ctx)
-        }
-
-        return {
-          relationContext: orm.getMetadata().get(Project),
-          buildRelationQuery(relation) {
-            const tenantProjectAlias = 'tenant_projects'
-            const tenantProjectField = (field: string) => {
-              return `${relation.escapeIdentifier(tenantProjectAlias)}.${relation.escapeIdentifier(field)}`
-            }
-
-            return `SELECT 1 FROM ${relation.escapeIdentifier('tenant_projects')} as ${relation.escapeIdentifier(tenantProjectAlias)}` +
-            ` INNER JOIN ${relation.escapeIdentifier('project')} as ${relation.escapeIdentifier(relation.relationAlias)}` +
-            ` ON ${relation.relationField('id')} = ${tenantProjectField('project_id')}` +
-            ` WHERE ${relation.parentField('tenant_id')} = ${tenantProjectField('tenant_id')}` +
-            ` AND ${tenantProjectField('kind')} = ${relation.param('owned')}` +
-            ` AND (${relation.conditionSql()})`
+    const interpret = createMikroORMInterpreter({ eq, some: someRelation }, {
+      createSqlComposer(options) {
+        const composer = createDefaultSqlComposer(options)
+        const defaultRelation = composer.relation
+        composer.relation = name => {
+          if (name !== 'projects') return defaultRelation(name)
+          const alias = 'domain_projects'
+          const child = createDefaultSqlComposer({
+            ...options,
+            alias,
+            metadata: mikroOrmToSqlMetadata(orm.getMetadata().get(Project)),
+          }, composer)
+          const field = (table: string, column: string) =>
+            `${options.escapeIdentifier(table)}.${options.escapeIdentifier(column)}`
+          return {
+            composer: child,
+            subquery: predicate =>
+              `SELECT 1 FROM ${options.escapeIdentifier('tenant_projects')} as ${options.escapeIdentifier('tenant_projects')}` +
+              ` INNER JOIN ${options.escapeIdentifier('project')} as ${options.escapeIdentifier(alias)}` +
+              ` ON ${child.field('id')} = ${field('tenant_projects', 'project_id')}` +
+              ` WHERE ${field(options.alias!, 'tenant_id')} = ${field('tenant_projects', 'tenant_id')}` +
+              ` AND (${predicate}) AND ${field('tenant_projects', 'kind')} = ${composer.param('owned')}`,
           }
         }
+        return composer
       }
     })
     const condition = new FieldCondition(
@@ -171,7 +174,8 @@ describe('Condition interpreter for MikroORM', () => {
     )
     const query = interpret(condition, orm.em.createQueryBuilder(User).select('*'))
 
-    expect(query.getQuery()).to.contain('"tenant_projects"."kind" = ? AND (')
+    expect(query.getQuery()).to.contain(') AND "tenant_projects"."kind" = ?')
+    expect(query.getParams()).to.eql([true, 'owned'])
     expect(query.getQuery()).to.contain('"."active" = ?')
   })
 

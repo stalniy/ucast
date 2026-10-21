@@ -2,7 +2,8 @@ import { FieldCondition, buildAnd } from '@ucast/core'
 import { Model, Sequelize, DataTypes } from 'sequelize'
 import { createSequelizeInterpreter, interpret } from '../src/lib/sequelize.ts'
 import { expect, linearize } from './specHelper.ts'
-import { eq } from '../src/interpreters.ts'
+import { eq, someRelation } from '../src/interpreters.ts'
+import { createDefaultSqlComposer } from '../src/interpreter.ts'
 import {
   expectedRelationNames,
   namesOf,
@@ -38,7 +39,7 @@ describe(createSequelizeInterpreter.name, () => {
       ("p"."display_name" = ? and EXISTS (
         SELECT 1
         FROM "users" as "user_ucast0"
-        WHERE "p"."userId" = "user_ucast0"."id" AND "user_ucast0"."tenant_id" = ?
+        WHERE "p"."user_id" = "user_ucast0"."user_id" AND "user_ucast0"."tenant_id" = ?
       ))
     `)
     expect(query.replacements).to.deep.equal(['Alice Profile', 1])
@@ -58,22 +59,25 @@ describe(createSequelizeInterpreter.name, () => {
     )).to.throw('Relation metadata for "users.missingRelation" not found')
   })
 
-  it('rejects unsupported database dialects', () => {
-    const customSequelize = new Sequelize({
-      dialect: 'sqlite',
-      storage: ':memory:',
-      logging: false,
-    })
-    class AnyModel extends Model {
-      static {
-        AnyModel.init({}, { sequelize: customSequelize })
+  for (const dialect of ['unsupported', 'toString']) {
+    it(`rejects unsupported database dialect ${dialect}`, async () => {
+      const customSequelize = new Sequelize({
+        dialect: 'sqlite',
+        storage: ':memory:',
+        logging: false,
+      })
+      class AnyModel extends Model {
+        static {
+          AnyModel.init({}, { sequelize: customSequelize })
+        }
       }
-    }
-    customSequelize.getDialect = () => 'unsupported' as ReturnType<typeof customSequelize.getDialect>
+      customSequelize.getDialect = () => dialect as ReturnType<typeof customSequelize.getDialect>
 
-    expect(() => interpret(new FieldCondition('eq', 'name', 'Ada'), AnyModel))
-      .to.throw('Unsupported database dialect: unsupported')
-  })
+      expect(() => interpret(new FieldCondition('eq', 'name', 'Ada'), AnyModel))
+        .to.throw(`Unsupported database dialect: ${dialect}`)
+      await customSequelize.close()
+    })
+  }
 
   it('uses the property name when attribute metadata has no column override', () => {
     const customSequelize = new Sequelize({
@@ -113,10 +117,10 @@ describe(createSequelizeInterpreter.name, () => {
     expect(query.where.val).to.equal(linearize`
       EXISTS (
         SELECT 1 FROM "projects" as "projects_ucast0"
-        WHERE "users"."id" = "projects_ucast0"."userId"
+        WHERE "users"."user_id" = "projects_ucast0"."user_id"
           AND EXISTS (
             SELECT 1 FROM "deadlines" as "deadlines_ucast1"
-            WHERE "projects_ucast0"."id" = "deadlines_ucast1"."projectId"
+            WHERE "projects_ucast0"."project_id" = "deadlines_ucast1"."project_id"
               AND "deadlines_ucast1"."date" = ?
           )
       )
@@ -136,8 +140,8 @@ describe(createSequelizeInterpreter.name, () => {
     expect(query.where.val).to.equal(linearize`
       EXISTS (
         SELECT 1 FROM "roles" as "roles_ucast0"
-          INNER JOIN "user_roles" as "roles_ucast0_through" ON "roles_ucast0"."id" = "roles_ucast0_through"."roleId"
-        WHERE "users"."id" = "roles_ucast0_through"."userId"
+          INNER JOIN "user_roles" as "roles_ucast0_through" ON "roles_ucast0"."role_id" = "roles_ucast0_through"."role_id"
+        WHERE "users"."user_id" = "roles_ucast0_through"."user_id"
           AND "roles_ucast0"."name" = ?
       )
     `)
@@ -193,13 +197,59 @@ describe(createSequelizeInterpreter.name, () => {
       await User.create({ id: 4, tenantId: 'tenant-b', name: 'Dana' })
     })
 
-    for (const relationType of ['hasMany', 'belongsTo', 'hasOne', 'manyToMany'] as const) {
-      it(`filters ${relationType} relations with findAll`, async () => {
-        const Model = relationType === 'belongsTo' ? Project : User
-        const query = interpret(relationConditions[relationType], Model, { alias: Model.name })
-        const records = await Model.findAll({ ...query })
+    for (const replacementMode of ['numeric', 'named'] as const) {
+      it(`executes a custom composer relation with ${replacementMode} replacements`, async () => {
+        const run = createSequelizeInterpreter({ eq, some: someRelation }, {
+          createSqlComposer(options) {
+            const composer = createDefaultSqlComposer(options)
+            return {
+              ...composer,
+              relation(name) {
+                const related = composer.relation(name)
+                return {
+                  composer: related.composer,
+                  subquery: predicate => related.subquery(composer.sql`(${predicate}) AND ${related.composer.field('name')} = ${composer.param('Audit')}`),
+                }
+              },
+            }
+          },
+        })
+        const query = run(
+          new FieldCondition('some', 'projects', new FieldCondition('eq', 'active', true)),
+          User,
+          { alias: User.name, replacementMode },
+        )
+        expect(Object.values(query.replacements)).to.deep.equal([true, 'Audit'])
+        const records = await User.findAll(query)
+        expect(namesOf(records)).to.deep.equal(['Bob'])
+      })
 
-        expect(namesOf(records)).to.deep.equal(expectedRelationNames[relationType])
+      for (const relationType of ['hasMany', 'belongsTo', 'hasOne', 'manyToMany'] as const) {
+        it(`filters ${relationType} relations with ${replacementMode} replacements`, async () => {
+          const Model = relationType === 'belongsTo' ? Project : User
+          const query = interpret(relationConditions[relationType], Model, {
+            alias: Model.name,
+            replacementMode,
+          })
+          const records = await Model.findAll({ ...query })
+
+          expect(namesOf(records)).to.deep.equal(expectedRelationNames[relationType])
+        })
+      }
+
+      it(`executes nested relations with ${replacementMode} replacements`, async () => {
+        const condition = buildAnd([
+          new FieldCondition('eq', 'tenantId', 'tenant-a'),
+          new FieldCondition('some', 'projects', buildAnd([
+            new FieldCondition('eq', 'name', 'Launch'),
+            new FieldCondition('some', 'deadlines', new FieldCondition('eq', 'id', 1)),
+          ])),
+        ])
+        const records = await User.findAll({
+          ...interpret(condition, User, { alias: User.name, replacementMode }),
+        })
+
+        expect(namesOf(records)).to.deep.equal(['Alice'])
       })
     }
 
@@ -234,6 +284,8 @@ function configureORM() {
 
     static {
       User.init({
+        id: { type: DataTypes.INTEGER, primaryKey: true, field: 'user_id' },
+        user_id: { type: DataTypes.INTEGER, field: 'legacy_user_id' },
         tenantId: { type: DataTypes.STRING, field: 'tenant_id' },
         name: { type: DataTypes.STRING },
         email: { type: DataTypes.STRING },
@@ -244,6 +296,7 @@ function configureORM() {
   class Profile extends Model {
     static {
       Profile.init({
+        userId: { type: DataTypes.INTEGER, field: 'user_id' },
         displayName: { type: DataTypes.STRING, field: 'display_name' },
       }, { sequelize, modelName: 'profile' })
     }
@@ -254,6 +307,8 @@ function configureORM() {
 
     static {
       Project.init({
+        id: { type: DataTypes.INTEGER, primaryKey: true, field: 'project_id' },
+        userId: { type: DataTypes.INTEGER, field: 'user_id' },
         name: { type: DataTypes.STRING },
         active: { type: DataTypes.BOOLEAN }
       }, { sequelize, modelName: 'project' })
@@ -263,6 +318,7 @@ function configureORM() {
   class Deadline extends Model {
     static {
       Deadline.init({
+        projectId: { type: DataTypes.INTEGER, field: 'project_id' },
         date: { type: DataTypes.DATE }
       }, { sequelize, modelName: 'deadline' })
     }
@@ -271,6 +327,7 @@ function configureORM() {
   class Role extends Model {
     static {
       Role.init({
+        id: { type: DataTypes.INTEGER, primaryKey: true, field: 'role_id' },
         name: { type: DataTypes.STRING },
         displayName: { type: DataTypes.STRING, field: 'display_name' },
       }, { sequelize, modelName: 'role' })
@@ -279,7 +336,10 @@ function configureORM() {
 
   class UserRole extends Model {
     static {
-      UserRole.init({}, {
+      UserRole.init({
+        userId: { type: DataTypes.INTEGER, field: 'user_id' },
+        roleId: { type: DataTypes.INTEGER, field: 'role_id' },
+      }, {
         sequelize,
         modelName: 'userRole',
         tableName: 'user_roles',
@@ -326,5 +386,8 @@ async function seedSequelize({
   await Project.bulkCreate(relationSeeds.projects)
   await Deadline.bulkCreate(relationSeeds.deadlines)
   await Role.bulkCreate(relationSeeds.roles)
-  await sequelize.getQueryInterface().bulkInsert('user_roles', relationSeeds.userRoles)
+  await sequelize.getQueryInterface().bulkInsert('user_roles', relationSeeds.userRoles.map(row => ({
+    user_id: row.userId,
+    role_id: row.roleId,
+  })))
 }

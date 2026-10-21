@@ -75,12 +75,13 @@ export interface SqlEntityMetadata {
 export interface RelationMetadata {
   metadata: SqlEntityMetadata;
   relatedTable: string;
-  ownField: string;
-  relatedField: string;
+  /** Physical database columns, in matching join order. */
+  ownField: string | readonly string[];
+  relatedField: string | readonly string[];
   through?: {
     table: string;
-    ownRelationField: string;
-    relatedRelationField: string;
+    ownRelationField: string | readonly string[];
+    relatedRelationField: string | readonly string[];
   }
 }
 
@@ -106,6 +107,8 @@ function createStringComposer(
 ): SqlComposer<string> {
   const params: unknown[] = parent ? EMPTY_ARRAY : [];
   const rootAlias = options.alias ? `${options.escapeIdentifier(options.alias)}.` : '';
+  const physicalField = (name: string, alias = options.alias) =>
+    `${alias ? `${options.escapeIdentifier(alias)}.` : ''}${options.escapeIdentifier(name)}`;
 
   const composer: SqlComposition<string, SqlStringComposerResult> = {
     sql: joinTaggedStrings,
@@ -155,17 +158,22 @@ function createStringComposer(
         subquery(predicate) {
           if (relation.through) {
             const throughAlias = options.escapeIdentifier(`${relationAlias}_through`);
-            const ownRelationField = `${throughAlias}.${options.escapeIdentifier(relation.through.ownRelationField)}`;
-            const relatedRelationField = `${throughAlias}.${options.escapeIdentifier(relation.through.relatedRelationField)}`;
+            const throughField = (name: string) => `${throughAlias}.${options.escapeIdentifier(name)}`;
+            const join = joinColumns(relation.relatedField, relation.through.relatedRelationField,
+              name => physicalField(name, relationAlias), throughField);
+            const where = joinColumns(relation.ownField, relation.through.ownRelationField,
+              name => physicalField(name), throughField);
 
             return `SELECT 1 FROM ${options.escapeIdentifier(relation.relatedTable)} as ${options.escapeIdentifier(relationAlias)} ` +
               `INNER JOIN ${options.escapeIdentifier(relation.through.table)} as ${throughAlias} ` +
-              `ON ${relationComposer.field(relation.relatedField)} = ${relatedRelationField} ` +
-              `WHERE ${composer.field(relation.ownField)} = ${ownRelationField} AND ${predicate}`;
+              `ON ${join} ` +
+              `WHERE ${where} AND ${predicate}`;
           }
 
+          const joins = joinColumns(relation.ownField, relation.relatedField,
+            name => physicalField(name), name => physicalField(name, relationAlias));
           return `SELECT 1 FROM ${options.escapeIdentifier(relation.relatedTable)} as ${options.escapeIdentifier(relationAlias)} ` +
-            `WHERE ${composer.field(relation.ownField)} = ${relationComposer.field(relation.relatedField)} AND ${predicate}`;
+            `WHERE ${joins} AND ${predicate}`;
         }
       };
     },
@@ -175,7 +183,22 @@ function createStringComposer(
 
   return composer;
 }
-type SqlStringComposerResult = [sql: string, params: readonly unknown[]];
+export type SqlStringComposerResult = [sql: string, params: readonly unknown[]];
+
+function joinColumns(
+  own: string | readonly string[],
+  related: string | readonly string[],
+  ownField: (name: string) => string,
+  relatedField: (name: string) => string,
+) {
+  const ownColumns = typeof own === 'string' ? [own] : own;
+  const relatedColumns = typeof related === 'string' ? [related] : related;
+  if (!ownColumns.length || ownColumns.length !== relatedColumns.length) {
+    throw new Error('Relation join columns must be nonempty and have matching lengths');
+  }
+  return ownColumns.map((name, index) =>
+    `${ownField(name)} = ${relatedField(relatedColumns[index])}`).join(' AND ');
+}
 
 function joinTaggedStrings(strings: TemplateStringsArray, ...values: unknown[]) {
   let result = '';

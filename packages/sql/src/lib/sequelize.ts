@@ -7,14 +7,19 @@ import {
   mysql,
   type SqlEntityMetadata,
   type SqlOperator,
+  type SqlInterpreterOptions,
+  type SqlStringComposerResult,
 } from '../index.ts';
 
 const hasOwn: (object: object, key: PropertyKey) => boolean = (Object as {
   hasOwn?: (object: object, key: PropertyKey) => boolean
 }).hasOwn || ((object, key) => Object.prototype.hasOwnProperty.call(object, key));
 
-export function createSequelizeInterpreter(interpreters: Record<string, SqlOperator<any>>) {
-  const interpretSQL = createSqlInterpreter(interpreters);
+export function createSequelizeInterpreter(
+  interpreters: Record<string, SqlOperator<any>>,
+  interpreterOptions?: SqlInterpreterOptions<string, SqlStringComposerResult>,
+) {
+  const interpretSQL = createSqlInterpreter(interpreters, interpreterOptions);
   const numericPlaceholderDialects = createDialects({
     paramPlaceholder: mysql.paramPlaceholder,
   });
@@ -33,7 +38,7 @@ export function createSequelizeInterpreter(interpreters: Record<string, SqlOpera
       ? namedPlaceholderDialects[dialect]
       : numericPlaceholderDialects[dialect];
 
-    if (!options) {
+    if (!hasOwn(numericPlaceholderDialects, dialect)) {
       throw new Error(`Unsupported database dialect: ${dialect}`);
     }
 
@@ -71,7 +76,9 @@ function paramsToNamedReplacements(params: readonly unknown[], placeholderPrefix
 function sequelizeToSqlMetadata(Model: ModelStatic<any>): SqlEntityMetadata {
   return {
     toColumnName(fieldName) {
-      const attribute = Model?.rawAttributes?.[fieldName];
+      const attribute = hasOwn(Model.rawAttributes, fieldName)
+        ? Model.rawAttributes[fieldName]
+        : undefined;
       return attribute?.field ?? fieldName;
     },
     resolveRelation(relationName) {
