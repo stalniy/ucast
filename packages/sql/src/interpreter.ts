@@ -8,7 +8,7 @@ import { type DialectOptions } from './dialects.ts';
 export function createSqlInterpreter<
   F = string,
   R = SqlStringComposerResult,
-  O extends SqlQueryOptions = SqlQueryOptions
+  O = SqlQueryOptions
 >(
   operators: Record<string, SqlOperator<any>>,
   options?: SqlInterpreterOptions<F, R, O>
@@ -23,7 +23,7 @@ export function createSqlInterpreter<
     }
     return operator(condition, composer, { interpret });
   };
-  const createSqlComposer = (options?.createSqlComposer ?? createDefaultSqlComposer) as Required<SqlInterpreterOptions<F, R>>['createSqlComposer'];
+  const createSqlComposer = (options?.createSqlComposer ?? createDefaultSqlComposer) as Required<SqlInterpreterOptions<F, R, O>>['createSqlComposer'];
 
   return (condition: Condition, sqlOptions: O): R => {
     const composer = createSqlComposer(sqlOptions);
@@ -37,7 +37,7 @@ export function createSqlInterpreter<
   };
 }
 
-export interface SqlInterpreterOptions<F, R = F, O extends SqlQueryOptions = SqlQueryOptions> {
+export interface SqlInterpreterOptions<F, R = F, O = SqlQueryOptions> {
   getInterpreterName?: InterpreterOptions['getInterpreterName'];
   createSqlComposer?(options: O): SqlComposition<F, R>;
 }

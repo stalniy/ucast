@@ -285,20 +285,29 @@ syntax. If condition names differ from registered operator names, pass
 
 This library provides sub-modules that allows quickly integrate SQL interpreter with popular ORMs:
 
-### Drizzle ORM 0.45.x
+### Drizzle ORM
 
 Install `drizzle-orm` alongside `@ucast/sql`:
 
 ```sh
-npm i @ucast/sql 'drizzle-orm@~0.45.4'
+npm i @ucast/sql 'drizzle-orm'
 ```
 
-The adapter targets Drizzle ORM 0.45.x and is tested with 0.45.4. Its optional
-peer dependency range is `~0.45.4`. PostgreSQL, MySQL, and SQLite are supported;
-the selected table determines the dialect.
+Supported versions are **>=0.36.2 <1.0.0** and **^1.0.0-rc.1**. Drizzle
+is an optional peer dependency: importing the SQL root or another adapter does not load it.
 
-Create an interpreter once when your application starts, then pass a condition
-and a table's schema key to interpret it:
+Use:
+- `@ucast/sql/drizzle-orm/v0.x` for supported 0.x versions
+- `@ucast/sql/drizzle-orm/v1.x` for supported 1.0.0
+
+Each entry supports ESM, CommonJS and TypeScript. **There is no automatic version selection.**
+
+Supported dialects:
+- PostgreSQL
+- MySQL
+- SQLite
+
+Create an interpreter during application bootstrap, then pass a condition and a table's schema key to interpret it:
 
 ```ts
 import { createDrizzleInterpreter } from '@ucast/sql/drizzle-orm/v0.x';
@@ -306,35 +315,35 @@ import { FieldCondition } from '@ucast/core';
 import { and, eq } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-const users = sqliteTable('users', {
+const authors = sqliteTable('authors', {
   id: integer('id').primaryKey(),
   displayName: text('display_name').notNull(),
 });
-const interpret = createDrizzleInterpreter({ schema: { users } });
-const predicate = interpret(new FieldCondition('eq', 'displayName', 'Alice'), 'users');
+const interpret = createDrizzleInterpreter({ schema: { authors } });
+const predicate = interpret(
+  new FieldCondition('eq', 'displayName', 'Ada'),
+  'authors'
+);
 
 // Use your configured Drizzle instance to construct and execute the query.
-db.select().from(users).where(and(eq(users.id, 1), predicate));
+db.select().from(authors).where(and(eq(authors.id, 1), predicate));
 ```
 
-`interpret(condition, tableKey, options?)` synchronously returns a Drizzle `SQL`
-predicate. Use it in `SELECT`, `UPDATE`, or `DELETE` queries, or combine it with native Drizzle conditions using `and()` and `or()`. You own query construction and
-execution; Drizzle renders the predicate and binds its parameters.
+`interpret(condition, tableKey, options?)` synchronously returns a Drizzle `SQL` predicate. Use it in `SELECT`, `UPDATE`, or `DELETE` queries, or combine it with native Drizzle conditions using `and()` and `or()`. You own query construction and execution; Drizzle renders the predicate and binds its parameters.
 
 Table keys are inferred from the schema. Unknown table keys and unsupported table dialects throw when interpreting a condition.
 
 #### Aliases and column names
 
-Register original tables in the schema. Supply query aliases through the third
-argument, using the same alias in your Drizzle query:
+Register original tables in the schema. Supply query aliases through the third argument, using the same alias in your Drizzle query:
 
 ```ts
 import { alias } from 'drizzle-orm/sqlite-core';
 
-const u = alias(users, 'u');
+const u = alias(authors, 'u');
 const predicateForAlias = interpret(
-  new FieldCondition('eq', 'displayName', 'Alice'),
-  'users',
+  new FieldCondition('eq', 'displayName', 'Ada'),
+  'authors',
   { alias: 'u' },
 );
 db.select().from(u).where(predicateForAlias);
@@ -342,14 +351,11 @@ db.select().from(u).where(predicateForAlias);
 
 Conditions use table property names: `displayName` above resolves to
 `display_name`. Native column references preserve Drizzle's naming, schema
-qualification, casing, and input encoders, including custom encoders. Unknown
-properties throw an error; dots in field names do not introduce a relation path.
+qualification, casing, and input encoders, including custom encoders. Unknown properties remain escaped literal identifiers; dots in field names do not introduce a relation path.
 
 #### Relations
 
-Relation operators (`some`, `none`, and `every`) resolve native Drizzle relation
-declarations and produce correlated `EXISTS`/`NOT EXISTS` subqueries. Include the
-tables and their declarations in the factory's schema:
+Relation operators (`some`/`is`, `none`/`isNot`, and `every`) resolve native Drizzle relation declarations and produce correlated `EXISTS`/`NOT EXISTS` subqueries. Include the tables and their declarations in the factory's schema:
 
 ```ts
 import { relations } from 'drizzle-orm';
@@ -359,27 +365,24 @@ const posts = sqliteTable('posts', {
   authorId: integer('author_id').notNull(),
   title: text('title').notNull(),
 });
-const userRelations = relations(users, ({ many }) => ({
+const authorRelations = relations(authors, ({ many }) => ({
   posts: many(posts),
 }));
 const postRelations = relations(posts, ({ one }) => ({
-  author: one(users, {
+  author: one(authors, {
     fields: [posts.authorId],
-    references: [users.id],
+    references: [authors.id],
   }),
 }));
-const schema = { users, posts, userRelations, postRelations };
+const schema = { authors, posts, authorRelations, postRelations };
 const interpret = createDrizzleInterpreter({ schema });
 
 const condition = new FieldCondition('some', 'posts',
   new FieldCondition('eq', 'title', 'Getting started'));
-db.select().from(users).where(interpret(condition, 'users'));
+db.select().from(authors).where(interpret(condition, 'authors'));
 ```
 
-Here, Drizzle infers the `users.posts` join from `posts.author`. Direct joins,
-inferred inverse joins, composite keys, named self relations, and nested
-relations are supported. Each nested condition uses the related table's columns
-and encoders.
+Here, Drizzle infers the `authors.posts` join from `posts.author`. Direct joins, inferred inverse joins, composite keys, named self relations, and nestedrelations are supported. Each nested condition uses the related table's columns and encoders.
 
 | Operator | Meaning |
 | --- | --- |
@@ -387,27 +390,20 @@ and encoders.
 | `none` | No related row matches the nested condition |
 | `every` | No related row satisfies the SQL negation of the nested condition |
 
-`none` and `every` match parents without related rows. `every` preserves SQL's
-usual NULL behavior.
+`none` and `every` match parents without related rows. `every` preserves SQL's usual NULL behavior.
 
-Relations are normalized and validated once at interpreter creation. Register all tables referenced by your relation declarations, including declarations you do not use in a condition. Missing target tables, ambiguous or incomplete joins, and
-cross-dialect relations fail at startup. Unknown relation names in conditions
-fail during interpretation.
+Relations are normalized and validated once at interpreter creation. Register all tables referenced by your relation declarations, including declarations you do not use in a condition. Missing target tables, ambiguous or incomplete joins, and cross-dialect relations fail at startup. Unknown relation names in conditions fail during interpretation.
 
-Express nested relations with nested condition nodes. For example, this follows
-`users.posts.author`:
+Express nested relations with nested condition nodes. For example, this follows `authors.posts.author`:
 
 ```ts
-const hasPostByAlice = new FieldCondition('some', 'posts',
+const hasPostByAda = new FieldCondition('some', 'posts',
   new FieldCondition('some', 'author',
-    new FieldCondition('eq', 'displayName', 'Alice')));
-db.select().from(users).where(interpret(hasPostByAlice, 'users'));
+    new FieldCondition('eq', 'displayName', 'Ada')));
+db.select().from(authors).where(interpret(hasPostByAda, 'authors'));
 ```
 
-Drizzle 0.x models many-to-many relations through a junction table. Register the
-junction table and its relation declarations, then traverse both declared steps
-with nested conditions in the same way. The interpreter does not invent a
-direct many-to-many relation.
+Drizzle 0.x models many-to-many relations through a junction table. Register the junction table and its relation declarations, then traverse both declared steps with nested conditions in the same way. The interpreter does not invent a direct many-to-many relation.
 
 #### Operators and values
 
@@ -416,21 +412,48 @@ Pass an optional second argument to select or extend the interpreter set. These
 operators come from `@ucast/sql`:
 
 ```ts
-import { eq as interpretEq, lt as interpretLt } from '@ucast/sql';
+import { eq , lt } from '@ucast/sql';
 
 const interpretSelected = createDrizzleInterpreter(
-  { schema: { users } },
-  { eq: interpretEq, lt: interpretLt },
+  { schema: { authors } },
+  { eq, lt },
 );
 ```
 
 Values are bound parameters. Comparisons and membership conditions use the
-resolved column's encoder; regular-expression patterns and modulo operands do
-not. Direct Drizzle `SQL` objects as condition values are rejected because
-Drizzle would otherwise render them as executable syntax. Use native Drizzle
-predicates or custom interpreters to compose SQL expressions.
+resolved column's encoder; regular-expression patterns and modulo operands do not. Direct Drizzle `SQL` objects as condition values are rejected because Drizzle would otherwise render them as executable syntax. Use native Drizzle predicates or custom interpreters to compose SQL expressions.
 
-Drizzle 1.x is outside this adapter's compatibility scope.
+#### Drizzle 1.x relation declarations
+
+Use the matching entry and the release candidate's native `defineRelations()` declarations:
+
+```ts
+import { createDrizzleInterpreter } from '@ucast/sql/drizzle-orm/v1.x';
+import { defineRelations } from 'drizzle-orm';
+
+const relations = defineRelations({ authors, posts }, r => ({
+  authors: {
+    posts: r.many.posts({ from: r.authors.id, to: r.posts.authorId }),
+    publishedPosts: r.many.posts({
+      from: r.authors.id,
+      to: r.posts.authorId,
+      where: { title: { ne: 'Draft' } },
+    }),
+  },
+  posts: {
+    author: r.one.authors({ from: r.posts.authorId, to: r.authors.id })
+  },
+}));
+const interpret = createDrizzleInterpreter({ schema: { authors, posts, relations } });
+```
+
+Native 1.x `through` relations are also supported. For example, with a declared `authorRoles` junction, use `r.authors.id.through(r.authorRoles.authorId)` as `from` and `r.roles.id.through(r.authorRoles.roleId)` as `to`.
+Predefined relation filters restrict the row set for all relation operators:
+`every` negates only the child condition. Rows outside the declared filter do not become counterexamples. The interpreter delegates join/filter construction to Drizzle's native `relationToSQL`.
+
+Drizzle 0.x applies casing when rendering a predicate; the same predicate can be rendered with different dialect casing settings. In 1.0.0 release candidates use native table
+construction casing, such as `sqliteTableCreator(name => name, 'snake_case')`.
+The interpreter accepts neither a casing nor a dialect option.
 
 ### [Sequelize](https://sequelize.org/)
 

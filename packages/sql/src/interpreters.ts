@@ -50,11 +50,6 @@ export const mod: SqlOperator<FieldCondition<[number, number]>> = (
   condition, { sql, field, param }
 ) => sql`mod(${field(condition.field)}, ${param(condition.value[0])}) = ${param(condition.value[1])}`;
 
-// type IElemMatch = SqlOperator<FieldCondition<Condition>>;
-// export const elemMatch: IElemMatch = (condition, query, { interpret }) => {
-//   return query.usingFieldPrefix(condition.field, () => interpret(condition.value, query));
-// };
-
 export const regex: SqlOperator<FieldCondition<RegExp>> = (
   condition,
   { sql, field, param, regexp, raw }
