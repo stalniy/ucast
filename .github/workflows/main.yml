@@ -18,9 +18,9 @@ jobs:
     strategy:
       matrix:
         node:
-          - 20 # April 30, 2026
           - 22 # April 30, 2027
           - 24 # 2027-06-16
+          - 26 # 2029-04-30
           - latest
     steps:
     - uses: actions/checkout@v6
