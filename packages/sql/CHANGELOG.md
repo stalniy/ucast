@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.3.0](https://github.com/stalniy/ucast/compare/@ucast/sql@0.2.1...@ucast/sql@0.3.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* replaces Query & sql backend with sql composer
+
+### Features
+
+* adds drizzle-orm v0.x basic support ([d6cd2fa](https://github.com/stalniy/ucast/commit/d6cd2facb711755e9bd0358bc41ffa88a879ec4a))
+* adds support for interpretation of some/every/none via drizzle relations ([5a33abf](https://github.com/stalniy/ucast/commit/5a33abf231c10b55c6b6a19675b2cd366af313ca))
+* **sql:** adds support for drizzle 1.x ([#95](https://github.com/stalniy/ucast/issues/95)) ([1b46d93](https://github.com/stalniy/ucast/commit/1b46d93d0623359618ab23cad1f0de6323f740b4))
+* **sql:** map model properties to database columns ([#90](https://github.com/stalniy/ucast/issues/90)) ([ecbabc0](https://github.com/stalniy/ucast/commit/ecbabc0515abe029d8814cc6a2ea0e53aaf2da64))
+
+
+### Bug Fixes
+
+* **sql:** fixes types build for ucast/sql ([d63e1f1](https://github.com/stalniy/ucast/commit/d63e1f16f9ed3bb592312878c76a239dc91b667b))
+
+
+### Code Refactoring
+
+* adjusts mikro-orm sql adapter to accept metadata storage and platform ([debfe25](https://github.com/stalniy/ucast/commit/debfe256f6cd4a05fe1bbdb376852e9b91865e39))
+* changes typeorm adapter to return Brackets so it is composable with the rest of conditions ([5855057](https://github.com/stalniy/ucast/commit/5855057e51f378f0cfd1690433d8320e7cf63df0))
+* migrates mikro-orm to new abstractions ([94a8b53](https://github.com/stalniy/ucast/commit/94a8b53718c51a9a597e535d0129ce13f718addf))
+* migrates objection to new abstractions ([c401320](https://github.com/stalniy/ucast/commit/c401320b03afdd5923500d35d25011d28656a664))
+* migrates sequelize interpreter to new abstraction ([f6775e8](https://github.com/stalniy/ucast/commit/f6775e8dbeac56e2346ede94d1fdf16ee4550fa9))
+* migrates typeorm to new abstraction ([a5d558a](https://github.com/stalniy/ucast/commit/a5d558aea22d4a4551ea73faac28ea0f848c4876))
+* refactors objection sql adapter to accept model instead of a query instance ([5af8b85](https://github.com/stalniy/ucast/commit/5af8b8530ae39d0ce5db439d14b9002180eb8c85))
+* replaces Query & sql backend with sql composer ([385d19a](https://github.com/stalniy/ucast/commit/385d19ae56f200c6d7995d23cecac7495c89bd7e))
+* uses double quotes for sqlite escaping instead of backticks which requires backslashes in tests ([a24b785](https://github.com/stalniy/ucast/commit/a24b785409de6eaa42338ad8b2293b8551500f3f))
+
 ## [0.2.1](https://github.com/stalniy/ucast/compare/@ucast/sql@0.2.0...@ucast/sql@0.2.1) (2026-06-28)
 
 
