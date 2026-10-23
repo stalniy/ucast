@@ -148,6 +148,147 @@ describe(`${createDrizzleInterpreter.name} v1.x`, () => {
     }
   })
 
+  describe('relation metadata', () => {
+    it('accepts repeated declarations and ignores unrelated schema exports', () => {
+      const { users, posts, relations } = setupMetadata()
+      const interpret = createDrizzleInterpreter({
+        schema: {
+          relations,
+          repeated: relations,
+          users,
+          posts,
+          empty: null,
+          label: 'schema',
+          unrelated: { empty: null, value: 1, tableOnly: { table: users } },
+        },
+      })
+
+      expectSql(interpret(some('posts', new FieldCondition('eq', 'title', 'A')), 'users'),
+        'EXISTS (SELECT 1 FROM "posts" as "users_ucast_0" WHERE ("users"."id" = "users_ucast_0"."user_id") AND ("users_ucast_0"."title" = ?))',
+        ['A'])
+    })
+
+    it('rejects distinct declarations for the same schema key', () => {
+      const { users, posts, relations } = setupMetadata()
+      const other = drizzle.defineRelations({ users, posts })
+
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, relations, other } }))
+        .to.throw('Multiple relation declarations for "users"')
+    })
+
+    it('requires source schema keys to reference the declared table', () => {
+      const { users, posts, relations } = setupMetadata()
+      const otherUsers = sqlite.sqliteTable('other_users', { id: sqlite.integer() })
+
+      expect(() => createDrizzleInterpreter({ schema: { renamed: users, posts, relations } }))
+        .to.throw('Table "users" not found in schema')
+      expect(() => createDrizzleInterpreter({ schema: { users: otherUsers, posts, relations } }))
+        .to.throw('Table "users" not found in schema')
+    })
+
+    it('rejects non-native relation metadata', () => {
+      const { users, posts, relations } = setupMetadata()
+      const invalid = { users: { ...relations.users, relations: { posts: {} } } }
+
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, invalid } }))
+        .to.throw('Unsupported metadata for relation "users.posts"')
+    })
+
+    it('requires native target tables matching their schema keys', () => {
+      const { users, posts, relations } = setupMetadata()
+      const otherPosts = sqlite.sqliteTable('other_posts', { id: sqlite.integer() })
+      Object.assign(relations.users.relations.posts, { targetTable: null })
+
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, relations } }))
+        .to.throw('Unsupported metadata for relation "users.posts"')
+
+      relations.users.relations.posts.targetTable = otherPosts
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, relations } }))
+        .to.throw('Unsupported metadata for relation "users.posts"')
+    })
+
+    it('rejects empty and mismatched direct column pairs', () => {
+      const { users, posts, relations } = setupMetadata()
+      const relation = relations.users.relations.posts
+      relation.sourceColumns = []
+
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, relations } }))
+        .to.throw('Invalid column pairs for relation "posts"')
+
+      relation.sourceColumns = [users.id]
+      relation.targetColumns = []
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, relations } }))
+        .to.throw('Invalid column pairs for relation "posts"')
+    })
+
+    it('requires a native junction table and matching through column pairs', () => {
+      const { users, posts } = setupMetadata()
+      const links = sqlite.sqliteTable('links', {
+        userId: sqlite.integer(), postId: sqlite.integer(),
+      })
+      const relations = drizzle.defineRelations({ users, posts, links }, r => ({
+        users: {
+          posts: r.many.posts({
+            from: r.users.id.through(r.links.userId),
+            to: r.posts.id.through(r.links.postId),
+          }),
+        },
+      }))
+      const relation = relations.users.relations.posts
+      const through = relation.through!
+      relation.throughTable = undefined
+
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, links, relations } }))
+        .to.throw('Invalid column pairs for relation "posts"')
+
+      relation.throughTable = links
+      relation.through = { source: [], target: through.target }
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, links, relations } }))
+        .to.throw('Invalid column pairs for relation "posts"')
+
+      relation.through = { source: through.source, target: [] }
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, links, relations } }))
+        .to.throw('Invalid column pairs for relation "posts"')
+    })
+
+    it('rejects junction tables from another dialect', () => {
+      const { users, posts, relations } = setupMetadata()
+      relations.users.relations.posts.throughTable = pg.pgTable('links', {
+        userId: pg.integer(), postId: pg.integer(),
+      })
+
+      expect(() => createDrizzleInterpreter({ schema: { users, posts, relations } }))
+        .to.throw('Cross-dialect relations are not supported')
+    })
+
+    it('reports unknown relations on tables without declarations', () => {
+      const { users } = setupMetadata()
+      const interpret = createDrizzleInterpreter({ schema: { users } })
+      const interpretRelation = (name: string) =>
+        interpret(some(name, new FieldCondition('eq', 'title', 'A')), 'users')
+
+      expect(() => interpretRelation('posts'))
+        .to.throw('Relation metadata for "users.posts" not found')
+      expect(() => interpretRelation('constructor'))
+        .to.throw('Relation metadata for "users.constructor" not found')
+      expect(() => interpretRelation('__proto__'))
+        .to.throw('Relation metadata for "users.__proto__" not found')
+      expect(() => interpretRelation('toString'))
+        .to.throw('Relation metadata for "users.toString" not found')
+    })
+
+    function setupMetadata() {
+      const users = sqlite.sqliteTable('users', { id: sqlite.integer() })
+      const posts = sqlite.sqliteTable('posts', {
+        userId: sqlite.integer('user_id'), id: sqlite.integer(), title: sqlite.text(),
+      })
+      const relations = drizzle.defineRelations({ users, posts }, r => ({
+        users: { posts: r.many.posts({ from: r.users.id, to: r.posts.userId }) },
+      }))
+      return { users, posts, relations }
+    }
+  })
+
   function setup(encoded: (name: string) => any) {
     const users = sqlite.sqliteTable('users', {
       id: sqlite.integer('id'),
