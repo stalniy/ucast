@@ -1,271 +1,257 @@
-import { CompoundCondition, FieldCondition } from '@ucast/core'
-import { and as drizzleAnd, eq as drizzleEq, relations, sql, Table } from 'drizzle-orm'
-import { customType, integer, SQLiteSyncDialect, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { MySqlDialect, mysqlTable, int } from 'drizzle-orm/mysql-core'
-import { PgDialect, pgSchema, pgTable, integer as pgInteger } from 'drizzle-orm/pg-core'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-// @ts-expect-error better-sqlite3 has no types
-import Database from 'better-sqlite3'
+import { FieldCondition, type Condition } from '@ucast/core'
+import * as drizzle from 'drizzle-orm-v0'
+import * as sqlite from 'drizzle-orm-v0/sqlite-core'
+import * as pg from 'drizzle-orm-v0/pg-core'
+import * as mysql from 'drizzle-orm-v0/mysql-core'
+import * as aliases from 'drizzle-orm-v0/alias'
+import * as betterSqlite3 from 'drizzle-orm-v0/better-sqlite3'
 import { createDrizzleInterpreter } from '../../src/lib/drizzle-orm/v0.x.ts'
-import { eq, type SqlOperator } from '../../src/index.ts'
+import { includeDrizzleInterpreterExamples, type RelationDefinitions } from './sharedExamples.ts'
 import { expect } from '../specHelper.ts'
 
 describe(`${createDrizzleInterpreter.name} v0.x`, () => {
-  const cases: [string, unknown, string, unknown[]][] = [
-    ['eq', 18, '= ?', [18]],
-    ['ne', 18, '<> ?', [18]],
-    ['lt', 18, '< ?', [18]],
-    ['lte', 18, '<= ?', [18]],
-    ['gt', 18, '> ?', [18]],
-    ['gte', 18, '>= ?', [18]],
-    ['eq', null, 'is null', []],
-    ['ne', null, 'is not null', []],
-    ['exists', true, 'is not null', []],
-    ['exists', false, 'is null', []],
-    ['in', [1, 2], 'in(?, ?)', [1, 2]],
-    ['within', [1, 2], 'in(?, ?)', [1, 2]],
-    ['nin', [1, 2], 'not in(?, ?)', [1, 2]],
-  ]
-  cases.forEach(([operator, value, suffix, params]) => {
-    it(`preserves shared ${operator} semantics with ${JSON.stringify(value)}`, () => {
-      const { render } = setup()
-      const query = render(new FieldCondition(operator, 'age', value))
-      expect(query.sql).to.equal(`"users"."age" ${suffix}`)
-      expect(query.params).to.deep.equal(params)
-    })
+  includeDrizzleInterpreterExamples({
+    setup,
+    createDrizzleInterpreter,
+    setupRelations,
+    drizzle,
+    pg,
+    mysql,
+    sqlite,
+    aliases,
+    betterSqlite3,
   })
 
-  it('binds modulo operands without a column encoder', () => {
-    const { render } = setup()
-    const query = render(new FieldCondition('mod', 'code', [3, 1]))
-    expect(query.sql).to.equal('mod("users"."code", ?) = ?')
-    expect(query.params).to.deep.equal([3, 1])
-  })
-
-  it('maps properties to columns', () => {
-    const { render } = setup()
-    expect(render(new FieldCondition('eq', 'displayName', 'A')).sql)
-      .to.equal('"users"."display_name" = ?')
-  })
-
-  it('throws on unknown column names', () => {
-    const { render } = setup()
-    ;['missing.field', 'toString', 'constructor', '__proto__', 'a"b'].forEach(name => {
-      expect(() => render(new FieldCondition('eq', name, 1)).sql)
-        .to.throw(/Uknown column/)
-    })
-  })
-
-  it('lets Drizzle apply casing on each rendering', () => {
-    const { interpret, dialect } = setup()
+  it('supports native column casing at render time', () => {
+    const users = sqlite.sqliteTable('users', { camelCase: sqlite.text() })
+    const interpret = createDrizzleInterpreter({ schema: { users } })
     const predicate = interpret(new FieldCondition('eq', 'camelCase', 'A'), 'users')
+    const dialect = new sqlite.SQLiteSyncDialect()
+
     expect(dialect.sqlToQuery(predicate).sql).to.equal('"users"."camelCase" = ?')
-    expect(new SQLiteSyncDialect({ casing: 'snake_case' }).sqlToQuery(predicate).sql)
-      .to.equal('"users"."camel_case" = ?')
+    const query = new sqlite.SQLiteSyncDialect({ casing: 'snake_case' }).sqlToQuery(predicate)
+    expect(query.sql).to.equal('"users"."camel_case" = ?')
+    expect(query.params).to.deep.equal(['A'])
+    expect(dialect.sqlToQuery(predicate).sql).to.equal('"users"."camelCase" = ?')
   })
 
-  it('supports query-specific aliases independently', () => {
-    const { interpret, dialect, render } = setup()
-    const condition = new FieldCondition('eq', 'displayName', 'A')
-    const first = interpret(condition, 'users', { alias: 'first' })
-    expect(dialect.sqlToQuery(first).sql).to.equal('"first"."display_name" = ?')
-
-    const second = interpret(condition, 'users', { alias: 'second' })
-    expect(dialect.sqlToQuery(second).sql).to.equal('"second"."display_name" = ?')
-
-    expect(render(condition).sql).to.equal('"users"."display_name" = ?')
-  })
-
-  it('binds comparison and each membership value with native encoders', () => {
-    const { interpret, dialect, render } = setup()
-    const date = new Date('2025-01-01T00:00:00Z')
-    expect(render(new FieldCondition('eq', 'active', true)).params).to.deep.equal([1])
-    expect(render(new FieldCondition('eq', 'createdAt', date)).params)
-      .to.deep.equal([date.getTime() / 1000])
-
-    const predicate = interpret(new FieldCondition('in', 'code', ['A', 'B']), 'users')
-    expect(dialect.sqlToQuery(predicate).params).to.deep.equal(['encoded:A', 'encoded:B'])
-    expect(dialect.sqlToQuery(predicate).params).to.deep.equal(['encoded:A', 'encoded:B'])
-  })
-
-  it('uses shared regex dialect syntax and binds the pattern without column encoding', () => {
-    const pgUsers = pgSchema('app').table('users', { code: pgInteger('code') })
-    const myUsers = mysqlTable('users', { code: int('code') })
-    const interpret = createDrizzleInterpreter({ schema: { pgUsers, myUsers } })
-
-    const condition = new FieldCondition('regex', 'code', /a.*/)
-    const ignoreCaseCondition = new FieldCondition('regex', 'code', /a.*/)
-
-    const pgQuery = new PgDialect().sqlToQuery(interpret(condition, 'pgUsers'))
-    expect(pgQuery.sql).to.equal(`"app"."users"."code" ~ $1`)
-    expect(pgQuery.params).to.deep.equal(['a.*'])
-
-    const pgQuery2 = new PgDialect().sqlToQuery(interpret(ignoreCaseCondition, 'pgUsers'))
-    expect(pgQuery2.sql).to.equal(`"app"."users"."code" ~ $1`)
-
-    const mysqlQuery = new MySqlDialect().sqlToQuery(interpret(condition, 'myUsers'))
-    expect(mysqlQuery.sql).to.equal('`users`.`code` regexp ? = 1')
-    expect(mysqlQuery.params).to.deep.equal(['a.*'])
-
-    const mysqlQuery2 = new MySqlDialect().sqlToQuery(interpret(condition, 'myUsers'))
-    expect(mysqlQuery2.sql).to.equal('`users`.`code` regexp ? = 1')
-  })
-
-  it('composes drizzle predicates and preserves PostgreSQL placeholder ordering', () => {
-    const table = pgTable('users', { age: pgInteger('age') })
-    const interpret = createDrizzleInterpreter({ schema: { table } })
-    const tricky = "$1 ? '; DROP TABLE users; --"
-    const predicate = interpret(new FieldCondition('eq', 'age', tricky), 'table')
-    const query = new PgDialect().sqlToQuery(sql`${1} and ${drizzleAnd(drizzleEq(table.age, 2), predicate)} and ${3}`)
-
-    expect(query.sql).to.equal('$1 and ("users"."age" = $2 and "users"."age" = $3) and $4')
-    expect(query.params).to.deep.equal([1, 2, tricky, 3])
-    expect(new PgDialect().sqlToQuery(predicate).params).to.deep.equal([tricky])
-  })
-
-  it('supports selected and custom interpreters with native fragments', () => {
-    const { dialect, schema } = setup()
-    const custom: SqlOperator<FieldCondition> = (condition, composer) => composer.sql`${composer.field('age')} + ${composer.param(condition.value)}`
-    const interpret = createDrizzleInterpreter({ schema }, { eq, custom })
-
-    expect(dialect.sqlToQuery(interpret(new FieldCondition('custom', 'age', 2), 'users')).sql)
-      .to.equal('"users"."age" + ?')
-    expect(() => interpret(new FieldCondition('gt', 'age', 2), 'users')).to.throw('Unable to interpret')
-  })
-
-  it('rejects unsupported tables, non-table keys, and unknown relations', () => {
-    const { interpret } = setup()
-    const condition = new FieldCondition('eq', 'age', 1)
-
-    expect(() => interpret(condition, 'userRelations' as any)).to.throw('Unknown table schema key')
-    expect(() => interpret(condition, 'missing' as any)).to.throw('Unknown table schema key')
-    expect(() => interpret(condition, 'toString' as any)).to.throw('Unknown table schema key')
-
-    const unsupported = createDrizzleInterpreter({ schema: { table: new Table('users', undefined, 'users') } })
-    expect(() => unsupported(condition, 'table')).to.throw('Uknown table type "Table". Supported PgTable, MySqlTable, SQLiteTable')
-    ;['some', 'none', 'every'].forEach(operator => {
-      expect(() => interpret(new FieldCondition(operator, 'posts', condition), 'users'))
-        .to.throw('Relation metadata for "users.posts" not found')
-    })
-  })
-
-  it('prevents native SQL values from becoming executable syntax', () => {
-    const { interpret, render } = setup()
-
-    expect(() => interpret(new FieldCondition('eq', 'age', sql.raw('1 or true')), 'users'))
-      .to.throw('SQL fragments are not supported as condition values')
-    expect(() => interpret(new FieldCondition('in', 'age', [sql.raw('1 or true')]), 'users'))
-      .to.throw('SQL fragments are not supported as condition values')
-    const wrapper = { getSQL: () => sql.raw('1 or true') }
-    expect(render(new FieldCondition('eq', 'age', wrapper)).params).to.deep.equal([wrapper])
-  })
-
-  describe('compound operators', () => {
-    it("preserves `and` grouping", () => {
-      const { render } = setup()
-
-      const condition = new CompoundCondition('and', [
-        new FieldCondition('eq', 'age', 18),
-        new CompoundCondition('or', [new FieldCondition('eq', 'age', 20)]),
-      ])
-      const query = render(condition)
-
-      expect(query.sql).to.equal(`("users"."age" = ? and ("users"."age" = ?))`)
-      expect(query.params).to.deep.equal([18, 20])
+  describe('relation metadata', () => {
+    it('resolves inverse relations, maps columns, and preserves bound values', () => {
+      const { render } = setupRelations()
+      const query = render(some('profile', new FieldCondition('eq', 'displayName', 'Alice Profile')))
+      expect(query.sql).to.equal('EXISTS (SELECT 1 FROM "profiles" as "users_ucast_0" WHERE ("users"."id" = "users_ucast_0"."user_id") AND ("users_ucast_0"."display_name" = ?))')
+      expect(query.params).to.deep.equal(['Alice Profile'])
     })
 
-    it("preserves `or` grouping", () => {
-      const { render } = setup()
-      const condition = new CompoundCondition('or', [
-        new FieldCondition('eq', 'age', 18),
-        new CompoundCondition('or', [new FieldCondition('eq', 'age', 20)]),
-      ])
-      const query = render(condition)
-
-      expect(query.sql).to.equal(`("users"."age" = ? or ("users"."age" = ?))`)
-      expect(query.params).to.deep.equal([18, 20])
+    it('uses each related column encoder', () => {
+      const { render } = setupRelations()
+      expect(render(some('projects', new FieldCondition('in', 'active', [true, false]))).params)
+        .to.deep.equal([1, 0])
     })
 
-    it("preserves `not` grouping", () => {
-      const { render } = setup()
-      const condition = new CompoundCondition('not', [
-        new FieldCondition('eq', 'age', 18),
-        new CompoundCondition('or', [new FieldCondition('eq', 'age', 20)]),
-      ])
-      const query = render(condition)
-
-      expect(query.sql).to.equal(`not ("users"."age" = ? and ("users"."age" = ?))`)
-      expect(query.params).to.deep.equal([18, 20])
+    it('honors query aliases, including generated alias collisions', () => {
+      const { render, matchingProject } = setupRelations()
+      const condition = some('projects', matchingProject)
+      expect(render(condition, { alias: 'u' }).sql).to.contain('"u"."id" = "u_ucast_0"."user_id"')
+      expect(render(condition, { alias: 'ucast_0' }).sql).to.contain('"ucast_0"."id" = "ucast_0_ucast_0"."user_id"')
     })
 
-    it("preserves `nor` grouping", () => {
-      const { render } = setup()
-      const condition = new CompoundCondition('nor', [
-        new FieldCondition('eq', 'age', 18),
-        new CompoundCondition('or', [new FieldCondition('eq', 'age', 20)]),
-      ])
-      const query = render(condition)
-
-      expect(query.sql).to.equal(`not ("users"."age" = ? or ("users"."age" = ?))`)
-      expect(query.params).to.deep.equal([18, 20])
+    it('shares metadata across duplicate table keys in any schema order', () => {
+      const { schema, users, dialect, matchingProject } = setupRelations()
+      const { userRelations: declarations, ...rest } = schema
+      for (const source of [
+        { ...schema, duplicate: users },
+        { userRelations: declarations, duplicate: users, ...rest },
+      ]) {
+        const custom = createDrizzleInterpreter({ schema: source })
+        expect(dialect.sqlToQuery(custom(some('projects', matchingProject), 'users')).sql)
+          .to.contain('"users"."id" = "users_ucast_0"."user_id"')
+      }
+      const otherUsers = sqlite.sqliteTable('users', { id: sqlite.integer('id') })
+      expect(() => createDrizzleInterpreter({ schema: { users, otherUsers } }))
+        .to.throw('Multiple table definitions')
     })
-  })
 
-  describe('e2e execution', () => {
-    it('executes scalar and Boolean predicates in SQLite with native encoding', () => {
-      const { interpret } = setup()
-      const connection = new Database(':memory:')
-      const db = drizzle(connection)
-
-      try {
-        connection.exec('CREATE TABLE users (id integer, display_name text, age integer, active integer, created_at integer, code text, camelCase text)')
-        db.insert(users).values([
-          { id: 1, age: 18, active: true, code: 'A' },
-          { id: 2, age: 25, active: false, code: 'B' },
-          { id: 3, age: 30, active: true, code: 'C' },
-        ]).run()
-        const predicate = interpret(new CompoundCondition('and', [
-          new FieldCondition('gte', 'age', 20),
-          new FieldCondition('eq', 'active', true),
-          new FieldCondition('in', 'code', ['A', 'C']),
-        ]), 'users')
-        const native = drizzleAnd(
-          drizzleEq(users.active, true),
-          drizzleEq(users.code, 'C')
-        )
-
-        expect(db.select().from(users).where(predicate).all())
-          .to.deep.equal(db.select().from(users).where(native).all())
-        expect(db.update(users).set({ displayName: 'Changed' }).where(predicate).run().changes).to.equal(1)
-        expect(db.delete(users).where(predicate).run().changes).to.equal(1)
-      } finally {
-        connection.close()
+    it('reports undeclared relation names during interpretation', () => {
+      const { render, matchingProject } = setupRelations()
+      for (const name of ['missing', 'constructor', '__proto__', 'toString']) {
+        expect(() => render(some(name, matchingProject))).to.throw('Relation metadata')
       }
     })
+
+    it('rejects ambiguous inverse relations at factory creation', () => {
+      const { users, projects } = setupRelations()
+      const usersProjects = drizzle.relations(users, ({ many }) => ({ projects: many(projects) }))
+      const ambiguous = drizzle.relations(projects, ({ one }) => ({
+        first: one(users, { fields: [projects.userId], references: [users.id] }),
+        second: one(users, { fields: [projects.userId], references: [users.id] }),
+      }))
+      expect(() => createDrizzleInterpreter({
+        schema: { users, projects, usersProjects, ambiguous },
+      })).to.throw('multiple relations')
+    })
+
+    it('rejects empty and mismatched native column pairs', () => {
+      const { users, projects } = setupRelations()
+      const empty = drizzle.relations(users, ({ one }) => ({
+        project: one(projects, { fields: [], references: [] } as any),
+      }))
+      expect(() => createDrizzleInterpreter({ schema: { users, projects, empty } }))
+        .to.throw('Invalid column pairs for relation "project"')
+      const mismatched = drizzle.relations(users, ({ one }) => ({
+        project: one(projects, { fields: [users.id], references: [] } as any),
+      }))
+      expect(() => createDrizzleInterpreter({ schema: { users, projects, mismatched } }))
+        .to.throw('Invalid column pairs for relation "project"')
+    })
+
+    it('normalizes join columns at startup and reuses them across interpretations', () => {
+      const { users, projects, dialect, matchingProject } = setupRelations()
+      let reads = 0
+      const declarations = drizzle.relations(users, ({ one }) => ({
+        project: one(projects, {
+          get fields() {
+            reads++
+            return [users.id] as [typeof users.id]
+          },
+          references: [projects.id],
+        }),
+      }))
+      const custom = createDrizzleInterpreter({ schema: { users, projects, declarations } })
+      const startupReads = reads
+      expect(startupReads).to.be.greaterThan(0)
+      const condition = some('project', matchingProject)
+      for (let index = 0; index < 2; index++) {
+        const query = dialect.sqlToQuery(custom(condition, 'users'))
+        expect(query.sql).to.contain('"users"."id" = "users_ucast_0"."id"')
+        expect(query.params).to.deep.equal(['Audit'])
+      }
+      expect(reads).to.equal(startupReads)
+    })
+
+    it('joins every composite-key column', () => {
+      const { dialect, matchingProject } = setupRelations()
+      const parent = sqlite.sqliteTable('parent', { id: sqlite.integer('id'), tenant: sqlite.text('tenant') })
+      const child = sqlite.sqliteTable('child', {
+        parentId: sqlite.integer('parent_id'), tenant: sqlite.text('tenant'), name: sqlite.text('name').notNull(),
+      })
+      const parentRelations = drizzle.relations(parent, ({ many }) => ({ children: many(child) }))
+      const childRelations = drizzle.relations(child, ({ one }) => ({
+        parent: one(parent, {
+          fields: [child.parentId, child.tenant], references: [parent.id, parent.tenant],
+        }),
+      }))
+      const custom = createDrizzleInterpreter({
+        schema: { parent, child, parentRelations, childRelations },
+      })
+      expect(dialect.sqlToQuery(custom(some('children', matchingProject), 'parent')).sql)
+        .to.contain('"parent"."id" = "parent_ucast_0"."parent_id" AND "parent"."tenant" = "parent_ucast_0"."tenant"')
+    })
+
+    it('resolves named self relations without alias shadowing', () => {
+      const { dialect, matchingProject } = setupRelations()
+      const nodes = sqlite.sqliteTable('nodes', { id: sqlite.integer('id'), parentId: sqlite.integer('parent_id'), name: sqlite.text('name') })
+      const nodeRelations = drizzle.relations(nodes, ({ one, many }) => ({
+        parent: one(nodes, { fields: [nodes.parentId], references: [nodes.id], relationName: 'tree' }),
+        children: many(nodes, { relationName: 'tree' }),
+      }))
+      const custom = createDrizzleInterpreter({ schema: { nodes, nodeRelations } })
+      const query = dialect.sqlToQuery(custom(some('children', some('parent', matchingProject)), 'nodes'))
+      expect(query.sql).to.contain('"nodes"."id" = "nodes_ucast_0"."parent_id"')
+      expect(query.sql).to.contain('"nodes_ucast_0"."parent_id" = "nodes_ucast_1"."id"')
+    })
+
+    it('preserves PostgreSQL schemas, render-time casing, and parameter ordering', () => {
+      const app = pg.pgSchema('app')
+      const people = app.table('people', { personId: pg.integer(), displayName: pg.text() })
+      const items = app.table('items', { ownerId: pg.integer(), displayName: pg.text() })
+      const peopleRelations = drizzle.relations(people, ({ many }) => ({ items: many(items) }))
+      const itemRelations = drizzle.relations(items, ({ one }) => ({
+        owner: one(people, { fields: [items.ownerId], references: [people.personId] }),
+      }))
+      const custom = createDrizzleInterpreter({
+        schema: { people, items, peopleRelations, itemRelations },
+      })
+      const predicate = custom(some('items', new FieldCondition('eq', 'displayName', 'A')), 'people')
+      const query = new pg.PgDialect({ casing: 'snake_case' }).sqlToQuery(drizzle.sql`${1} AND ${predicate} AND ${2}`)
+      expect(query.sql).to.contain('FROM "app"."items" as "people_ucast_0"')
+      expect(query.sql).to.contain('"people"."person_id" = "people_ucast_0"."owner_id"')
+      expect(query.sql).to.contain('"people_ucast_0"."display_name" = $2')
+      expect(query.params).to.deep.equal([1, 'A', 2])
+    })
+
+    function setupRelations() {
+      const users = sqlite.sqliteTable('users', { id: sqlite.integer('id') })
+      const profiles = sqlite.sqliteTable('profiles', {
+        userId: sqlite.integer('user_id'), displayName: sqlite.text('display_name'),
+      })
+      const projects = sqlite.sqliteTable('projects', {
+        id: sqlite.integer('id'), userId: sqlite.integer('user_id'), name: sqlite.text('name'),
+        active: sqlite.integer('active', { mode: 'boolean' }),
+      })
+      // Both inverse relations omit join columns; v0 infers them from the owning side.
+      const userRelations = drizzle.relations(users, ({ many, one }) => ({
+        projects: many(projects), profile: one(profiles),
+      }))
+      const projectRelations = drizzle.relations(projects, ({ one }) => ({
+        user: one(users, { fields: [projects.userId], references: [users.id] }),
+      }))
+      const profileRelations = drizzle.relations(profiles, ({ one }) => ({
+        user: one(users, { fields: [profiles.userId], references: [users.id] }),
+      }))
+      const schema = {
+        users, projects, profiles, userRelations, projectRelations, profileRelations,
+      }
+      const interpret = createDrizzleInterpreter({ schema })
+      const dialect = new sqlite.SQLiteSyncDialect()
+      const matchingProject = new FieldCondition('eq', 'name', 'Audit')
+      const render = (condition: FieldCondition, options?: { alias: string }) =>
+        dialect.sqlToQuery(interpret(condition, 'users', options))
+
+      return { users, projects, schema, dialect, matchingProject, render }
+    }
   })
 
-  const encoded = customType<{ data: string; driverData: string }>({
-    dataType: () => 'text',
-    toDriver: value => `encoded:${value}`,
-    fromDriver: value => value.slice('encoded:'.length),
-  })
-  const users = sqliteTable('users', {
-    id: integer('id'),
-    displayName: text('display_name'),
-    age: integer('age'),
-    active: integer('active', { mode: 'boolean' }),
-    createdAt: integer('created_at', { mode: 'timestamp' }),
-    code: encoded('code'),
-    camelCase: text(),
-  })
-  const userRelations = relations(users, () => ({}))
-
-  function setup() {
+  function setup(encoded: (name: string) => any) {
+    const users = sqlite.sqliteTable('users', {
+      id: sqlite.integer('id'),
+      displayName: sqlite.text('display_name'),
+      age: sqlite.integer('age'),
+      active: sqlite.integer('active', { mode: 'boolean' }),
+      createdAt: sqlite.integer('created_at', { mode: 'timestamp' }),
+      code: encoded('code'),
+      camelCase: sqlite.text(),
+    })
+    const userRelations = drizzle.relations(users, () => ({}))
     const schema = { users, userRelations }
     const interpret = createDrizzleInterpreter({ schema })
-    const dialect = new SQLiteSyncDialect()
-    const render = (condition: FieldCondition | CompoundCondition) => dialect.sqlToQuery(interpret(condition, 'users'))
+    const dialect = new sqlite.SQLiteSyncDialect()
+    const render = (condition: Condition) => dialect.sqlToQuery(interpret(condition, 'users'))
 
     return { schema, interpret, dialect, render }
   }
 })
+
+function setupRelations(tables: Record<string, any>, definitions: RelationDefinitions) {
+  const declarations = Object.entries(definitions).map(([source, definitions]) =>
+    drizzle.relations(tables[source], ({ one }) => Object.fromEntries(
+      Object.entries(definitions).map(([name, definition]) => [name,
+        one(tables[definition.target], {
+          fields: definition.from.map(key => tables[source][key]) as [
+            drizzle.AnyColumn, ...drizzle.AnyColumn[]
+          ],
+          references: definition.to.map(key => tables[definition.target][key]) as [
+            drizzle.AnyColumn, ...drizzle.AnyColumn[]
+          ],
+        }),
+      ]),
+    )),
+  )
+  return { ...tables, ...Object.fromEntries(declarations.map((declaration, index) => [
+    `relations${index}`, declaration,
+  ])) }
+}
+
+function some(field: string, predicate: FieldCondition) {
+  return new FieldCondition('some', field, predicate)
+}

@@ -6,5 +6,7 @@ export const allInterpreters = {
   in: interpreters.within,
   some: someRelation,
   none: noneRelation,
+  is: someRelation,
+  isNot: noneRelation,
   every: everyRelation,
 };

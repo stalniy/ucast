@@ -40,15 +40,25 @@
         "types": "./dist/types/lib/drizzle-orm/v0.x.d.cts",
         "default": "./dist/cjs/lib/drizzle-orm/v0.x.js"
       }
+    },
+    "./drizzle-orm/v1.x": {
+      "import": {
+        "types": "./dist/types/lib/drizzle-orm/v1.x.d.mts",
+        "default": "./dist/esm/lib/drizzle-orm/v1.x.mjs"
+      },
+      "require": {
+        "types": "./dist/types/lib/drizzle-orm/v1.x.d.cts",
+        "default": "./dist/cjs/lib/drizzle-orm/v1.x.js"
+      }
     }
   },
   "scripts": {
     "build": "rm -rf dist/* && tsc -p tsconfig.build.json && tsdown -c tsdown.config.mjs",
     "lint": "eslint --ext .js,.ts src/ spec/",
-    "test": "mocha -r ts-node/register/transpile-only \"spec/**/*.spec.ts\"",
     "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
     "release.prepare": "npm run lint && npm test && NODE_ENV=production npm run build",
-    "release": "npm run release.prepare && pnpm publish"
+    "release": "npm run release.prepare && pnpm publish",
+    "test": "mocha -r ./node_modules/ts-node/register \"spec/**/*.spec.ts\""
   },
   "repository": {
     "type": "git",
@@ -92,7 +102,8 @@
     "better-sqlite3": "^12.11.1",
     "chai": "^4.2.0",
     "chai-spies": "^1.0.0",
-    "drizzle-orm": "^0.45.4",
+    "drizzle-orm-v0": "npm:drizzle-orm@0.45.4",
+    "drizzle-orm-v1": "npm:drizzle-orm@1.0.0-rc.4",
     "knex": "^3.1.0",
     "mocha": "^8.0.1",
     "nyc": "^18.0.0",
@@ -100,15 +111,16 @@
     "reflect-metadata": "^0.2.2",
     "sequelize": "^6.37.7",
     "sqlite3": "^6.0.1",
+    "ts-node": "^10.9.2",
     "typeorm": "^1.0.0",
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
     "@mikro-orm/core": "^6.0.0 || ^7.0.0",
+    "drizzle-orm": ">=0.36.2 <1.0.0 || ^1.0.0-rc.1",
     "objection": "^2.0.0 || ^3.0.0",
     "sequelize": "^5.0.0 || ^6.0.0",
-    "typeorm": "^0.2.0 || ^0.3.0 || ^1.0.0",
-    "drizzle-orm": "~0.45.4"
+    "typeorm": "^0.2.0 || ^0.3.0 || ^1.0.0"
   },
   "peerDependenciesMeta": {
     "objection": {
