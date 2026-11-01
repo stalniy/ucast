@@ -5,5 +5,7 @@
   ],
   "compilerOptions": {
     "outDir": "dist/types",
+    "types": ["mocha"],
+    "rootDir": "."
   }
 }

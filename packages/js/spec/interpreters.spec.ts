@@ -45,6 +45,22 @@ describe('Condition Interpreter', () => {
       const condition = new Field('eq', ITSELF, 'test')
       expect(interpret(condition, 'test')).to.be.true
       expect(interpret(condition, 'test2')).to.be.false
+
+      const anotherCondition = new Field('eq', ITSELF, null)
+      expect(interpret(anotherCondition, 'test')).to.be.false
+      expect(interpret(anotherCondition, null)).to.be.true
+    })
+
+    it('matches a number directly inside the input array but not inside a nested array', () => {
+      const condition = new Field('eq', ITSELF, 1)
+
+      expect(interpret(condition, [1])).to.be.true
+      expect(interpret(condition, [[1]])).to.be.false
+
+      const anotherCondition = new Field('eq', ITSELF, null)
+
+      expect(interpret(anotherCondition, [null])).to.be.true
+      expect(interpret(anotherCondition, [[null]])).to.be.false
     })
 
     it('returns true if value is inside array if object field is an array', () => {
@@ -87,6 +103,22 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, { foo: 22 })).to.be.false
     })
 
+    it('skips null and missing array elements when matching a dotted field', () => {
+      const condition = new Field('eq', 'items.a', 2)
+
+      expect(interpret(condition, { items: [null, undefined, {}, { a: 2 }] })).to.be.true
+      expect(interpret(condition, { items: [{ a: 2 }, null, undefined, {}] })).to.be.true
+      expect(interpret(condition, { items: [null, undefined, {}, { a: 1 }] })).to.be.false
+      expect(interpret(condition, { items: [null, undefined, {}] })).to.be.false
+    })
+
+    it('skips null and missing array elements at intermediate path segments', () => {
+      const condition = new Field('eq', 'groups.items.a', 2)
+      const object = { groups: [null, undefined, {}, { items: [null, undefined, {}, { a: 2 }] }] }
+
+      expect(interpret(condition, object)).to.be.true
+    })
+
     it('returns true if condition value is null and field value is null', () => {
       const condition = new Field('eq', 'value', null)
 
@@ -95,14 +127,21 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, [{}])).to.be.true
     })
 
-    it('returns false if condition value is null and field value is undefined', () => {
+    it('matches null against an explicitly undefined property', () => {
       const condition = new Field('eq', 'value', null)
 
-      expect(interpret(condition, { value: undefined })).to.be.false
-      expect(interpret(condition, [{ value: undefined }])).to.be.false
+      expect(interpret(condition, { value: undefined })).to.be.true
+      expect(interpret(condition, [{ value: undefined }])).to.be.true
+      expect(interpret(new Field('eq', 'items.value', null), { items: [{ value: undefined }] })).to.be.true
+    })
+
+    it('does not treat primitive inputs or undefined array elements as null properties', () => {
+      const condition = new Field('eq', 'value', null)
+
       expect(interpret(condition, 1)).to.be.false
       expect(interpret(condition, undefined)).to.be.false
       expect(interpret(condition, { value: [undefined]})).to.be.false
+      expect(interpret(new Field('eq', ITSELF, null), undefined)).to.be.false
     })
 
     it('returns true if condition value is null and array field contains null', () => {
@@ -144,6 +183,17 @@ describe('Condition Interpreter', () => {
     includeExamplesForFieldCondition('ne')
     includeExamplesForEqualityInterpreter('ne')
 
+    it('negates null equality for absent and explicitly undefined properties', () => {
+      const condition = new Field('ne', 'value', null)
+
+      expect(interpret(condition, {})).to.be.false
+      expect(interpret(condition, { value: undefined })).to.be.false
+      expect(interpret(condition, { value: null })).to.be.false
+      expect(interpret(condition, { value: 0 })).to.be.true
+      expect(interpret(new Field('ne', 'items.value', null), { items: [{ value: undefined }] })).to.be.false
+      expect(interpret(new Field('ne', ITSELF, null), undefined)).to.be.true
+    })
+
     it('returns true if condition value is NOT equal to field value of an object', () => {
       const condition = new Field('ne', 'name', 'test')
       expect(interpret(condition, { name: 'test' })).to.be.false
@@ -155,6 +205,42 @@ describe('Condition Interpreter', () => {
       const object = { address: { street: 'another' } }
 
       expect(interpret(condition, object)).to.be.true
+    })
+  })
+
+  describe('comparison type bracketing', () => {
+    const interpret = createJsInterpreter({ lt, lte, gt, gte })
+
+    for (const operator of ['lt', 'lte', 'gt', 'gte']) {
+      it(`${operator} rejects missing fields and incompatible types`, () => {
+        const numeric = new Field(operator, 'a', 0)
+        for (const subject of [{}, ...[undefined, null, false, '', '0', '1', {}, new Date(0), [null, false, '0', [0]]].map(a => ({ a }))]) {
+          expect(interpret(numeric, subject)).to.be.false
+        }
+        expect(interpret(new Field(operator, 'a', '0'), { a: 0 })).to.be.false
+        expect(interpret(new Field(operator, ITSELF, 0), undefined as any)).to.be.false
+        expect(interpret(new Field(operator, 'items.a', 0), { items: [{}, { a: '0' }] })).to.be.false
+      })
+
+      it(`${operator} matches compatible scalar and projected array elements`, () => {
+        const matching = operator === 'lt' || operator === 'lte' ? -1 : 1
+        const condition = new Field(operator, 'a', 0)
+        expect(interpret(condition, { a: matching })).to.be.true
+        expect(interpret(condition, { a: [null, '0', matching] })).to.be.true
+        expect(interpret(new Field(operator, 'items.a', 0), { items: [{}, { a: '0' }, { a: matching }] })).to.be.true
+        expect(interpret(condition, { a: 0 })).to.equal(operator === 'lte' || operator === 'gte')
+        expect(interpret(new Field(operator, 'a', 'm'), { a: matching < 0 ? 'a' : 'z' })).to.be.true
+        expect(interpret(new Field(operator, 'a', new Date(1000)), { a: new Date(1000 + matching) })).to.be.true
+      })
+    }
+
+    it('uses custom comparators within the matching type', () => {
+      const compare = spy(() => -1 as const)
+      const custom = createJsInterpreter({ lt }, { compare })
+      expect(custom(new Field('lt', 'a', 0), { a: '0' })).to.be.false
+      expect(compare).not.to.have.been.called()
+      expect(custom(new Field('lt', 'a', 'a'), { a: 'z' })).to.be.true
+      expect(compare).to.have.been.called.with('z', 'a')
     })
   })
 
@@ -286,12 +372,20 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, Object.create({ address: 1 }))).to.be.false
     })
 
-    it('checks whether value is undefined in case it needs to check value itself', () => {
+    it('checks whether value is undefined in case it needs to check that value exist', () => {
       const condition = new Field('exists', ITSELF, true)
 
       expect(interpret(condition, {})).to.be.true
       expect(interpret(condition, null)).to.be.true
       expect(interpret(condition, undefined)).to.be.false
+    })
+
+    it('checks whether value is undefined in case it needs to check that value does not exist', () => {
+      const condition = new Field('exists', ITSELF, false)
+
+      expect(interpret(condition, {})).to.be.false
+      expect(interpret(condition, null)).to.be.false
+      expect(interpret(condition, undefined)).to.be.true
     })
 
     it('can check existence of field specified using dot notation (e.g., "address.building")', () => {
@@ -325,6 +419,27 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, { items: [] })).to.be.true
       expect(interpret(condition, { items: [1] })).to.be.false
+    })
+
+    it('requires every projected item to lack the field when checking nonexistence', () => {
+      const condition = new Field('exists', 'items.age', false)
+
+      expect(interpret(condition, { items: [{ age: 1 }, {}] })).to.be.false
+      expect(interpret(condition, { items: [{}, { age: 1 }] })).to.be.false
+      expect(interpret(condition, { items: [{ age: null }] })).to.be.false
+      expect(interpret(condition, { items: [{ age: undefined }] })).to.be.false
+      expect(interpret(condition, { items: [{}, { name: 'test' }] })).to.be.true
+      expect(interpret(condition, { items: [] })).to.be.true
+      expect(interpret(condition, { items: [null, {}] })).to.be.true
+    })
+
+    it('checks nonexistence after projecting a nested array path', () => {
+      const condition = new Field('exists', 'groups.items.age', false)
+
+      const object = { groups: [{ items: [{ age: 1 }] }, { items: [{}] }] }
+
+      expect(interpret(condition, object)).to.be.false
+      expect(interpret(condition, { groups: [{ items: [] }, { items: [{}] }] })).to.be.true
     })
   })
 

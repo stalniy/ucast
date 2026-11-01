@@ -40,21 +40,23 @@ export const eq: Interpret<Field> = (node, object, { compare, get, isArray }) =>
 
   if (node.value === null) {
     const test = (candidate: unknown) => {
-      if (candidate == null || typeof candidate !== 'object') {
+      if (field !== ITSELF && (candidate == null || typeof candidate !== 'object')) {
         return false;
       }
 
-      if (!hasOwn(candidate, field)) {
+      if (field !== ITSELF && candidate && !hasOwn(candidate, field)) {
         return true;
       }
 
       const fieldValue = get(candidate, field);
-      return fieldValue === null || (
+      return fieldValue === null || (field !== ITSELF && fieldValue === undefined) || (
         isArray(fieldValue) && includes(fieldValue as unknown[], null, compare)
       );
     };
 
-    return isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
+    return node.field !== ITSELF && isArrayAndNotNumericField(item, field, isArray)
+      ? item.some(test)
+      : test(item);
   }
 
   const value = getFieldValue(item, field, get);
@@ -72,33 +74,38 @@ export const ne: typeof eq = (node, object, context) => {
 };
 
 export const lte = testValueOrArray<Comparable>((node, value, context) => {
+  if (!isOfTheSameType(value, node.value)) return false;
   const result = context.compare(value, node.value);
   return result === 0 || result === -1;
 });
 
 export const lt = testValueOrArray<Comparable>((node, value, context) => {
+  if (!isOfTheSameType(value, node.value)) return false;
   return context.compare(value, node.value) === -1;
 });
 export const gt = testValueOrArray<Comparable>((node, value, context) => {
+  if (!isOfTheSameType(value, node.value)) return false;
   return context.compare(value, node.value) === 1;
 });
 export const gte = testValueOrArray<Comparable>((node, value, context) => {
+  if (!isOfTheSameType(value, node.value)) return false;
   const result = context.compare(value, node.value);
   return result === 0 || result === 1;
 });
 
 export const exists: Interpret<Field<boolean>> = (node, object, { get, isArray }) => {
   if (node.field === ITSELF) {
-    return typeof object !== 'undefined';
+    const isExist = typeof object !== 'undefined';
+    return isExist === node.value;
   }
 
   const [item, field] = getObjectFieldCursor<{}>(object, node.field, get);
   const test = (value: {}) => {
-    if (value == null) return node.value === false;
-    return hasOwn(value, field) === node.value;
+    return value != null && hasOwn(value, field);
   };
 
-  return isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
+  const isExist = isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
+  return isExist === node.value;
 };
 
 export const mod = testValueOrArray<[number, number], number>((node, value) => {
@@ -149,3 +156,16 @@ type WhereFunction = (this: AnyObject) => boolean;
 export const where: Interpret<Document<WhereFunction>, AnyObject> = (node, object) => {
   return node.value.call(object);
 };
+
+const toString = Object.prototype.toString;
+function isOfTheSameType(value: unknown, anotherValue: unknown) {
+  if (value === undefined || anotherValue === undefined) return false;
+  if (value === null && anotherValue === null) return true;
+
+  const valueType = typeof value;
+  const anotherValueType = typeof anotherValue;
+  if (valueType !== anotherValueType) return false;
+  if (valueType === 'object') return toString.call(value) === toString.call(anotherValue);
+
+  return true;
+}
