@@ -127,12 +127,12 @@ describe('Condition Interpreter', () => {
       expect(interpret(condition, [{}])).to.be.true
     })
 
-    it('matches null against an explicitly undefined property', () => {
+    it('does not match null against an explicitly undefined property', () => {
       const condition = new Field('eq', 'value', null)
 
-      expect(interpret(condition, { value: undefined })).to.be.true
-      expect(interpret(condition, [{ value: undefined }])).to.be.true
-      expect(interpret(new Field('eq', 'items.value', null), { items: [{ value: undefined }] })).to.be.true
+      expect(interpret(condition, { value: undefined })).to.be.false
+      expect(interpret(condition, [{ value: undefined }])).to.be.false
+      expect(interpret(new Field('eq', 'items.value', null), { items: [{ value: undefined }] })).to.be.false
     })
 
     it('does not treat primitive inputs or undefined array elements as null properties', () => {
@@ -187,10 +187,10 @@ describe('Condition Interpreter', () => {
       const condition = new Field('ne', 'value', null)
 
       expect(interpret(condition, {})).to.be.false
-      expect(interpret(condition, { value: undefined })).to.be.false
+      expect(interpret(condition, { value: undefined })).to.be.true
       expect(interpret(condition, { value: null })).to.be.false
       expect(interpret(condition, { value: 0 })).to.be.true
-      expect(interpret(new Field('ne', 'items.value', null), { items: [{ value: undefined }] })).to.be.false
+      expect(interpret(new Field('ne', 'items.value', null), { items: [{ value: undefined }] })).to.be.true
       expect(interpret(new Field('ne', ITSELF, null), undefined)).to.be.true
     })
 
@@ -234,13 +234,16 @@ describe('Condition Interpreter', () => {
       })
     }
 
-    it('uses custom comparators within the matching type', () => {
-      const compare = spy(() => -1 as const)
+    it('allows custom comparators to normalize values before checking types', () => {
+      const normalize = (value: unknown) => value instanceof Date ? value.getTime() : value
+      const compare = spy((a: unknown, b: unknown) =>
+        defaultCompare(normalize(a), normalize(b)))
       const custom = createJsInterpreter({ lt }, { compare })
+
+      const date = new Date(1000)
+      expect(custom(new Field('lt', 'a', date), { a: 999 })).to.be.true
+      expect(compare).to.have.been.called.with(999, date)
       expect(custom(new Field('lt', 'a', 0), { a: '0' })).to.be.false
-      expect(compare).not.to.have.been.called()
-      expect(custom(new Field('lt', 'a', 'a'), { a: 'z' })).to.be.true
-      expect(compare).to.have.been.called.with('z', 'a')
     })
   })
 

@@ -49,7 +49,7 @@ export const eq: Interpret<Field> = (node, object, { compare, get, isArray }) =>
       }
 
       const fieldValue = get(candidate, field);
-      return fieldValue === null || (field !== ITSELF && fieldValue === undefined) || (
+      return fieldValue === null || (
         isArray(fieldValue) && includes(fieldValue as unknown[], null, compare)
       );
     };
@@ -74,21 +74,21 @@ export const ne: typeof eq = (node, object, context) => {
 };
 
 export const lte = testValueOrArray<Comparable>((node, value, context) => {
-  if (!isOfTheSameType(value, node.value)) return false;
+  if (value === undefined || node.value === undefined) return false;
   const result = context.compare(value, node.value);
   return result === 0 || result === -1;
 });
 
 export const lt = testValueOrArray<Comparable>((node, value, context) => {
-  if (!isOfTheSameType(value, node.value)) return false;
+  if (value === undefined || node.value === undefined) return false;
   return context.compare(value, node.value) === -1;
 });
 export const gt = testValueOrArray<Comparable>((node, value, context) => {
-  if (!isOfTheSameType(value, node.value)) return false;
+  if (value === undefined || node.value === undefined) return false;
   return context.compare(value, node.value) === 1;
 });
 export const gte = testValueOrArray<Comparable>((node, value, context) => {
-  if (!isOfTheSameType(value, node.value)) return false;
+  if (value === undefined || node.value === undefined) return false;
   const result = context.compare(value, node.value);
   return result === 0 || result === 1;
 });
@@ -156,16 +156,3 @@ type WhereFunction = (this: AnyObject) => boolean;
 export const where: Interpret<Document<WhereFunction>, AnyObject> = (node, object) => {
   return node.value.call(object);
 };
-
-const toString = Object.prototype.toString;
-function isOfTheSameType(value: unknown, anotherValue: unknown) {
-  if (value === undefined || anotherValue === undefined) return false;
-  if (value === null && anotherValue === null) return true;
-
-  const valueType = typeof value;
-  const anotherValueType = typeof anotherValue;
-  if (valueType !== anotherValueType) return false;
-  if (valueType === 'object') return toString.call(value) === toString.call(anotherValue);
-
-  return true;
-}
