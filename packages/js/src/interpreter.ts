@@ -45,10 +45,9 @@ export function createGetter<T extends GetField>(
   };
 }
 
-export function compare<T>(a: T, b: T): 0 | 1 | -1 {
-  if (a === b) {
-    return 0;
-  }
+export function compare<T>(a: T, b: T): 0 | 1 | -1 | null {
+  if (a === b) return 0;
+  if (!isOfTheSameType(a, b)) return null;
 
   return a > b ? 1 : -1;
 }
@@ -70,4 +69,17 @@ export function createJsInterpreter<
     compare: options.compare || compare,
     isArray,
   });
+}
+
+const toString = Object.prototype.toString;
+function isOfTheSameType(value: unknown, anotherValue: unknown) {
+  if (value === undefined || anotherValue === undefined) return false;
+  if (value === null && anotherValue === null) return true;
+
+  const valueType = typeof value;
+  const anotherValueType = typeof anotherValue;
+  if (valueType !== anotherValueType) return false;
+  if (valueType === 'object') return toString.call(value) === toString.call(anotherValue);
+
+  return true;
 }

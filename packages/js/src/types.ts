@@ -4,7 +4,7 @@ export type IsArray = (value: unknown) => boolean;
 
 export interface JsInterpretationOptions {
   get(object: any, field: string | typeof ITSELF): any
-  compare<T>(a: T, b: T): 1 | -1 | 0
+  compare<T>(a: T, b: T): 1 | -1 | 0 | null
   isArray(value: unknown): boolean
 }
 
