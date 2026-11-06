@@ -9,6 +9,17 @@ All notable changes to this project will be documented in this file.
 
 * ensures that `toJSON` is not called on primitives ([#54](https://github.com/stalniy/ucast/issues/54)) ([cc70754](https://github.com/stalniy/ucast/commit/cc707543119ba4278e63b2ee7894460756f3e61d))
 
+## [3.0.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@2.0.0...@ucast/mongo2js@3.0.0) (2026-11-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* query matching and comparator result types change in @ucast/js and @ucast/mongo2js:
+
+### Bug Fixes
+
+* covers edge case interpretation in js runtime ([#96](https://github.com/stalniy/ucast/issues/96)) ([fff25a1](https://github.com/stalniy/ucast/commit/fff25a1990c09d36bf7ba29ef16583635ea8564d))
+
 ## [2.0.0](https://github.com/stalniy/ucast/compare/@ucast/mongo2js@1.4.1...@ucast/mongo2js@2.0.0) (2026-04-24)
 
 

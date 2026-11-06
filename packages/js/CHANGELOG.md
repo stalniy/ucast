@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@4.0.1...@ucast/js@5.0.0) (2026-11-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* query matching and comparator result types change in @ucast/js and @ucast/mongo2js:
+
+### Bug Fixes
+
+* covers edge case interpretation in js runtime ([#96](https://github.com/stalniy/ucast/issues/96)) ([fff25a1](https://github.com/stalniy/ucast/commit/fff25a1990c09d36bf7ba29ef16583635ea8564d))
+
 ## [4.0.1](https://github.com/stalniy/ucast/compare/@ucast/js@4.0.0...@ucast/js@4.0.1) (2026-04-24)
 
 
