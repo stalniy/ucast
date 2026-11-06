@@ -39,8 +39,7 @@ function toPrimitive(value: unknown) {
   return value;
 }
 
-const comparePrimitives: typeof compare = (a, b) =>
-  compare(toPrimitive(a), toPrimitive(b));
+const comparePrimitives: typeof compare = (a, b) => compare(toPrimitive(a), toPrimitive(b));
 
 export interface FactoryOptions extends JsInterpretationOptions {
   forPrimitives: boolean

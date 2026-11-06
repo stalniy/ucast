@@ -40,11 +40,11 @@ export const eq: Interpret<Field> = (node, object, { compare, get, isArray }) =>
 
   if (node.value === null) {
     const test = (candidate: unknown) => {
-      if (field !== ITSELF && (candidate == null || typeof candidate !== 'object')) {
+      if (candidate == null || typeof candidate !== 'object') {
         return false;
       }
 
-      if (field !== ITSELF && candidate && !hasOwn(candidate, field)) {
+      if (!hasOwn(candidate, field)) {
         return true;
       }
 
@@ -54,9 +54,7 @@ export const eq: Interpret<Field> = (node, object, { compare, get, isArray }) =>
       );
     };
 
-    return node.field !== ITSELF && isArrayAndNotNumericField(item, field, isArray)
-      ? item.some(test)
-      : test(item);
+    return isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
   }
 
   const value = getFieldValue(item, field, get);
@@ -74,38 +72,33 @@ export const ne: typeof eq = (node, object, context) => {
 };
 
 export const lte = testValueOrArray<Comparable>((node, value, context) => {
-  if (value === undefined || node.value === undefined) return false;
   const result = context.compare(value, node.value);
   return result === 0 || result === -1;
 });
 
 export const lt = testValueOrArray<Comparable>((node, value, context) => {
-  if (value === undefined || node.value === undefined) return false;
   return context.compare(value, node.value) === -1;
 });
 export const gt = testValueOrArray<Comparable>((node, value, context) => {
-  if (value === undefined || node.value === undefined) return false;
   return context.compare(value, node.value) === 1;
 });
 export const gte = testValueOrArray<Comparable>((node, value, context) => {
-  if (value === undefined || node.value === undefined) return false;
   const result = context.compare(value, node.value);
   return result === 0 || result === 1;
 });
 
 export const exists: Interpret<Field<boolean>> = (node, object, { get, isArray }) => {
   if (node.field === ITSELF) {
-    const isExist = typeof object !== 'undefined';
-    return isExist === node.value;
+    return typeof object !== 'undefined';
   }
 
   const [item, field] = getObjectFieldCursor<{}>(object, node.field, get);
   const test = (value: {}) => {
-    return value != null && hasOwn(value, field);
+    if (value == null) return node.value === false;
+    return hasOwn(value, field) === node.value;
   };
 
-  const isExist = isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
-  return isExist === node.value;
+  return isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
 };
 
 export const mod = testValueOrArray<[number, number], number>((node, value) => {

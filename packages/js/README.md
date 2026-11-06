@@ -92,15 +92,13 @@ interpret(condition, { x: 1 }) // throws Error, `$in` is not supported
 
 ### Custom object matching
 
-You can also provide a custom `get` or `compare` function. So, you can implement custom logic to get object's property or to compare values. `compare` is used everywhere equality or comparison is required (e.g., in `$in`, `$lt`, `$gt`). This function must return `1` if `a > b`, `-1` if `a < b`, `0` if `a === b`, or `null` when the values cannot be compared.
-
-The default comparator is `compareOfTheSameType`, which returns `null` for unequal values of incompatible types. The older exported `compare` is deprecated and retains its original behavior and `-1 | 0 | 1` return type. Pass `{ compare }` explicitly to retain its coercive comparison behavior.
+You can also provide a custom `get` or `compare` function. So, you can implement custom logic to get object's property or to compare values. `compare` is used everywhere equality or comparison is required (e.g., in `$in`, `$lt`, `$gt`). This function must return `1` if `a > b`, `-1` if `a < b` and `0` if `a === b`.
 
 Let's enhance our interpreter to support deep object comparison using [lodash]:
 
 ```js
 import isEqual from 'lodash/isEqual';
-import { createJsInterpreter, allInterpreters, compareOfTheSameType } from '@ucast/js';
+import { createJsInterpreter, allInterpreters, compare } from '@ucast/js';
 
 const interpret = createJsInterpreter(allInterpreters, {
   compare(a, b) {
@@ -108,7 +106,7 @@ const interpret = createJsInterpreter(allInterpreters, {
       return 0;
     }
 
-    return compareOfTheSameType(a, b);
+    return compare(a, b);
   }
 });
 const condition = new FieldCondition('eq', 'x', { active: true });

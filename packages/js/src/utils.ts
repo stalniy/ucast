@@ -79,8 +79,6 @@ function getField<T extends AnyObject>(
   let result: unknown[] = [];
 
   for (let i = 0; i < object.length; i++) {
-    if (object[i] == null) continue;
-
     const value = get(object[i], field);
     if (typeof value !== 'undefined') {
       result = result.concat(value);
