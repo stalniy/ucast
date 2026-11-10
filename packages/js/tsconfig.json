@@ -1,9 +1,12 @@
 {
   "extends": "../../tsconfig",
   "include": [
-    "src/*"
+    "src/*",
+    "spec/*"
   ],
   "compilerOptions": {
     "outDir": "dist/types",
+    "rootDir": ".",
+    "types": ["node", "mocha", "chai"],
   }
 }

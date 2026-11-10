@@ -4,10 +4,42 @@ import { IsArray, JsInterpretationOptions, JsInterpreter } from './types';
 export type AnyObject = Record<PropertyKey, unknown>;
 export type GetField = (object: any, field: string) => any;
 
-export function testRegExp(regex: RegExp, value: unknown): boolean {
-  if (typeof value !== 'string') {
-    return false;
+const REGEXP_ESCAPE_SEQ = /[.*+?^${}()|[\]\\]/g
+export function likePatternToRegexp(pattern: string, flags: '' | 'i' = ''): RegExp {
+  if (typeof pattern !== 'string') {
+    throw new TypeError('LIKE pattern must be a string');
   }
+
+  let source = '';
+  let escaped = false;
+
+  for (let i = 0; i < pattern.length; i++) {
+    const character = pattern[i];
+    if (!escaped && character === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (!escaped && character === '%') {
+      source += '[\\s\\S]*';
+    } else if (!escaped && character === '_') {
+      source += '[\\s\\S]';
+    } else {
+      source += character.replace(REGEXP_ESCAPE_SEQ, '\\$&');
+    }
+
+    escaped = false;
+  }
+
+  if (escaped) {
+    throw new SyntaxError('LIKE pattern must not end with an escape character');
+  }
+
+  return new RegExp(`^${source}$`, `u${flags}`);
+}
+
+export function testRegExp(regex: RegExp, value: unknown): boolean {
+  if (typeof value !== 'string') return false;
 
   regex.lastIndex = 0;
   const result = regex.test(value);
@@ -112,6 +144,7 @@ export function getValueByPath(
   return value;
 }
 
+export const arraySome = Array.prototype.some;
 export function testValueOrArray<T, U = T>(test: JsInterpreter<FieldCondition<T>, U>) {
   return ((node, object, context) => {
     const value = context.get(object, node.field);
@@ -120,7 +153,7 @@ export function testValueOrArray<T, U = T>(test: JsInterpreter<FieldCondition<T>
       return test(node, value, context);
     }
 
-    return (value as U[]).some(v => test(node, v, context));
+    return arraySome.call(value, (v: U) => test(node, v, context));
   }) as JsInterpreter<FieldCondition<T>, AnyObject | U>;
 }
 

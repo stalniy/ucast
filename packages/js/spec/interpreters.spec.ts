@@ -11,6 +11,8 @@ import {
   mod,
   size,
   regex,
+  like,
+  ilike,
   where,
   within,
   nin,
@@ -27,6 +29,7 @@ import {
   includeExamplesForFieldCondition,
   includeExamplesForEqualityInterpreter,
 } from './fieldConditionInterpreter.behavior'
+import { includeExamplesForLikeInterpreter } from './likeOperator.behavior'
 
 describe('Condition Interpreter', () => {
   describe('eq', () => {
@@ -460,6 +463,48 @@ describe('Condition Interpreter', () => {
 
       expect(interpret(condition, { email: 'ucast@github.com' })).to.be.true
       expect(interpret(condition, { email: 'ucast@github.com' })).to.be.true
+    })
+  })
+
+  describe('like', () => {
+    const interpret = createJsInterpreter({ like })
+
+    includeExamplesForLikeInterpreter('like')
+
+    it('matches with case sensitivity', () => {
+      const condition = new Field('like', 'value', 'Te_t%')
+
+      expect(interpret(condition, { value: 'Test value' })).to.be.true
+      expect(interpret(condition, { value: 'test value' })).to.be.false
+      expect(interpret(condition, { value: 'TEST VALUE' })).to.be.false
+    })
+
+    it('compares Unicode text without case folding or normalization', () => {
+      expect(interpret(new Field('like', 'value', 'é'), { value: 'É' }))
+        .to.be.false
+      expect(interpret(new Field('like', 'value', 'é'), { value: 'e\u0301' })).to.be.false
+      expect(interpret(new Field('like', 'value', 'ß'), { value: 'SS' })).to.be.false
+    })
+  })
+
+  describe('ilike', () => {
+    const interpret = createJsInterpreter({ ilike })
+
+    includeExamplesForLikeInterpreter('ilike')
+
+    it('matches without case sensitivity', () => {
+      const condition = new Field('ilike', 'value', 'Te_t%')
+
+      expect(interpret(condition, { value: 'Test value' })).to.be.true
+      expect(interpret(condition, { value: 'test value' })).to.be.true
+      expect(interpret(condition, { value: 'TEST VALUE' })).to.be.true
+    })
+
+    it('uses Unicode case folding without normalizing text', () => {
+      expect(interpret(new Field('ilike', 'value', 'é'), { value: 'É' }))
+        .to.be.true
+      expect(interpret(new Field('ilike', 'value', 'é'), { value: 'e\u0301' })).to.be.false
+      expect(interpret(new Field('ilike', 'value', 'ß'), { value: 'SS' })).to.be.false
     })
   })
 
