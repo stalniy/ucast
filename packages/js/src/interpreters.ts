@@ -2,20 +2,22 @@ import {
   CompoundCondition as Compound,
   FieldCondition as Field,
   DocumentCondition as Document,
-  Condition,
-  Comparable,
+  type Condition,
+  type Comparable,
   ITSELF,
 } from '@ucast/core';
-import { JsInterpreter as Interpret } from './types';
+import type { JsInterpreter as Interpret } from './types';
 import {
   includes,
   testValueOrArray,
   isArrayAndNotNumericField,
   getFieldValue,
-  AnyObject,
+  type AnyObject,
   hasOwn,
   matches,
   testRegExp,
+  likePatternToRegexp,
+  arraySome,
 } from './utils';
 import { getObjectFieldCursor } from './interpreter';
 
@@ -55,7 +57,7 @@ export const eq: Interpret<Field> = (node, object, { compare, get, isArray }) =>
     };
 
     return node.field !== ITSELF && isArrayAndNotNumericField(item, field, isArray)
-      ? item.some(test)
+      ? arraySome.call(item, test)
       : test(item);
   }
 
@@ -104,7 +106,9 @@ export const exists: Interpret<Field<boolean>> = (node, object, { get, isArray }
     return value != null && hasOwn(value, field);
   };
 
-  const isExist = isArrayAndNotNumericField(item, field, isArray) ? item.some(test) : test(item);
+  const isExist = isArrayAndNotNumericField(item, field, isArray)
+    ? arraySome.call(item, test)
+    : test(item);
   return isExist === node.value;
 };
 
@@ -124,7 +128,7 @@ export const size: Interpret<Field<number>, AnyObject | unknown[]> = (
   };
 
   return node.field !== ITSELF && isArrayAndNotNumericField(items, field, isArray)
-    ? items.some(test)
+    ? arraySome.call(items, test)
     : test(items);
 };
 
@@ -149,10 +153,26 @@ export const elemMatch: Interpret<Field<Condition>> = (
   { interpret, get, isArray }
 ) => {
   const value = get(object, node.field);
-  return isArray(value) && (value as unknown[]).some(v => interpret(node.value, v));
+  return isArray(value) && arraySome.call((value as unknown[]), v => interpret(node.value, v));
 };
 
 type WhereFunction = (this: AnyObject) => boolean;
 export const where: Interpret<Document<WhereFunction>, AnyObject> = (node, object) => {
   return node.value.call(object);
 };
+
+export const like = createLikeInterpreter();
+export const ilike = createLikeInterpreter('i');
+
+function createLikeInterpreter(flags: '' | 'i' = ''): Interpret<Field<string>> {
+  return (node, object, context) => {
+    const pattern = likePatternToRegexp(node.value, flags);
+    const value = context.get(object, node.field);
+
+    if (!context.isArray(value)) {
+      return typeof value === 'string' && pattern.test(value);
+    }
+
+    return arraySome.call(value, (v) => typeof v === 'string' && pattern.test(v));
+  };
+}
