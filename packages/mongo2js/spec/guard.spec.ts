@@ -14,13 +14,25 @@ describe('guard', () => {
     expect(test({ firstName: 'test' })).to.be.true
   })
 
-  it('can compare Dates', () => {
-    const now = new Date()
-    const test = guard({ createdAt: { $gt: now } })
+  it('compares Dates and numeric timestamps', () => {
+    const now = new Date(1000)
 
-    expect(test({ createdAt: new Date(now.getTime() + 10) })).to.be.true
-    expect(test({ createdAt: now.getTime() + 10 })).to.be.true
-    expect(test({ createdAt: now.getTime() - 10 })).to.be.false
+    for (const operator of ['$lt', '$lte', '$gt', '$gte']) {
+      const offset = operator === '$lt' || operator === '$lte' ? -10 : 10
+      const test = guard({ createdAt: { [operator]: now } })
+
+      expect(test({ createdAt: new Date(now.getTime() + offset) })).to.be.true
+      expect(test({ createdAt: new Date(now.getTime() - offset) })).to.be.false
+      expect(test({ createdAt: new Date(now.getTime()) }))
+        .to.equal(operator === '$lte' || operator === '$gte')
+      expect(test({ createdAt: now.getTime() + offset })).to.be.true
+      expect(test({ createdAt: now.getTime() - offset })).to.be.false
+      expect(test({ createdAt: String(now.getTime() + offset) })).to.be.false
+      expect(test({ createdAt: now.getTime() })).to.equal(operator === '$lte' || operator === '$gte')
+
+      const numericTest = guard({ createdAt: { [operator]: now.getTime() } })
+      expect(numericTest({ createdAt: new Date(now.getTime() + offset) })).to.be.true
+    }
   })
 
   it('can check equality of wrapper objects that have `toJSON` method (e.g., `ObjectId`)', () => {

@@ -28,6 +28,12 @@ describe('getObjectField', () => {
     expect(getObjectField(object, 'items.price')).to.deep.equal([12, 14])
   })
 
+  it('skips null and undefined elements without discarding null property values', () => {
+    const items = [null, undefined, {}, { price: undefined }, { price: null }, { price: 2 }]
+
+    expect(getObjectField({ items }, 'items.price')).to.deep.equal([null, 2])
+  })
+
   it('returns property values from nested array as flat array', () => {
     const object = { items: [{ specs: [{ price: 12 }] }, { specs: [{ price: 14 }] }] }
     expect(getObjectField(object, 'items.specs.price')).to.deep.equal([12, 14])
