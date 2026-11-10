@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist/* && tsc && tsdown -c ../../tsdown.config.mjs",
+    "build": "rm -rf dist/* && tsc -p tsconfig.build.json && tsdown -c ../../tsdown.config.mjs",
     "lint": "eslint --ext .js,.ts src/ spec/",
     "test": "mocha -r ts-node/register spec/*",
     "coverage": "nyc -n src npm run test && nyc report --reporter=lcov",
@@ -52,6 +52,7 @@
     "@types/chai": "^4.2.11",
     "@types/chai-spies": "^1.0.1",
     "@types/mocha": "^7.0.2",
+    "@types/node": "^24.3.1",
     "chai": "^4.2.0",
     "chai-spies": "^1.0.0",
     "mocha": "^8.0.1",
