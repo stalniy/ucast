@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0](https://github.com/stalniy/ucast/compare/@ucast/sql@0.3.0...@ucast/sql@0.4.0) (2026-11-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sql:** adds dialect features spec and LIKE operators ([#101](https://github.com/stalniy/ucast/issues/101))
+
+### Features
+
+* **sql:** adds dialect features spec and LIKE operators ([#101](https://github.com/stalniy/ucast/issues/101)) ([1578fda](https://github.com/stalniy/ucast/commit/1578fda16ef4d4dee3073e406d9dceb07eb47d30))
+
 ## [0.3.0](https://github.com/stalniy/ucast/compare/@ucast/sql@0.2.1...@ucast/sql@0.3.0) (2026-10-23)
 
 

@@ -1,7 +1,7 @@
 {
   "packages/core": "2.0.0",
-  "packages/js": "4.0.1",
+  "packages/js": "5.0.0",
   "packages/mongo": "3.0.0",
-  "packages/mongo2js": "2.0.0",
-  "packages/sql": "0.3.0"
+  "packages/mongo2js": "3.0.0",
+  "packages/sql": "0.4.0"
 }
