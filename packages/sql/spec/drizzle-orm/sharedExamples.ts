@@ -5,7 +5,8 @@ import Database from 'better-sqlite3'
 
 import { allInterpreters, eq, type SqlOperator } from '../../src/index.ts'
 import type {
-  DrizzleInterpreterOptions, DrizzleQueryOptions,
+  DrizzleInterpreterOptions,
+  DrizzleQueryOptions,
 } from '../../src/lib/drizzle-orm/base.ts'
 
 export interface RelationDefinition {
@@ -64,6 +65,24 @@ export function includeDrizzleInterpreterExamples({
     fromDriver: (value: string) => value.slice('encoded:'.length),
   })
   const setup = () => setupExample(encoded)
+
+  it('uses native LIKE rules with mapped fields and unencoded bound patterns', () => {
+    const { render } = setup()
+    const query = render(new FieldCondition('like', 'displayName', String.raw`a\%`))
+    expect(query.sql).to.equal('"users"."display_name" LIKE ? ESCAPE char(92)')
+    expect(query.params).to.deep.equal([String.raw`a\%`])
+    const insensitive = render(new FieldCondition('ilike', 'code', 'Ab%'))
+    expect(insensitive.sql).to.equal('LOWER("users"."code") LIKE LOWER(?) ESCAPE char(92)')
+    expect(insensitive.params).to.deep.equal(['Ab%'])
+    const pgUsers = pg.pgSchema('app').table('users', { name: pg.text('name') })
+    const myUsers = mysql.mysqlTable('users', { name: mysql.text('name') })
+    const interpret = createDrizzleInterpreter({ schema: { pgUsers, myUsers } })
+    const condition = new FieldCondition('ilike', 'name', 'Ab%')
+    expect(new pg.PgDialect().sqlToQuery(interpret(condition, 'pgUsers')))
+      .to.include({ sql: String.raw`"app"."users"."name" ILIKE $1 ESCAPE E'\\'` })
+    expect(new mysql.MySqlDialect().sqlToQuery(interpret(condition, 'myUsers')))
+      .to.include({ sql: 'LOWER(`users`.`name`) LIKE LOWER(?) ESCAPE char(92)' })
+  })
 
   const cases: [string, unknown, string, unknown[]][] = [
     ['eq', 18, '= ?', [18]],
@@ -312,6 +331,35 @@ export function includeDrizzleInterpreterExamples({
         expect(query.sql).to.contain('"u_ucast_0"').and.contain('"u_ucast_1"')
         expect(query.params).to.deep.equal([1, 1])
         expect(names(condition)).to.deep.equal(['Bob'])
+      } finally {
+        connection.close()
+      }
+    })
+
+    it('executes LIKE operators in nested relations with mapped columns and overrides', () => {
+      const { connection, db, schema, users, names, interpret } = setupRelationExamples()
+      try {
+        const condition = some('posts', new FieldCondition('ilike', 'title', 'pub%'))
+        expect(names(condition)).to.deep.equal(['Bob'])
+        expect(names(some('posts', some('author', new FieldCondition('like', 'name', 'B%')))))
+          .to.deep.equal(['Bob'])
+        const query = setup().dialect.sqlToQuery(interpret(condition, 'users'))
+        expect(query.sql).to.contain('LOWER("users_ucast_0"."post_title") LIKE LOWER(?) ESCAPE char(92)')
+        const custom = createDrizzleInterpreter({
+          schema,
+          features: { like: { use: 'native', escapeCharacter: String.raw`'\'` } },
+        })
+        const predicate = custom(condition, 'users')
+        expect(setup().dialect.sqlToQuery(predicate).sql).to.contain(String.raw`"post_title") LIKE LOWER(?) ESCAPE '\'`)
+        expect(db.select({ name: users.name }).from(users).where(predicate).all())
+          .to.deep.equal([{ name: 'Bob' }])
+        const transform: SqlOperator<FieldCondition<string>> = (condition, { sql, field, param }) =>
+          sql`upper(${field(condition.field)}) like upper(${param(condition.value)}) escape '\\'`
+        const transformed = createDrizzleInterpreter(
+          { schema }, { ...allInterpreters, ilike: transform }
+        )
+        expect(db.select({ name: users.name }).from(users).where(transformed(condition, 'users')).all())
+          .to.deep.equal([{ name: 'Bob' }])
       } finally {
         connection.close()
       }

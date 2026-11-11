@@ -21,12 +21,13 @@ import { allInterpreters, type SqlOperator } from '../../index.ts';
 import {
   createBaseDrizzleInterpreter,
   createGetEntityName,
-  hasOwn,
   SUPPORTED_TABLE_TYPES,
   type DrizzleInterpreterOptions as BaseDrizzleInterpreterOptions,
   type DrizzleRelationMetadata as BaseDrizzleRelationMetadata,
   type DrizzleInterpreter as BaseDrizzleInterpreter,
 } from './base.ts';
+import { hasOwn } from "../../utils.ts";
+
 export type { DrizzleQueryOptions } from './base.ts';
 
 export type DrizzleInterpreterOptions<TSchema extends Record<string, unknown>>
@@ -49,7 +50,7 @@ export function createDrizzleInterpreter<TConfig extends Record<string, unknown>
   options: DrizzleInterpreterOptions<TConfig>,
   operators: Record<string, SqlOperator<any, any>> = allInterpreters
 ): DrizzleInterpreter<TConfig> {
-  return createInterpreter<TConfig>(operators, extractRelations(options.schema));
+  return createInterpreter<TConfig>(operators, extractRelations(options.schema), options);
 }
 
 function extractRelations(schema: Record<string, unknown>) {

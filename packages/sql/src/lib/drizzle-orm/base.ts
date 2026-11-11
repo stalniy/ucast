@@ -1,15 +1,13 @@
 import { Condition, type FieldCondition } from '@ucast/core';
 import {
   createSqlInterpreter, mysql, pg, sqlite,
-  type SqlComposer, type SqlOperator, type SqlQueryOptions,
+  type SqlComposer, type SqlOperator, type SqlQueryOptions, type DialectOptions,
 } from '../../index.ts';
-
-export const hasOwn = Object.hasOwn ?? ((hasOwnProperty) =>
-  (object: object, key: PropertyKey) => hasOwnProperty(object, key)
-)(Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty));
+import { hasOwn } from "../../utils.ts";
 
 export interface DrizzleInterpreterOptions<TSchema extends Record<string, unknown>> {
   schema: TSchema;
+  features?: Partial<DialectOptions['features']>;
 }
 
 export type TableKeys<TConfig, TTable> = {
@@ -56,11 +54,13 @@ export function createGetEntityName(entityKind: symbol) {
 export interface RelationAdapter<TTable, TSQL> {
   tables: Record<string, TTable>;
   resolveRelation(
-    tableKey: string, name: string
+    tableKey: string,
+    name: string
   ): DrizzleRelationMetadata<TTable, TSQL> | undefined;
 }
 
-interface ComposerOptions<TTable, TSQL> extends Pick<SqlQueryOptions, 'regexp'> {
+interface ComposerOptions<TTable, TSQL> {
+  features: SqlQueryOptions['features'];
   table: TTable;
   tableKey: string;
   family: string;
@@ -84,7 +84,10 @@ export interface DrizzleOperations<TTable, TColumn, TSQL extends TChunk, TChunk>
 }
 
 export function createBaseDrizzleInterpreter<
-  TTable, TColumn extends TChunk, TSQL extends TChunk, TChunk
+  TTable,
+  TColumn extends TChunk,
+  TSQL extends TChunk,
+  TChunk
 >(
   operations: DrizzleOperations<TTable, TColumn, TSQL, TChunk>
 ) {
@@ -92,7 +95,10 @@ export function createBaseDrizzleInterpreter<
 
   function createInterpreter<TSchema extends Record<string, unknown>>(
     operators: Record<string, SqlOperator<any, any>>,
-    adapter: RelationAdapter<TTable, TSQL>
+    adapter: RelationAdapter<TTable, TSQL>,
+    dialectOverrides?: {
+      features?: Partial<DialectOptions['features']>
+    }
   ) {
     const interpret = createSqlInterpreter<TChunk, TSQL, ComposerOptions<TTable, TSQL>>(operators, {
       createSqlComposer: createDrizzleSqlComposer,
@@ -115,7 +121,7 @@ export function createBaseDrizzleInterpreter<
       let index = 0;
       const dialect = SUPPORTED_TABLE_TYPES[family as keyof typeof SUPPORTED_TABLE_TYPES];
       return interpret(condition, {
-        regexp: dialect.regexp,
+        features: { ...dialect.features, ...dialectOverrides?.features },
         family,
         table: queryTable,
         tableKey,
@@ -133,6 +139,7 @@ export function createBaseDrizzleInterpreter<
       return sql.param(value, encoder);
     };
     return {
+      features: options.features,
       field: name => column(name)
         ?? sql`${sql.identifier(getTableName(options.table))}.${sql.identifier(name)}`,
       param(conditionOrValue) {
@@ -151,7 +158,6 @@ export function createBaseDrizzleInterpreter<
       sql,
       raw: sql.raw,
       join: sql.join,
-      regexp: options.regexp,
       relation(name) {
         const relation = options.resolve(name, options.tableKey);
         if (!relation) throw new Error(`Relation metadata for "${getTableName(options.table)}.${name}" not found`);

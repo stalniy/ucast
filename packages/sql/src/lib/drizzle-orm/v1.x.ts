@@ -7,11 +7,13 @@ import { Relation, relationToSQL, type TableRelationalConfig } from "drizzle-orm
 import { aliasedTable } from 'drizzle-orm-v1/alias';
 import { allInterpreters, type SqlOperator } from '../../index.ts';
 import {
-  createBaseDrizzleInterpreter, createGetEntityName, hasOwn,
+  createBaseDrizzleInterpreter, createGetEntityName,
   type DrizzleInterpreterOptions as BaseDrizzleInterpreterOptions,
   type DrizzleRelationMetadata as BaseDrizzleRelationMetadata,
   type DrizzleInterpreter as BaseDrizzleInterpreter,
 } from './base.ts';
+import { hasOwn } from "../../utils.ts";
+
 export type { DrizzleQueryOptions } from './base.ts';
 
 export type DrizzleInterpreterOptions<TSchema extends Record<string, unknown>>
@@ -93,7 +95,8 @@ export function createDrizzleInterpreter<TConfig extends Record<string, unknown>
   }
   return createInterpreter<TConfig>(operators, {
     tables,
-    resolveRelation: (key, name) => hasOwn(metadata[key] || {}, name)
+    resolveRelation: (key, name) =>
+        typeof metadata[key] === "object" && metadata[key] && hasOwn(metadata[key], name)
       ? metadata[key][name] : undefined,
-  });
+  }, options);
 }

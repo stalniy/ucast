@@ -93,7 +93,8 @@ console.log(replacements) // [5, 10]
 | `regex` | Dialect-specific regular expression comparison with the pattern bound |
 | `and`, `or` | Parenthesized conditions joined by `and` or `or` |
 | `not`, `nor` | Negated groups joined by `and` or `or`, respectively |
-| `some`, `none`, `every` | Correlated relation subqueries |
+| `like`, `ilike` | Bound LIKE patterns with dialect feature configuration (see [LIKE patterns](#like-patterns)) |
+| `some` (also `is`), `none` (also `isNot`), `every` | Correlated relation subqueries |
 
 The exported function for `in` is named `within`. The relation functions are
 exported as `someRelation`, `noneRelation`, and `everyRelation`; `allInterpreters`
@@ -194,6 +195,47 @@ relatedRelationField }`, whose fields can likewise be matching arrays.
 Relation metadata describes joins and column mappings. For domain-specific SQL,
 provide a custom composer and implement its `relation` handler.
 
+### LIKE patterns
+
+The named `like` and `ilike` interpreters are included in `allInterpreters`.
+Both accept `FieldCondition<string>` with a SQL LIKE pattern: `%` and `_` are wildcards, and backslash is the escape character. For example,
+``new FieldCondition('like', 'name', String.raw`A\_%`)`` matches names beginning with literal `A_`. Non-string patterns and trailing unpaired backslashes throw during interpretation.
+
+`like` renders `field LIKE pattern ESCAPE ...`. `ilike` uses native ILIKE for PostgreSQL. Other supported dialects downcase column and value, this may have an impact on query performance because in this case database server will not be able to utilize indexes.
+
+The escape clause and bracket handling come from `features.like`, including when interpreting `ilike`. Brackets are escaped in MSSQL to ensure behavior matches across databases and JavaScript runtime.
+
+### Dialect features
+
+Different database servers implement RegExp support differently. For such use cases, `@ucast/sql` supports dialect options specification.
+
+It consists from `features`, escaping and bound param behavior. All this can be customized per interpretation or per integration.
+
+For example, PostgreSQL support ILIKE natively, but MySQL determines case sensetivity based on column collation. RegExp matching also implemented differently.
+
+To account all this small differences, `@ucast/sql` has `features` option which is used to determine which dialect specific interpreter to choose during interpretation.
+
+> Check [dialects.ts](./src/dialects.ts) for details.
+
+For example, to override native `ilike` of PostgreSQL with downcase strategy, it's enough to update its feature description:
+
+```ts
+import { FieldCondition } from '@ucast/core';
+import { allInterpreters, createSqlInterpreter, pg } from '@ucast/sql';
+
+const interpret = createSqlInterpreter(allInterpreters);
+const [sql, params] = interpret(new FieldCondition('ilike', 'name', 'Ab%'), {
+  ...pg,
+  features: { ...pg.features, ilike: { use: 'lower' } },
+});
+// SQL: LOWER("name") LIKE LOWER($1) ESCAPE E'\\'
+// params: ['Ab%']
+```
+
+Drizzle accepts feature overrides directly in its factory configuration, since escaping and param bounding is done by drizzle.
+
+Custom composers must expose `features` property which is later can be used by dialect specific interpreter.
+
 ### SQL composers
 
 `createSqlInterpreter` creates a composer for each interpretation call. The default
@@ -219,20 +261,11 @@ implementation. The factory receives the SQL query options and returns a
 | `sql` | Compose fragments with a tagged template |
 | `raw(sql)` | Create a fragment from trusted SQL syntax |
 | `join(fragments, separator)` | Join fragments using a fragment separator |
-| `regexp(ignoreCase)` | Return the dialect's regex operator and comparator |
 | `relation(name)` | Return a related `composer` and `subquery(predicate)` |
+| `features` | Dialect feature configuration for regex and LIKE rendering |
 
 To return a different result shape, implement the optional
-`result(fragment)` method on the composer and specify its return type as the
-second generic argument. Without `result`, the interpreter returns the fragment
-directly.
-
-`createDefaultSqlComposer(options)` is exported for extending
-the built-in string composer. A custom `relation` handler can create a child with
-`createDefaultSqlComposer(childOptions, parentComposer)` to share parameter binding.
-The interpreter compiles the related predicate before calling `subquery(predicate)`.
-Place that predicate before additional bound filters in the generated SQL so
-positional placeholders follow parameter order.
+`result(fragment)` method on the composer and specify its return type as the second generic argument. Without `result`, the interpreter returns the fragment directly.
 
 ### Custom interpreter
 
@@ -248,10 +281,7 @@ const condition = new FieldCondition('eq', 'x', true);
 interpret(condition, pg);
 ```
 
-To add a custom operator, create a function that receives a condition and a
-composer and returns a SQL fragment. A third argument provides
-`interpret(condition, composer)` for recursively interpreting child conditions.
-Let's create an operator that adds a condition on `publishedAt`:
+To add a custom operator, create a function that receives a condition and a composer and returns an SQL fragment. A third argument provides `interpret(condition, composer)` for recursively interpreting child conditions. Let's create an operator that adds a condition on `publishedAt`:
 
 ```ts
 import { DocumentCondition } from '@ucast/core';
@@ -277,8 +307,11 @@ console.log(sql); // "publishedAt" >= $1
 console.log(params); // [new Date()]
 ```
 
-Use `param` for values and `field` for identifiers; reserve `raw` for trusted SQL
-syntax. If condition names differ from registered operator names, pass
+Use `param` for values and `field` for identifiers; reserve `raw` for trusted SQL syntax.
+
+**Important:** `raw` renderes string as-is and may cause SQL injections! So, ensure that what you pass in `raw` is safe.
+
+If condition names differ from registered operator names, pass
 `getInterpreterName(condition, options)` in the `createSqlInterpreter` options.
 
 ## Integrations
@@ -382,7 +415,7 @@ const condition = new FieldCondition('some', 'posts',
 db.select().from(authors).where(interpret(condition, 'authors'));
 ```
 
-Here, Drizzle infers the `authors.posts` join from `posts.author`. Direct joins, inferred inverse joins, composite keys, named self relations, and nestedrelations are supported. Each nested condition uses the related table's columns and encoders.
+Here, Drizzle infers the `authors.posts` join from `posts.author`. Direct joins, inferred inverse joins, composite keys, named self relations, and nested relations are supported. Each nested condition uses the related table's columns and encoders.
 
 | Operator | Meaning |
 | --- | --- |
@@ -412,7 +445,7 @@ Pass an optional second argument to select or extend the interpreter set. These
 operators come from `@ucast/sql`:
 
 ```ts
-import { eq , lt } from '@ucast/sql';
+import { eq, lt } from '@ucast/sql';
 
 const interpretSelected = createDrizzleInterpreter(
   { schema: { authors } },
@@ -421,7 +454,7 @@ const interpretSelected = createDrizzleInterpreter(
 ```
 
 Values are bound parameters. Comparisons and membership conditions use the
-resolved column's encoder; regular-expression patterns and modulo operands do not. Direct Drizzle `SQL` objects as condition values are rejected because Drizzle would otherwise render them as executable syntax. Use native Drizzle predicates or custom interpreters to compose SQL expressions.
+resolved column's encoder; regular-expression patterns, LIKE patterns, and modulo operands do not. Direct Drizzle `SQL` objects as condition values are rejected because Drizzle would otherwise render them as executable syntax. Use native Drizzle predicates or custom interpreters to compose SQL expressions.
 
 #### Drizzle 1.x relation declarations
 
@@ -453,87 +486,8 @@ Predefined relation filters restrict the row set for all relation operators:
 
 Drizzle 0.x applies casing when rendering a predicate; the same predicate can be rendered with different dialect casing settings. In 1.0.0 release candidates use native table
 construction casing, such as `sqliteTableCreator(name => name, 'snake_case')`.
-The interpreter accepts neither a casing nor a dialect option.
-
-### [Sequelize](https://sequelize.org/)
-
-For custom relation SQL, pass `{ createSqlComposer }` as the second argument to
-`createSequelizeInterpreter` and implement the composer's `relation` handler.
-
-```js
-import { interpret } from '@ucast/sql/sequelize';
-import { CompoundCondition, FieldCondition } from '@ucast/core';
-import { Model, Sequelize, DataTypes } from 'sequelize';
-
-const sequelize = new Sequelize('sqlite::memory:');
-
-class User extends Model {}
-
-User.init({
-  name: { type: DataTypes.STRING },
-  blocked: { type: DataTypes.BOOLEAN },
-  lastLoggedIn: { type: DataTypes.DATE },
-}, { sequelize });
-
-const condition = new CompoundCondition('and', [
-  new FieldCondition('eq', 'blocked', false),
-  new FieldCondition('lt', 'lastLoggedIn', new Date(Date.now() - 24 * 3600 * 1000)),
-]);
-
-const queryOptions = interpret(condition, User, { alias: User.name });
-// Pass both the SQL literal and its bound replacements to Sequelize.
-const users = await User.findAll(queryOptions);
-```
-
-`interpret(condition, Model, options?)` returns `{ where, replacements }`.
-The optional third argument accepts `alias` and `replacementMode` (`'numeric'`,
-the default positional `?` placeholders, or `'named'`). Named placeholders use
-an interpreter-local call counter; consumers combining predicates own replacement
-ordering and name collisions across interpreter instances.
-The default alias is `Model.tableName`; pass the query's model alias explicitly
-when it differs, as with `User.findAll()` above.
-
-### [Objection.js](https://vincit.github.io/objection.js/)
-
-The adapter translates model properties and relations with
-`objectionToSqlMetadata(Model)`. To customize that mapping, pass
-`{ createSqlComposer }` as the second argument to `createObjectionInterpreter`.
-The factory receives query options including the model's `SqlEntityMetadata`;
-pass customized metadata to `createDefaultSqlComposer`. For custom relation SQL,
-implement the composer's `relation` handler.
-
-```js
-import { interpret } from '@ucast/sql/objection';
-import { CompoundCondition, FieldCondition } from '@ucast/core';
-import { Model } from 'objection';
-import Knex from 'knex';
-
-Model.knex(Knex({ client: 'pg' }));
-
-class User extends Model {
-  static tableName = 'users';
-}
-
-const condition = new CompoundCondition('and', [
-  new FieldCondition('eq', 'blocked', false),
-  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
-]);
-
-// the next code produces:
-// User.query()
-//   .where('blocked', false)
-//   .where('lastLoggedIn', '<', Date.now() - 24 * 3600 * 1000)
-const query = User.query().where(interpret(condition, User));
-```
-
-`interpret(condition, Model, options?)` returns an Objection `RawBuilder` with
-bound values. Pass it to `.where()` or `.andWhere()` to compose it with other
-conditions. The model supplies the dialect and property/relation metadata.
-For aliased queries, pass the same alias explicitly:
-
-```js
-const query = User.query().alias('u').where(interpret(condition, User, { alias: 'u' }));
-```
+The interpreter accepts no casing option. Its optional `features` configuration
+overrides dialect feature entries; native Drizzle renders identifiers and parameters.
 
 ### [MikroORM](https://mikro-orm.io/)
 
@@ -673,6 +627,85 @@ async function main() {
 main().catch(console.error);
 ```
 
+### [Sequelize](https://sequelize.org/)
+
+For custom relation SQL, pass `{ createSqlComposer }` as the second argument to
+`createSequelizeInterpreter` and implement the composer's `relation` handler.
+
+```js
+import { interpret } from '@ucast/sql/sequelize';
+import { CompoundCondition, FieldCondition } from '@ucast/core';
+import { Model, Sequelize, DataTypes } from 'sequelize';
+
+const sequelize = new Sequelize('sqlite::memory:');
+
+class User extends Model {}
+
+User.init({
+  name: { type: DataTypes.STRING },
+  blocked: { type: DataTypes.BOOLEAN },
+  lastLoggedIn: { type: DataTypes.DATE },
+}, { sequelize });
+
+const condition = new CompoundCondition('and', [
+  new FieldCondition('eq', 'blocked', false),
+  new FieldCondition('lt', 'lastLoggedIn', new Date(Date.now() - 24 * 3600 * 1000)),
+]);
+
+const queryOptions = interpret(condition, User, { alias: User.name });
+// Pass both the SQL literal and its bound replacements to Sequelize.
+const users = await User.findAll(queryOptions);
+```
+
+`interpret(condition, Model, options?)` returns `{ where, replacements }`.
+The optional third argument accepts `alias` and `replacementMode` (`'numeric'`,
+the default positional `?` placeholders, or `'named'`). Named placeholders use
+an interpreter-local call counter; consumers combining predicates own replacement
+ordering and name collisions across interpreter instances.
+The default alias is `Model.tableName`; pass the query's model alias explicitly
+when it differs, as with `User.findAll()` above.
+
+### [Objection.js](https://vincit.github.io/objection.js/)
+
+The adapter translates model properties and relations with
+`objectionToSqlMetadata(Model)`. To customize that mapping, pass
+`{ createSqlComposer }` as the second argument to `createObjectionInterpreter`.
+The factory receives query options including the model's `SqlEntityMetadata`;
+pass customized metadata to `createDefaultSqlComposer`. For custom relation SQL,
+implement the composer's `relation` handler.
+
+```js
+import { interpret } from '@ucast/sql/objection';
+import { CompoundCondition, FieldCondition } from '@ucast/core';
+import { Model } from 'objection';
+import Knex from 'knex';
+
+Model.knex(Knex({ client: 'pg' }));
+
+class User extends Model {
+  static tableName = 'users';
+}
+
+const condition = new CompoundCondition('and', [
+  new FieldCondition('eq', 'blocked', false),
+  new FieldCondition('lt', 'lastLoggedIn', Date.now() - 24 * 3600 * 1000),
+]);
+
+// the next code produces:
+// User.query()
+//   .where('blocked', false)
+//   .where('lastLoggedIn', '<', Date.now() - 24 * 3600 * 1000)
+const query = User.query().where(interpret(condition, User));
+```
+
+`interpret(condition, Model, options?)` returns an Objection `RawBuilder` with
+bound values. Pass it to `.where()` or `.andWhere()` to compose it with other
+conditions. The model supplies the dialect and property/relation metadata.
+For aliased queries, pass the same alias explicitly:
+
+```js
+const query = User.query().alias('u').where(interpret(condition, User, { alias: 'u' }));
+```
 ## TypeScript Support
 
 Written in TypeScript and supports type inference for supported ORMs.

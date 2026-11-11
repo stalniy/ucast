@@ -5,6 +5,7 @@ import {
   type Comparable
 } from '@ucast/core';
 import {
+  dialectSpecificOperator,
   type SqlOperator,
 } from './interpreter.ts';
 
@@ -50,13 +51,64 @@ export const mod: SqlOperator<FieldCondition<[number, number]>> = (
   condition, { sql, field, param }
 ) => sql`mod(${field(condition.field)}, ${param(condition.value[0])}) = ${param(condition.value[1])}`;
 
-export const regex: SqlOperator<FieldCondition<RegExp>> = (
+export const regex = dialectSpecificOperator<FieldCondition<RegExp>, 'regex'>('regex', {
+  posix(condition, { sql, field, param, raw }) {
+    const op = condition.value.ignoreCase ? '~*' : '~';
+    return sql`${field(condition.field)} ${raw(op)} ${param(condition.value.source)}`;
+  },
+  regexp(condition, { sql, field, param }) {
+    return sql`${field(condition.field)} regexp ${param(condition.value.source)} = 1`;
+  },
+  regexpLike(condition, { sql, field, param }) {
+    const pattern = condition.value;
+    const flags = (pattern.ignoreCase ? 'i' : 'c')
+      + (pattern.multiline ? 'm' : '')
+      + (pattern.dotAll ? 's' : '');
+    return sql`REGEXP_LIKE(${field(condition.field)}, ${param(pattern.source)}, ${param(flags)})`;
+  }
+});
+
+function validateLikePattern(pattern: string) {
+  if (typeof pattern !== 'string') throw new Error('LIKE pattern must be a string');
+  let trailingSlashes = 0;
+  for (let i = pattern.length - 1; i >= 0 && pattern[i] === '\\'; i--) {
+    trailingSlashes++;
+  }
+  if (trailingSlashes % 2 !== 0) {
+    throw new Error('LIKE pattern must not end with an unpaired backslash');
+  }
+}
+
+const escapeBrackets = (value: string) => value.replace(/\\[\s\S]|\[/g, match => match === '[' ? '\\[' : match);
+const DEFAULT_LIKE_ESCAPE_CHAR = "'\\'";
+export const like: SqlOperator<FieldCondition<string>> = (
   condition,
-  { sql, field, param, regexp, raw }
+  { sql, field, param, raw, features }
 ) => {
-  const regexpDetails = regexp(condition.value.ignoreCase);
-  return sql`${field(condition.field)} ${raw(regexpDetails.operator)} ${param(condition.value.source)}${raw(regexpDetails.comparator)}`;
+  validateLikePattern(condition.value);
+  const escapeChar = features.like.escapeCharacter ?? DEFAULT_LIKE_ESCAPE_CHAR;
+  const pattern = features.like.supportsBrackets
+    ? escapeBrackets(condition.value)
+    : condition.value;
+  return sql`${field(condition.field)} LIKE ${param(pattern)} ESCAPE ${raw(escapeChar)}`;
 };
+
+export const ilike = dialectSpecificOperator<FieldCondition<string>, 'ilike'>('ilike', {
+  native(condition, { sql, field, param, raw, features }) {
+    const escapeChar = features.like.escapeCharacter ?? DEFAULT_LIKE_ESCAPE_CHAR;
+    const pattern = features.like.supportsBrackets
+      ? escapeBrackets(condition.value)
+      : condition.value;
+    return sql`${field(condition.field)} ILIKE ${param(pattern)} ESCAPE ${raw(escapeChar)}`;
+  },
+  lower(condition, { sql, field, param, raw, features }) {
+    const escapeChar = features.like.escapeCharacter ?? DEFAULT_LIKE_ESCAPE_CHAR;
+    const pattern = features.like.supportsBrackets
+      ? escapeBrackets(condition.value)
+      : condition.value;
+    return sql`LOWER(${field(condition.field)}) LIKE LOWER(${param(pattern)}) ESCAPE ${raw(escapeChar)}`;
+  }
+}, { validate: validateLikePattern });
 
 function compoundOperator(combinator: 'and' | 'or', isInverted = false) {
   const separator = ` ${combinator} `;
