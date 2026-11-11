@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.0.0](https://github.com/stalniy/ucast/compare/@ucast/js@4.0.1...@ucast/js@5.0.0) (2026-11-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sql:** adds dialect features spec and LIKE operators ([#101](https://github.com/stalniy/ucast/issues/101))
+* covers edge case interpretation in js runtime ([#96](https://github.com/stalniy/ucast/issues/96)) (#98)
+* query matching and comparator result types change in @ucast/js and @ucast/mongo2js:
+
+### Features
+
+* adds like and ilike to js interpreter ([#99](https://github.com/stalniy/ucast/issues/99)) ([0d25b3f](https://github.com/stalniy/ucast/commit/0d25b3f01202a753ef8e04e9e50225738062880b))
+* **sql:** adds dialect features spec and LIKE operators ([#101](https://github.com/stalniy/ucast/issues/101)) ([1578fda](https://github.com/stalniy/ucast/commit/1578fda16ef4d4dee3073e406d9dceb07eb47d30))
+
+
+### Bug Fixes
+
+* covers edge case interpretation in js runtime ([#96](https://github.com/stalniy/ucast/issues/96)) ([fff25a1](https://github.com/stalniy/ucast/commit/fff25a1990c09d36bf7ba29ef16583635ea8564d))
+* covers edge case interpretation in js runtime ([#96](https://github.com/stalniy/ucast/issues/96)) ([#98](https://github.com/stalniy/ucast/issues/98)) ([6fc7821](https://github.com/stalniy/ucast/commit/6fc78218e62ad880a432974e1eb7d0957456825a))
+
 ## [4.0.1](https://github.com/stalniy/ucast/compare/@ucast/js@4.0.0...@ucast/js@4.0.1) (2026-04-24)
 
 
