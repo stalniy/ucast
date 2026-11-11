@@ -32,7 +32,7 @@ export function likePatternToRegexp(pattern: string, flags: '' | 'i' = ''): RegE
   }
 
   if (escaped) {
-    throw new SyntaxError('LIKE pattern must not end with an escape character');
+    throw new Error('LIKE pattern must not end with an escape character');
   }
 
   return new RegExp(`^${source}$`, `u${flags}`);

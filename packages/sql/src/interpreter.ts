@@ -3,7 +3,8 @@ import {
   type FieldCondition,
   type InterpreterOptions
 } from '@ucast/core';
-import { type DialectOptions } from './dialects.ts';
+import { type DialectOperators, type DialectOptions } from './dialects.ts';
+import { hasOwn } from './utils.ts';
 
 export function createSqlInterpreter<
   F = string,
@@ -43,10 +44,10 @@ export interface SqlInterpreterOptions<F, R = F, O = SqlQueryOptions> {
 }
 
 export interface SqlComposer<F> {
+  features: Readonly<DialectOptions['features']>;
   field(field: string): F;
   param(value: FieldCondition | unknown): F;
   manyParams(value: FieldCondition<unknown[]> | unknown[]): F;
-  regexp: DialectOptions['regexp'];
   sql(strings: TemplateStringsArray, ...values: unknown[]): F;
   raw(sql: string): F;
   join(fragments: F[], separator: F): F;
@@ -62,7 +63,7 @@ export interface SqlComposition<F, R = F> extends SqlComposer<F> {
   result?(fragment: F): R
 }
 
-export interface SqlQueryOptions extends Required<DialectOptions> {
+export interface SqlQueryOptions extends DialectOptions {
   alias?: string;
   metadata?: SqlEntityMetadata;
 }
@@ -138,7 +139,7 @@ function createStringComposer(
       return result;
     }),
     join: joinStrings,
-    regexp: options.regexp,
+    features: options.features,
     relation(name) {
       const relation = options.metadata?.resolveRelation?.(name);
       if (!relation) {
@@ -214,3 +215,28 @@ export type SqlOperator<C extends Condition, F = unknown> = (
   composer: SqlComposer<F>,
   context: SqlInterpretationContext<any>,
 ) => F;
+
+export function dialectSpecificOperator<C extends Condition, T extends keyof DialectOperators>(
+  name: T,
+  implementations: Record<DialectOperators[T]['use'], SqlOperator<C>>,
+  options?: {
+    validate?(value: C['value']): void;
+  }
+): SqlOperator<C> {
+  return (condition, composer, context) => {
+    options?.validate?.(condition.value);
+    const selections = composer.features;
+    const maybeImpl = selections && hasOwn(selections, name)
+      ? implementations[selections[name].use as keyof typeof implementations]
+      : null;
+    const implementation = typeof maybeImpl === 'function'
+      ? maybeImpl
+      : undefined;
+
+    if (implementation) {
+      return implementation(condition, composer, context);
+    }
+
+    throw new Error(`SQL composer does not support the "${name}" dialect capability${typeof selections?.[name] === 'string' ? ` (unknown strategy "${selections[name]}")` : ''}`);
+  };
+}

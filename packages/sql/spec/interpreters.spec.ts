@@ -18,6 +18,9 @@ import {
   nor,
   mod,
   regex,
+  ilike,
+  like,
+  sqlite,
   pg,
   oracle,
   mysql,
@@ -276,11 +279,313 @@ describe('Condition Interpreter', () => {
       expect(params).to.deep.equal([condition.value.source])
     })
 
-    it('throws exception for MSSQL as it does not support REGEXP', () => {
+    const regexpLikeCases: [RegExp, string][] = [
+      [/pattern/, 'c'],
+      [/pattern/i, 'i'],
+      [/^pattern$/m, 'cm'],
+      [/a.b/s, 'cs'],
+      [/^a.b$/ims, 'ims'],
+      [/pattern/guy, 'c'],
+    ]
+
+    regexpLikeCases.forEach(([pattern, flags]) => {
+      it(`generates MSSQL REGEXP_LIKE for ${pattern} with flags ${flags}`, () => {
+        const [sql, params] = interpret(new Field('regex', 'email', pattern), mssql)
+
+        expect(sql).to.equal('REGEXP_LIKE([email], ?, ?)')
+        expect(params).to.deep.equal([pattern.source, flags])
+      })
+    })
+
+    it('binds MSSQL regex patterns without changing the expression or its state', () => {
+      const pattern = /O'Reilly\d+|--/gi
+      pattern.lastIndex = 4
+      const condition = new Field('regex', 'displayName', pattern)
+      const [sql, params] = interpret(condition, {
+        ...mssql,
+        alias: 'users',
+        metadata: { toColumnName: () => 'display_name' },
+      })
+
+      expect(sql).to.equal('REGEXP_LIKE([users].[display_name], ?, ?)')
+      expect(params).to.deep.equal([String.raw`O'Reilly\d+|--`, 'i'])
+      expect(condition.value).to.equal(pattern)
+      expect(pattern.lastIndex).to.equal(4)
+    })
+
+    it('preserves MSSQL parameter ordering when regex predicates are composed and negated', () => {
+      const interpret = createSqlInterpreter({ eq, regex, and, not })
+      const condition = new CompoundCondition('and', [
+        new Field('eq', 'active', true),
+        new CompoundCondition('not', [new Field('regex', 'email', /@example\.com$/i)]),
+        new Field('regex', 'name', /^Ada/),
+      ])
+      const [sql, params] = interpret(condition, {
+        ...mssql,
+        paramPlaceholder: index => `@p${index}`,
+      })
+
+      expect(sql).to.equal(
+        '([active] = @p1 and not (REGEXP_LIKE([email], @p2, @p3)) ' +
+        'and REGEXP_LIKE([name], @p4, @p5))'
+      )
+      expect(params).to.deep.equal([true, String.raw`@example\.com$`, 'i', '^Ada', 'c'])
+    })
+
+    it('uses a configured regexp strategy for MSSQL', () => {
       const condition = new Field('regex', 'email', /@/)
-      expect(() => {
-        interpret(condition, { ...mssql })
-      }).to.throw(/"regexp" operator is not supported in MSSQL/)
+      const [sql, params] = interpret(condition, {
+        ...mssql,
+        features: { ...mssql.features, regex: { use: 'regexp' } },
+      })
+
+      expect(sql).to.equal('[email] regexp ? = 1')
+      expect(params).to.deep.equal([condition.value.source])
+    })
+  })
+
+  describe('like', () => {
+    const interpret = createSqlInterpreter({ like })
+
+    it('uses PostgreSQL placeholders and an explicit backslash escape', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'Alice%'), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal(['Alice%'])
+    })
+
+    it('uses MySQL identifiers and CHAR(92) as the escape character', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'Alice%'), mysql)
+
+      expect(sql).to.equal('`name` LIKE ? ESCAPE char(92)')
+      expect(params).to.deep.equal(['Alice%'])
+    })
+
+    it('uses SQLite identifiers and positional parameters', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'Alice%'), sqlite)
+
+      expect(sql).to.equal('"name" LIKE ? ESCAPE char(92)')
+      expect(params).to.deep.equal(['Alice%'])
+    })
+
+    it('uses Oracle placeholders and a backslash escape literal', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'Alice%'), oracle)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE '\'`)
+      expect(params).to.deep.equal(['Alice%'])
+    })
+
+    it('uses MSSQL identifiers and a backslash escape literal', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'Alice%'), mssql)
+
+      expect(sql).to.equal(String.raw`[name] LIKE ? ESCAPE '\'`)
+      expect(params).to.deep.equal(['Alice%'])
+    })
+
+    it('preserves percent and underscore wildcards in the bound pattern', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'A_ice%'), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal(['A_ice%'])
+    })
+
+    it('preserves an escaped underscore followed by a wildcard', () => {
+      const [sql, params] = interpret(new Field('like', 'name', String.raw`Alice\_%`), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal([String.raw`Alice\_%`])
+    })
+
+    it('preserves an escaped percent followed by a wildcard', () => {
+      const [sql, params] = interpret(new Field('like', 'discount', String.raw`50\%%`), pg)
+
+      expect(sql).to.equal(String.raw`"discount" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal([String.raw`50\%%`])
+    })
+
+    it('accepts an empty pattern', () => {
+      const [sql, params] = interpret(new Field('like', 'name', ''), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal([''])
+    })
+
+    it('accepts a pattern containing only a wildcard', () => {
+      const [sql, params] = interpret(new Field('like', 'name', '%'), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal(['%'])
+    })
+
+    it('accepts a trailing escaped backslash', () => {
+      const [sql, params] = interpret(new Field('like', 'path', String.raw`docs\\`), pg)
+
+      expect(sql).to.equal(String.raw`"path" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal([String.raw`docs\\`])
+    })
+
+    it('leaves regular-expression metacharacters unchanged', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'a.b+[cd](e)?^$'), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal(['a.b+[cd](e)?^$'])
+    })
+
+    it('binds quotes and SQL-looking text as a value', () => {
+      const [sql, params] = interpret(new Field('like', 'name', "O'Reilly'; --%"), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal(["O'Reilly'; --%"])
+    })
+
+    it('preserves line breaks in the pattern', () => {
+      const [sql, params] = interpret(new Field('like', 'name', 'first\nsecond%'), pg)
+
+      expect(sql).to.equal(String.raw`"name" LIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal(['first\nsecond%'])
+    })
+
+    it('escapes opening brackets for MSSQL without changing the condition', () => {
+      const condition = new Field('like', 'name', '[Alice]%')
+      Object.freeze(condition)
+      const [sql, params] = interpret(condition, mssql)
+
+      expect(sql).to.equal(String.raw`[name] LIKE ? ESCAPE '\'`)
+      expect(params).to.deep.equal([String.raw`\[Alice]%`])
+      expect(condition.value).to.equal('[Alice]%')
+    })
+
+    it('preserves an already escaped MSSQL opening bracket', () => {
+      const [sql, params] = interpret(new Field('like', 'name', String.raw`\[Alice]%`), mssql)
+
+      expect(sql).to.equal(String.raw`[name] LIKE ? ESCAPE '\'`)
+      expect(params).to.deep.equal([String.raw`\[Alice]%`])
+    })
+
+    it('escapes each opening bracket in an MSSQL pattern', () => {
+      const [sql, params] = interpret(new Field('like', 'name', '[A][B]%'), mssql)
+
+      expect(sql).to.equal(String.raw`[name] LIKE ? ESCAPE '\'`)
+      expect(params).to.deep.equal([String.raw`\[A]\[B]%`])
+    })
+
+    it('escapes an MSSQL opening bracket after an escaped backslash', () => {
+      const [sql, params] = interpret(new Field('like', 'name', String.raw`\\[Alice]%`), mssql)
+
+      expect(sql).to.equal(String.raw`[name] LIKE ? ESCAPE '\'`)
+      expect(params).to.deep.equal([String.raw`\\\[Alice]%`])
+    })
+
+    it('leaves a standalone MSSQL closing bracket unchanged', () => {
+      const [sql, params] = interpret(new Field('like', 'name', ']Alice%'), mssql)
+
+      expect(sql).to.equal(String.raw`[name] LIKE ? ESCAPE '\'`)
+      expect(params).to.deep.equal([']Alice%'])
+    })
+
+    it('uses mapped, aliased columns and a configured escape expression', () => {
+      const [sql, params] = interpret(new Field('like', 'displayName', 'Alice%'), {
+        ...pg,
+        alias: 'users',
+        metadata: { toColumnName: () => 'display_name' },
+        features: { ...pg.features, like: { use: 'native', escapeCharacter: 'char(92)' } },
+      })
+
+      expect(sql).to.equal('"users"."display_name" LIKE $1 ESCAPE char(92)')
+      expect(params).to.deep.equal(['Alice%'])
+    })
+
+    it('rejects a null pattern', () => {
+      const condition = new Field('like', 'name', null)
+
+      expect(() => interpret(condition, pg)).to.throw('LIKE pattern must be a string')
+    })
+
+    it('rejects an undefined pattern', () => {
+      const condition = new Field('like', 'name', undefined)
+
+      expect(() => interpret(condition, pg)).to.throw('LIKE pattern must be a string')
+    })
+
+    it('rejects a numeric pattern', () => {
+      const condition = new Field('like', 'name', 42)
+
+      expect(() => interpret(condition, pg)).to.throw('LIKE pattern must be a string')
+    })
+
+    it('rejects a RegExp instead of treating it as a LIKE pattern', () => {
+      const condition = new Field('like', 'name', /Alice/)
+
+      expect(() => interpret(condition, pg)).to.throw('LIKE pattern must be a string')
+    })
+
+    it('rejects an array of patterns', () => {
+      const condition = new Field('like', 'name', ['Alice%'])
+
+      expect(() => interpret(condition, pg)).to.throw('LIKE pattern must be a string')
+    })
+
+    it('rejects a trailing unpaired backslash', () => {
+      const condition = new Field('like', 'name', 'Alice\\')
+
+      expect(() => interpret(condition, pg))
+        .to.throw('LIKE pattern must not end with an unpaired backslash')
+    })
+
+    it('rejects an unpaired backslash after an escaped backslash', () => {
+      const condition = new Field('like', 'name', 'Alice\\\\\\')
+
+      expect(() => interpret(condition, pg))
+        .to.throw('LIKE pattern must not end with an unpaired backslash')
+    })
+  })
+
+  describe('ilike', () => {
+    const interpret = createSqlInterpreter({ ilike })
+    const cases: [string, SqlQueryOptions, string][] = [
+      ['MySQL', mysql, 'LOWER(`name`) LIKE LOWER(?) ESCAPE char(92)'],
+      ['SQLite', sqlite, 'LOWER("name") LIKE LOWER(?) ESCAPE char(92)'],
+      ['Oracle', oracle, String.raw`LOWER("name") LIKE LOWER($1) ESCAPE '\'`],
+      ['MSSQL', mssql, String.raw`LOWER([name]) LIKE LOWER(?) ESCAPE '\'`],
+    ]
+
+    cases.forEach(([dialect, options, expectedSql]) => {
+      it(`lowercases both operands in SQL for ${dialect} and binds the original pattern`, () => {
+        const condition = new Field('ilike', 'name', String.raw`Ab\_%`)
+        const [sql, params] = interpret(condition, options)
+
+        expect(sql).to.equal(expectedSql)
+        expect(params).to.deep.equal([String.raw`Ab\_%`])
+        expect(condition.value).to.equal(String.raw`Ab\_%`)
+      })
+    })
+
+    it('uses native ILIKE for PostgreSQL', () => {
+      const [sql, params] = interpret(new Field('ilike', 'name', 'Ab%'), pg)
+
+      expect(sql).to.equal(String.raw`"name" ILIKE $1 ESCAPE E'\\'`)
+      expect(params).to.deep.equal(['Ab%'])
+    })
+
+    it('applies the lower strategy override to mapped, aliased columns', () => {
+      const [sql, params] = interpret(new Field('ilike', 'displayName', 'Ab%'), {
+        ...pg,
+        features: { ...pg.features, ilike: { use: 'lower' } },
+        alias: 'users',
+        metadata: { toColumnName: () => 'display_name' },
+      })
+
+      expect(sql).to.equal(String.raw`LOWER("users"."display_name") LIKE LOWER($1) ESCAPE E'\\'`)
+      expect(params).to.deep.equal(['Ab%'])
+    })
+
+    it('preserves MSSQL bracket escaping before database case folding', () => {
+      const condition = new Field('ilike', 'name', String.raw`Ab[CD]\_%`)
+      const [sql, params] = interpret(condition, mssql)
+
+      expect(sql).to.equal(String.raw`LOWER([name]) LIKE LOWER(?) ESCAPE '\'`)
+      expect(params).to.deep.equal([String.raw`Ab\[CD]\_%`])
+      expect(condition.value).to.equal(String.raw`Ab[CD]\_%`)
     })
   })
 
@@ -578,7 +883,7 @@ describe('Condition Interpreter', () => {
         param: () => ({ text: '?' }),
         manyParams: () => { throw new Error('not used') },
         relation: () => { throw new Error('not used') },
-        regexp: pg.regexp,
+        features: pg.features,
         raw: text => ({ text }),
         join: (fragments, separator) => ({
           text: fragments.map(fragment => fragment.text).join(separator.text),
